@@ -1,0 +1,208 @@
+--- a/drivers/iommu/iommu.c
++++ b/drivers/iommu/iommu.c
+@@ -22,6 +22,7 @@
+ #include <linux/bitops.h>
+ #include <linux/property.h>
+ #include <linux/fsl/mc.h>
++#include <linux/module.h>
+ #include <trace/events/iommu.h>
+ 
+ static struct kset *iommu_group_kset;
+@@ -141,6 +142,7 @@ int iommu_device_register(struct iommu_d
+ 	spin_unlock(&iommu_device_lock);
+ 	return 0;
+ }
++EXPORT_SYMBOL_GPL(iommu_device_register);
+ 
+ void iommu_device_unregister(struct iommu_device *iommu)
+ {
+@@ -148,6 +150,7 @@ void iommu_device_unregister(struct iomm
+ 	list_del(&iommu->list);
+ 	spin_unlock(&iommu_device_lock);
+ }
++EXPORT_SYMBOL_GPL(iommu_device_unregister);
+ 
+ static struct iommu_param *iommu_get_dev_param(struct device *dev)
+ {
+@@ -183,10 +186,21 @@ int iommu_probe_device(struct device *de
+ 	if (!iommu_get_dev_param(dev))
+ 		return -ENOMEM;
+ 
++	if (!try_module_get(ops->owner)) {
++		ret = -EINVAL;
++		goto err_free_dev_param;
++	}
++
+ 	ret = ops->add_device(dev);
+ 	if (ret)
+-		iommu_free_dev_param(dev);
++		goto err_module_put;
+ 
++	return 0;
++
++err_module_put:
++	module_put(ops->owner);
++err_free_dev_param:
++	iommu_free_dev_param(dev);
+ 	return ret;
+ }
+ 
+@@ -197,7 +211,10 @@ void iommu_release_device(struct device
+ 	if (dev->iommu_group)
+ 		ops->remove_device(dev);
+ 
+-	iommu_free_dev_param(dev);
++	if (dev->iommu_param) {
++		module_put(ops->owner);
++		iommu_free_dev_param(dev);
++	}
+ }
+ 
+ static struct iommu_domain *__iommu_domain_alloc(struct bus_type *bus,
+@@ -890,6 +907,7 @@ struct iommu_group *iommu_group_ref_get(
+ 	kobject_get(group->devices_kobj);
+ 	return group;
+ }
++EXPORT_SYMBOL_GPL(iommu_group_ref_get);
+ 
+ /**
+  * iommu_group_put - Decrement group reference
+@@ -1263,6 +1281,7 @@ struct iommu_group *generic_device_group
+ {
+ 	return iommu_group_alloc();
+ }
++EXPORT_SYMBOL_GPL(generic_device_group);
+ 
+ /*
+  * Use standard PCI bus topology, isolation features, and DMA alias quirks
+@@ -1330,6 +1349,7 @@ struct iommu_group *pci_device_group(str
+ 	/* No shared group found, allocate new */
+ 	return iommu_group_alloc();
+ }
++EXPORT_SYMBOL_GPL(pci_device_group);
+ 
+ /* Get the IOMMU group for device on fsl-mc bus */
+ struct iommu_group *fsl_mc_device_group(struct device *dev)
+@@ -1342,6 +1362,7 @@ struct iommu_group *fsl_mc_device_group(
+ 		group = iommu_group_alloc();
+ 	return group;
+ }
++EXPORT_SYMBOL_GPL(fsl_mc_device_group);
+ 
+ /**
+  * iommu_group_get_for_dev - Find or create the IOMMU group for a device
+@@ -1410,6 +1431,7 @@ struct iommu_group *iommu_group_get_for_
+ 
+ 	return group;
+ }
++EXPORT_SYMBOL_GPL(iommu_group_get_for_dev);
+ 
+ struct iommu_domain *iommu_group_default_domain(struct iommu_group *group)
+ {
+@@ -1911,9 +1933,6 @@ int __iommu_map(struct iommu_domain *dom
+ 		size -= pgsize;
+ 	}
+ 
+-	if (ret == 0 && ops->iotlb_sync_map)
+-		ops->iotlb_sync_map(domain, iova, size);
+-
+ 	/* unroll mapping in case something went wrong */
+ 	if (ret)
+ 		iommu_unmap(domain, orig_iova, orig_size - size);
+@@ -1926,15 +1945,29 @@ int __iommu_map(struct iommu_domain *dom
+ int iommu_map(struct iommu_domain *domain, unsigned long iova,
+ 	      phys_addr_t paddr, size_t size, int prot)
+ {
++	const struct iommu_ops *ops = domain->ops;
++	int ret;
++
+ 	might_sleep();
+-	return __iommu_map(domain, iova, paddr, size, prot, GFP_KERNEL);
++	ret = __iommu_map(domain, iova, paddr, size, prot, GFP_KERNEL);
++	if (ret == 0 && ops->iotlb_sync_map)
++		ops->iotlb_sync_map(domain, iova, size);
++
++	return ret;
+ }
+ EXPORT_SYMBOL_GPL(iommu_map);
+ 
+ int iommu_map_atomic(struct iommu_domain *domain, unsigned long iova,
+ 	      phys_addr_t paddr, size_t size, int prot)
+ {
+-	return __iommu_map(domain, iova, paddr, size, prot, GFP_ATOMIC);
++	const struct iommu_ops *ops = domain->ops;
++	int ret;
++
++	ret = __iommu_map(domain, iova, paddr, size, prot, GFP_ATOMIC);
++	if (ret == 0 && ops->iotlb_sync_map)
++		ops->iotlb_sync_map(domain, iova, size);
++
++	return ret;
+ }
+ EXPORT_SYMBOL_GPL(iommu_map_atomic);
+ 
+@@ -2018,6 +2051,7 @@ size_t __iommu_map_sg(struct iommu_domai
+ 		    struct scatterlist *sg, unsigned int nents, int prot,
+ 		    gfp_t gfp)
+ {
++	const struct iommu_ops *ops = domain->ops;
+ 	size_t len = 0, mapped = 0;
+ 	phys_addr_t start;
+ 	unsigned int i = 0;
+@@ -2048,6 +2082,8 @@ size_t __iommu_map_sg(struct iommu_domai
+ 			sg = sg_next(sg);
+ 	}
+ 
++	if (ops->iotlb_sync_map)
++		ops->iotlb_sync_map(domain, iova, mapped);
+ 	return mapped;
+ 
+ out_err:
+@@ -2225,6 +2261,7 @@ struct iommu_resv_region *iommu_alloc_re
+ 	region->type = type;
+ 	return region;
+ }
++EXPORT_SYMBOL_GPL(iommu_alloc_resv_region);
+ 
+ static int
+ request_default_domain_for_dev(struct device *dev, unsigned long type)
+--- a/include/linux/iommu.h
++++ b/include/linux/iommu.h
+@@ -245,6 +245,7 @@ struct iommu_iotlb_gather {
+  * @sva_get_pasid: Get PASID associated to a SVA handle
+  * @page_response: handle page request response
+  * @pgsize_bitmap: bitmap of all possible supported page sizes
++ * @owner: Driver module providing these ops
+  */
+ struct iommu_ops {
+ 	bool (*capable)(enum iommu_cap);
+@@ -309,6 +310,7 @@ struct iommu_ops {
+ 			     struct iommu_page_response *msg);
+ 
+ 	unsigned long pgsize_bitmap;
++	struct module *owner;
+ };
+ 
+ /**
+@@ -377,12 +379,19 @@ void iommu_device_sysfs_remove(struct io
+ int  iommu_device_link(struct iommu_device   *iommu, struct device *link);
+ void iommu_device_unlink(struct iommu_device *iommu, struct device *link);
+ 
+-static inline void iommu_device_set_ops(struct iommu_device *iommu,
+-					const struct iommu_ops *ops)
++static inline void __iommu_device_set_ops(struct iommu_device *iommu,
++					  const struct iommu_ops *ops)
+ {
+ 	iommu->ops = ops;
+ }
+ 
++#define iommu_device_set_ops(iommu, ops)				\
++do {									\
++	struct iommu_ops *__ops = (struct iommu_ops *)(ops);		\
++	__ops->owner = THIS_MODULE;					\
++	__iommu_device_set_ops(iommu, __ops);				\
++} while (0)
++
+ static inline void iommu_device_set_fwnode(struct iommu_device *iommu,
+ 					   struct fwnode_handle *fwnode)
+ {

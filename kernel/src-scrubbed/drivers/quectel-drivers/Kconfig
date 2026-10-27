@@ -1,0 +1,20 @@
+config QUECTEL_DRIVERS
+	bool "Quectel drivers Supports"
+	---help---
+	  Supports quectel drivers.
+
+
+config QL_GPIO_SYSFS
+	bool "Quectel gpio sysfs Supports"
+	---help---
+	  Supports quectel gpio sysfs.
+
+config QL_PWM_FANS
+	bool "Quectel pwm fan Supports"
+	---help---
+	  Supports quectel pwm fan.
+
+source "drivers/quectel-drivers/rawdata/Kconfig"
+source "drivers/quectel-drivers/power/Kconfig"
+source "drivers/quectel-drivers/fcm360w/Kconfig"
+source "drivers/quectel-drivers/br_trigger/Kconfig"

@@ -1,0 +1,8 @@
+#
+# HSM configuration
+#
+config MTK_HSM_SUPPORT
+	bool "Enable MTK HSM Support"
+	default n
+	help
+	  Enable MTK HSM Support.

@@ -1,0 +1,42 @@
+From 2910c59fd0423f87aca3a669b156a2325da63745 Mon Sep 17 00:00:00 2001
+From: Phillip Lougher <phillip@squashfs.org.uk>
+Date: Thu, 23 Jul 2020 21:15:40 -0700
+Subject: [PATCH] squashfs: fix length field overlap check in metadata reading
+
+This is a regression introduced by the "migrate from ll_rw_block usage
+to BIO" patch.
+
+Squashfs packs structures on byte boundaries, and due to that the length
+field (of the metadata block) may not be fully in the current block.
+The new code rewrote and introduced a faulty check for that edge case.
+
+Fixes: 93e72b3c612adcaca1 ("squashfs: migrate from ll_rw_block usage to BIO")
+Reported-by: Bernd Amend <bernd.amend@gmail.com>
+Signed-off-by: Phillip Lougher <phillip@squashfs.org.uk>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: Adrien Schildknecht <adrien+dev@schischi.me>
+Cc: Guenter Roeck <groeck@chromium.org>
+Cc: Daniel Rosenberg <drosen@google.com>
+Link: http://lkml.kernel.org/r/20200717195536.16069-1-phillip@squashfs.org.uk
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+---
+ fs/squashfs/block.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/squashfs/block.c b/fs/squashfs/block.c
+index 64f61330564a..76bb1c846845 100644
+--- a/fs/squashfs/block.c
++++ b/fs/squashfs/block.c
+@@ -175,7 +175,7 @@ int squashfs_read_data(struct super_block *sb, u64 index, int length,
+ 		/* Extract the length of the metadata block */
+ 		data = page_address(bvec->bv_page) + bvec->bv_offset;
+ 		length = data[offset];
+-		if (offset <= bvec->bv_len - 1) {
++		if (offset < bvec->bv_len - 1) {
+ 			length |= data[offset + 1] << 8;
+ 		} else {
+ 			if (WARN_ON_ONCE(!bio_next_segment(bio, &iter_all))) {
+-- 
+2.18.0
+

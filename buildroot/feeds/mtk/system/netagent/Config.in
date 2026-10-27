@@ -1,0 +1,17 @@
+
+menu "Configuration"
+
+config NO_IP_ASSIGNMENT
+    bool "Disable IPv4/v6 assignment"
+    default n
+    help
+        For ODU project, the cellular IP address will be assigned to IDU.
+        There is no need to assign IPv4/v6 address in Netagent module.
+
+config ETHERNET_PDU
+    bool "Enable Ethernet PDU"
+    default n
+    help
+        Support VLAN over 5G WAN
+
+endmenu

@@ -1,0 +1,323 @@
+.TH VNSTATD 8 "JANUARY 2022" "version 2.9" "User Manuals"
+.SH NAME
+vnstatd \- daemon based database updating for vnStat
+
+.SH SYNOPSIS
+
+.B vnstatd
+.RB [ \-Ddnpstv? ]
+.RB [ \-\-alwaysadd
+.RI [ mode ]]
+.RB [ \-\-config
+.IR file ]
+.RB [ \-\-daemon ]
+.RB [ \-\-debug ]
+.RB [ \-g
+.IR group ]
+.RB [ \-\-group
+.IR group ]
+.RB [ \-\-help ]
+.RB [ \-\-initdb ]
+.RB [ \-\-noadd ]
+.RB [ \-\-nodaemon ]
+.RB [ \-\-pidfile
+.IR file ]
+.RB [ \-\-sync ]
+.RB [ \-\-timestamp ]
+.RB [ \-\-u
+.IR user ]
+.RB [ \-\-user
+.IR user ]
+.RB [ \-\-version ]
+
+.SH DESCRIPTION
+
+The purpose of
+.B vnstatd
+is to provide a flexible and robust way for updating the database that
+.BR vnstat (1)
+uses. The availability of each interface is automatically tracked which
+removes the need for additional scripts to be implemented and called when
+an interface comes online or goes offline.
+.PP
+.B vnstatd
+is the command for starting the daemon. The daemon can either fork
+itself to run as a background process or stay attached to the terminal.
+It supports logging directly to terminal, to a user selectable file or
+using syslog.
+.PP
+Once started, the daemon will read
+.BR vnstat.conf (5)
+if available and then check if there is a database present
+in the database directory that has been specified in the configuration
+file. By default, if no database is found, a database will be created
+during startup with entries for all available interfaces excluding pseudo
+interfaces lo, lo0 and sit0. This automatic database entry creation behaviour
+can be disabled using the
+.B --noadd
+option. Alternatively, using the
+.B --alwaysadd
+option instructs the daemon to create new database entries whenever interfaces not
+currently in the databases become visible.
+.PP
+The daemon will proceed to track the availability of monitored interfaces,
+process the interface traffic statistics and write new values to the database
+at a configured interval. As a result, the daemon ends up spending most
+of the time sleeping between updates.
+.PP
+When the
+.B UseUTC
+configuration option isn't enabled, data is stored in the database using local
+time based on the daemon's execution environment when the configuration option
+isn't enabled. Any changes in the system clock or the system timezone
+configuration will result in data being inserted according to the new local
+time without any recalculation being done for already stored data. The daemon
+and the database in essence aren't aware of the used timezone or possible
+daylight saving time and cannot be configured to offset the timestamps to any
+direction. If a system clock or system timezone change or daylight saving time
+observation ending results in an already seen time period to repeat then the
+existing database values get incremented with the new data.
+
+.SH OPTIONS
+
+.TP
+.BI "--alwaysadd " [mode]
+Enable automatic creation of new database entries for interfaces not currently in
+the database even if the database file already exists when the daemon is started. New
+database entries will also get created for new interfaces seen while the daemon is
+running. Pseudo interfaces lo, lo0 and sit0 are always excluded from getting added.
+Using the option without
+.I mode
+defined or with
+.I mode
+set to 1 will enable the feature. Setting
+.I mode
+to 0 will disable the feature. This command line option overrides the
+.B AlwaysAddNewInterfaces
+configuration option when used.
+
+.TP
+.BI "--config " file
+Use
+.I file
+as configuration file instead of using automatic configuration file search
+functionality.
+
+.TP
+.B "-d, --daemon"
+Fork process to background and run as a daemon.
+
+.TP
+.B "-D, --debug"
+Provide additional output for debug purposes. The process will stay
+attached to the terminal for output.
+
+.TP
+.BI "-g, --group " group
+Set daemon process group to
+.I group
+during startup.
+.I group
+can be either the name of the group or a numerical group id. This option
+can only be used when the process is started as root.
+
+.TP
+.B "--initdb"
+Create a new empty database without interface data and exit. If the database
+already exists then access to it is only verified. The daemon will not stay
+running when this option is used. This option cannot be used in combination with
+.B "-d, --daemon"
+or
+.BR "-n, --nodaemon" .
+
+.TP
+.B "--noadd"
+Disable the automatic creation of new database entries for all available
+interfaces if the daemon is started with no database found or with a database
+without any interfaces. The daemon will fail to start if this option is used when
+the database contains no interfaces or doesn't exist. The daemon will create an
+empty database if one doesn't already exist. Pseudo interfaces lo, lo0 and sit0
+are always excluded from getting added regardless of this option.
+
+.TP
+.B "-n, --nodaemon"
+Stay in foreground attached to the current terminal and start the update
+process.
+
+.TP
+.BI "-p, --pidfile " file
+Write the process id to
+.I file
+and use it for locking so that another instance of the daemon cannot
+be started if the same
+.I file
+is specified. This option has no effect if used in combination with
+.BR "-n, --nodaemon" .
+
+.TP
+.B "-s, --sync"
+Synchronize internal counters in the database with interface
+counters for all available interfaces before starting traffic monitoring.
+Use this option if the traffic between the previous shutdown
+and the current startup of the daemon needs to be ignored. This option
+isn't required in normal use because the daemon will automatically synchronize
+the internal counters after a system reboot, if enough time has passed
+since the daemon was previously running or if the internal counters are
+clearly out of sync.
+
+.TP
+.B "-t, --timestamp"
+Add a timestamp to the beginning of every print from the daemon when
+the process is running in the foreground attached to a terminal after having
+been started with the
+.B "-n, --nodaemon"
+option.
+
+.TP
+.BI "-u, --user " user
+Set daemon process user to
+.I user
+during startup.
+.I user
+can be either the login of the user or a numerical user id. This option
+can only be used when the process is started as root.
+
+.TP
+.B "-v, --version"
+Show current version of the daemon executable.
+
+.TP
+.B "-?, --help"
+Show a command option summary.
+
+.SH CONFIGURATION
+
+The behaviour of the daemon is configured mainly using the configuration
+keywords
+.B "UpdateInterval, PollInterval"
+and
+.B SaveInterval
+in the configuration file.
+
+.PP
+.B UpdateInterval
+defines in seconds how often the interface data is fetched and updated.
+This is similar to the run interval for alternative cron based updating.
+However, the difference is that the data doesn't directly get written to disk
+during updates.
+
+.PP
+.B PollInterval
+defines in seconds how often the list of available interfaces is checked
+for possible changes. The minimum value is 2 seconds and the maximum 60
+seconds.
+.B PollInterval
+also defines the resolution for other intervals.
+
+.PP
+.B SaveInterval
+defines in minutes how often cached interface data is written to disk.
+A write can only occur during the updating of interface data. Therefore,
+the value should be a multiple of
+.B UpdateInterval
+with a maximum value of 60 minutes.
+
+.PP
+The default values of
+.B UpdateInterval
+30,
+.B SaveInterval
+5 and
+.B PollInterval
+5 are usually suitable for most systems and provide a similar behaviour
+as cron based updating does but with a better resolution for interface
+changes and fast interfaces.
+
+.PP
+For embedded and/or low power systems more tuned configurations are possible.
+In such cases if the interfaces are mostly static the
+.B PollInterval
+can be increased to around 10-30 seconds and
+.B UpdateInterval
+set to 60 seconds. Higher values up to 300 seconds are possible if the
+interface speed is 10 Mbit or less.
+.B SaveInterval
+can be increased for example to 15, 30 or even 60 minutes depending on how
+often the data needs to be viewed.
+
+.SH SIGNALS
+
+The daemon is listening to signals
+.B "SIGHUP, SIGINT"
+and
+.B SIGTERM.
+Sending the
+.B SIGHUP
+signal to the daemon will cause cached data to be written to disk,
+a rescan of the database directory and a reload of settings from the
+configuration file. However, the pid file location will not be changed
+even if it's configuration setting has been modified.
+
+.PP
+.B SIGTERM
+and
+.B SIGINT
+signals will cause the daemon to write all cached data to disk and
+then exit.
+
+.SH FILES
+
+.TP
+.I /var/lib/vnstat/
+Default database directory.
+
+.TP
+.I /etc/vnstat.conf
+Config file that will be used unless
+.I $HOME/.vnstatrc
+exists. See the configuration chapter and
+.BR vnstat.conf (5)
+for more information.
+
+.TP
+.I /var/log/vnstat/vnstat.log
+Log file that will be used if logging to file is enable and no other file
+is specified in the config file.
+
+.TP
+.I /var/run/vnstat/vnstat.pid
+File used for storing the process id when running as a background process and
+if no other file is specified in the configuration file or using the command
+line parameter.
+
+.SH RESTRICTIONS
+
+Updates need to be executed at least as often as it is possible for the interface
+to generate enough traffic to overflow the kernel interface traffic counter. Otherwise,
+it is possible that some traffic won't be seen. With 32-bit interface traffic counters,
+the maximum time between two updates depends on how fast the interface can transfer 4 GiB.
+Note that there is no guarantee that a 64-bit kernel has 64-bit interface traffic counters
+for all interfaces. Calculated theoretical times are:
+.RS
+.TS
+l l.
+10 Mbit:        54 minutes
+100 Mbit:        5 minutes
+1000 Mbit:      30 seconds
+.TE
+.RE
+Virtual and aliased interfaces cannot be monitored because the kernel doesn't
+provide traffic information for that type of interfaces. Such interfaces are
+usually named eth0:0, eth0:1, eth0:2 etc. where eth0 is the actual interface
+being aliased.
+
+.SH AUTHOR
+
+Teemu Toivola <tst at iki dot fi>
+
+.SH "SEE ALSO"
+
+.BR vnstat (1),
+.BR vnstati (1),
+.BR vnstat.conf (5),
+.BR signal (7)

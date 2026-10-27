@@ -1,0 +1,556 @@
+Index: linux-5.4.179/drivers/clk/mediatek/Kconfig
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/Kconfig	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/clk/mediatek/Kconfig	2022-07-22 11:23:09.000000000 +0800
+@@ -205,6 +205,69 @@
+        ---help---
+          This driver supports MediaTek MT6797 vencsys clocks.
+ 
++config COMMON_CLK_MT6890
++	bool "Clock driver for MediaTek MT6890"
++	select COMMON_CLK_MEDIATEK
++	---help---
++	  This driver supports MediaTek MT6890 basic clocks,
++	  which is used to control basic clock output.
++	  If you wish to use clock resources from the MT6890 SOC,
++	  say Y. Otherwise, pls say N.
++
++config COMMON_CLK_MT6890_AUDIOSYS
++	bool "Clock driver for MediaTek MT6890 audiosys"
++	depends on COMMON_CLK_MT6890
++	---help---
++	  This driver supports MediaTek MT6890 audiosys clocks,
++	  which is used to control audiosys clock output.
++	  If you wish to use clock resources from the audiosys device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6890_DBGSYS_DEM
++	bool "Clock driver for MediaTek MT6890 dbgsys_dem"
++	depends on COMMON_CLK_MT6890
++	---help---
++	  This driver supports MediaTek MT6890 dbgsys_dem clocks,
++	  which is used to control dbgsys_dem clock output.
++	  If you wish to use clock resources from the dbgsys_dem device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6890_GCE
++	bool "Clock driver for MediaTek MT6890 gce"
++	depends on COMMON_CLK_MT6890
++	---help---
++	  This driver supports MediaTek MT6890 gce clocks,
++	  which is used to control gce clock output.
++	  If you wish to use clock resources from the gce device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6890_IMP_IIC_WRAP_E
++	bool "Clock driver for MediaTek MT6890 imp_iic_wrap_e"
++	depends on COMMON_CLK_MT6890
++	---help---
++	  This driver supports MediaTek MT6890 imp_iic_wrap_e clocks,
++	  which is used to control imp_iic_wrap_e clock output.
++	  If you wish to use clock resources from the imp_iic_wrap_e device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6890_MFGSYS
++	bool "Clock driver for MediaTek MT6890 mfgsys"
++	depends on COMMON_CLK_MT6890
++	---help---
++	  This driver supports MediaTek MT6890 mfgsys clocks,
++	  which is used to control mfgsys clock output.
++	  If you wish to use clock resources from the mfgsys device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6890_MMSYS_CONFIG
++	bool "Clock driver for MediaTek MT6890 mmsys_config"
++	depends on COMMON_CLK_MT6890
++	---help---
++	  This driver supports MediaTek MT6890 mmsys_config clocks,
++	  which is used to control mmsys_config clock output.
++	  If you wish to use clock resources from the mmsys_config device,
++	  say Y. Otherwise, say N.
++
+ config COMMON_CLK_MT7622
+ 	bool "Clock driver for MediaTek MT7622"
+ 	depends on ARCH_MEDIATEK || COMPILE_TEST
+Index: linux-5.4.179/drivers/clk/mediatek/Makefile
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/Makefile	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/clk/mediatek/Makefile	2022-07-22 11:23:09.000000000 +0800
+@@ -41,6 +41,14 @@
+ obj-$(CONFIG_COMMON_CLK_MT7629_HIFSYS) += clk-mt7629-hif.o
+ obj-$(CONFIG_COMMON_CLK_MT8135) += clk-mt8135.o
+ obj-$(CONFIG_COMMON_CLK_MT8173) += clk-mt8173.o
++obj-$(CONFIG_COMMON_CLK_MT6890) += clk-mt6890.o clkdbg.o clkchk.o clk-bringup.o clkchk-mt6890.o clkdbg-mt6890.o
++obj-$(CONFIG_COMMON_CLK_MT6890) += clkdbg-mt6890.o clkchk-mt6890.o
++obj-$(CONFIG_COMMON_CLK_MT6890_AUDIOSYS) += clk-mt6890-audsys.o
++obj-$(CONFIG_COMMON_CLK_MT6890_DBGSYS_DEM) += clk-mt6890-dbgsys_dem.o
++obj-$(CONFIG_COMMON_CLK_MT6890_GCE) += clk-mt6890-gce.o
++obj-$(CONFIG_COMMON_CLK_MT6890_IMP_IIC_WRAP_E) += clk-mt6890-impe.o
++obj-$(CONFIG_COMMON_CLK_MT6890_MFGSYS) += clk-mt6890-mfgcfg.o
++obj-$(CONFIG_COMMON_CLK_MT6890_MMSYS_CONFIG) += clk-mt6890-mm.o
+ obj-$(CONFIG_COMMON_CLK_MT8183) += clk-mt8183.o
+ obj-$(CONFIG_COMMON_CLK_MT8183_AUDIOSYS) += clk-mt8183-audio.o
+ obj-$(CONFIG_COMMON_CLK_MT8183_CAMSYS) += clk-mt8183-cam.o
+@@ -55,3 +63,5 @@
+ obj-$(CONFIG_COMMON_CLK_MT8183_VENCSYS) += clk-mt8183-venc.o
+ obj-$(CONFIG_COMMON_CLK_MT8516) += clk-mt8516.o
+ obj-$(CONFIG_COMMON_CLK_MT8516_AUDSYS) += clk-mt8516-aud.o
++ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm/
++ccflags-y += -I$(srctree)/drivers/misc/mediatek/mcupm/
+Index: linux-5.4.179/drivers/clk/mediatek/clk-mtk.h
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/clk-mtk.h	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/clk/mediatek/clk-mtk.h	2022-07-22 11:23:09.000000000 +0800
+@@ -215,6 +215,7 @@
+ 	const char *name;
+ 	uint32_t reg;
+ 	uint32_t pwr_reg;
++	uint32_t en_reg;
+ 	uint32_t en_mask;
+ 	uint32_t pd_reg;
+ 	uint32_t tuner_reg;
+@@ -233,6 +234,7 @@
+ 	uint32_t pcw_chg_reg;
+ 	const struct mtk_pll_div_table *div_table;
+ 	const char *parent_name;
++	uint8_t pll_en_bit;
+ };
+ 
+ void mtk_clk_register_plls(struct device_node *node,
+Index: linux-5.4.179/drivers/clk/mediatek/clk-pll.c
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/clk-pll.c	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/clk/mediatek/clk-pll.c	2022-07-22 11:23:09.000000000 +0800
+@@ -10,7 +10,7 @@
+ #include <linux/slab.h>
+ #include <linux/clkdev.h>
+ #include <linux/delay.h>
+-
++#include <linux/module.h>
+ #include "clk-mtk.h"
+ 
+ #define REG_CON0		0
+@@ -44,6 +44,7 @@
+ 	void __iomem	*tuner_en_addr;
+ 	void __iomem	*pcw_addr;
+ 	void __iomem	*pcw_chg_addr;
++	void __iomem	*en_addr;
+ 	const struct mtk_pll_data *data;
+ };
+ 
+@@ -56,7 +57,7 @@
+ {
+ 	struct mtk_clk_pll *pll = to_mtk_clk_pll(hw);
+ 
+-	return (readl(pll->base_addr + REG_CON0) & CON0_BASE_EN) != 0;
++	return (readl(pll->en_addr) & BIT(pll->data->pll_en_bit)) != 0;
+ }
+ 
+ static unsigned long __mtk_pll_recalc_rate(struct mtk_clk_pll *pll, u32 fin,
+@@ -247,9 +248,13 @@
+ 	writel(r, pll->pwr_addr);
+ 	udelay(1);
+ 
+-	r = readl(pll->base_addr + REG_CON0);
+-	r |= pll->data->en_mask;
+-	writel(r, pll->base_addr + REG_CON0);
++	if (pll->data->en_mask) {
++		r = readl(pll->en_addr) | pll->data->en_mask;
++		writel(r, pll->en_addr);
++	}
++
++	r = readl(pll->en_addr) | BIT(pll->data->pll_en_bit);
++	writel(r, pll->en_addr);
+ 
+ 	__mtk_pll_tuner_enable(pll);
+ 
+@@ -277,9 +282,13 @@
+ 
+ 	__mtk_pll_tuner_disable(pll);
+ 
+-	r = readl(pll->base_addr + REG_CON0);
+-	r &= ~CON0_BASE_EN;
+-	writel(r, pll->base_addr + REG_CON0);
++	r = readl(pll->en_addr) & ~BIT(pll->data->pll_en_bit);
++	writel(r, pll->en_addr);
++
++	if (pll->data->en_mask) {
++		r = readl(pll->en_addr) & ~pll->data->en_mask;
++		writel(r, pll->en_addr);
++	}
+ 
+ 	r = readl(pll->pwr_addr) | CON0_ISO_EN;
+ 	writel(r, pll->pwr_addr);
+@@ -321,6 +330,10 @@
+ 		pll->tuner_addr = base + data->tuner_reg;
+ 	if (data->tuner_en_reg)
+ 		pll->tuner_en_addr = base + data->tuner_en_reg;
++	if (data->en_reg)
++		pll->en_addr = base + data->en_reg;
++	else
++		pll->en_addr = pll->base_addr + REG_CON0;
+ 	pll->hw.init = &init;
+ 	pll->data = data;
+ 
+@@ -368,3 +381,8 @@
+ 		clk_data->clks[pll->id] = clk;
+ 	}
+ }
++EXPORT_SYMBOL(mtk_clk_register_plls);
++
++MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("MediaTek PLL");
++MODULE_AUTHOR("MediaTek Inc.");
+Index: linux-5.4.179/drivers/clk/mediatek/clk-apmixed.c
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/clk-apmixed.c	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/clk/mediatek/clk-apmixed.c	2022-07-22 11:01:34.440474089 +0800
+@@ -5,6 +5,7 @@
+  */
+ 
+ #include <linux/delay.h>
++#include <linux/module.h>
+ #include <linux/of_address.h>
+ #include <linux/slab.h>
+ 
+@@ -97,3 +98,7 @@
+ 
+ 	return clk;
+ }
++
++MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("MediaTek MTK");
++MODULE_AUTHOR("MediaTek Inc.");
+Index: linux-5.4.179/drivers/clk/mediatek/clk-cpumux.c
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/clk-cpumux.c	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/clk/mediatek/clk-cpumux.c	2022-07-22 11:01:34.440474089 +0800
+@@ -6,6 +6,7 @@
+ 
+ #include <linux/clk-provider.h>
+ #include <linux/mfd/syscon.h>
++#include <linux/module.h>
+ #include <linux/slab.h>
+ 
+ #include "clk-mtk.h"
+@@ -106,3 +107,7 @@
+ 
+ 	return 0;
+ }
++
++MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("MediaTek MTK");
++MODULE_AUTHOR("MediaTek Inc.");
+Index: linux-5.4.179/drivers/clk/mediatek/clk-gate.c
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/clk-gate.c	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/clk/mediatek/clk-gate.c	2022-07-22 11:23:09.000000000 +0800
+@@ -11,6 +11,7 @@
+ #include <linux/slab.h>
+ #include <linux/delay.h>
+ #include <linux/clkdev.h>
++#include <linux/module.h>
+ 
+ #include "clk-mtk.h"
+ #include "clk-gate.h"
+@@ -81,6 +82,14 @@
+ 	mtk_cg_set_bit(hw);
+ }
+ 
++static void mtk_cg_disable_unused(struct clk_hw *hw)
++{
++	const char *c_n = clk_hw_get_name(hw);
++
++	pr_notice("disable_unused - %s\n", c_n);
++	mtk_cg_set_bit(hw);
++}
++
+ static int mtk_cg_enable_inv(struct clk_hw *hw)
+ {
+ 	mtk_cg_set_bit(hw);
+@@ -93,6 +102,14 @@
+ 	mtk_cg_clr_bit(hw);
+ }
+ 
++static void mtk_cg_disable_unused_inv(struct clk_hw *hw)
++{
++	const char *c_n = clk_hw_get_name(hw);
++
++	pr_notice("disable_unused - %s\n", c_n);
++	mtk_cg_clr_bit(hw);
++}
++
+ static int mtk_cg_enable_no_setclr(struct clk_hw *hw)
+ {
+ 	mtk_cg_clr_bit_no_setclr(hw);
+@@ -105,6 +122,15 @@
+ 	mtk_cg_set_bit_no_setclr(hw);
+ }
+ 
++static void mtk_cg_disable_unused_no_setclr(struct clk_hw *hw)
++{
++	const char *c_n = clk_hw_get_name(hw);
++
++	pr_notice("disable_unused - %s\n", c_n);
++	mtk_cg_set_bit_no_setclr(hw);
++}
++
++
+ static int mtk_cg_enable_inv_no_setclr(struct clk_hw *hw)
+ {
+ 	mtk_cg_set_bit_no_setclr(hw);
+@@ -117,29 +143,45 @@
+ 	mtk_cg_clr_bit_no_setclr(hw);
+ }
+ 
++static void mtk_cg_disable_unused_inv_no_setclr(struct clk_hw *hw)
++{
++	const char *c_n = clk_hw_get_name(hw);
++
++	pr_notice("disable_unused - %s\n", c_n);
++	mtk_cg_clr_bit_no_setclr(hw);
++}
++
+ const struct clk_ops mtk_clk_gate_ops_setclr = {
+ 	.is_enabled	= mtk_cg_bit_is_cleared,
+ 	.enable		= mtk_cg_enable,
+ 	.disable	= mtk_cg_disable,
++	.disable_unused = mtk_cg_disable_unused,
+ };
++EXPORT_SYMBOL(mtk_clk_gate_ops_setclr);
+ 
+ const struct clk_ops mtk_clk_gate_ops_setclr_inv = {
+ 	.is_enabled	= mtk_cg_bit_is_set,
+ 	.enable		= mtk_cg_enable_inv,
+ 	.disable	= mtk_cg_disable_inv,
++	.disable_unused = mtk_cg_disable_unused_inv,
+ };
++EXPORT_SYMBOL(mtk_clk_gate_ops_setclr_inv);
+ 
+ const struct clk_ops mtk_clk_gate_ops_no_setclr = {
+ 	.is_enabled	= mtk_cg_bit_is_cleared,
+ 	.enable		= mtk_cg_enable_no_setclr,
+ 	.disable	= mtk_cg_disable_no_setclr,
++	.disable_unused = mtk_cg_disable_unused_no_setclr,
+ };
++EXPORT_SYMBOL(mtk_clk_gate_ops_no_setclr);
+ 
+ const struct clk_ops mtk_clk_gate_ops_no_setclr_inv = {
+ 	.is_enabled	= mtk_cg_bit_is_set,
+ 	.enable		= mtk_cg_enable_inv_no_setclr,
+ 	.disable	= mtk_cg_disable_inv_no_setclr,
++	.disable_unused = mtk_cg_disable_unused_inv_no_setclr,
+ };
++EXPORT_SYMBOL(mtk_clk_gate_ops_no_setclr_inv);
+ 
+ struct clk *mtk_clk_register_gate(
+ 		const char *name,
+@@ -162,7 +204,7 @@
+ 		return ERR_PTR(-ENOMEM);
+ 
+ 	init.name = name;
+-	init.flags = flags | CLK_SET_RATE_PARENT;
++	init.flags = flags | CLK_SET_RATE_PARENT | CLK_OPS_PARENT_ENABLE;
+ 	init.parent_names = parent_name ? &parent_name : NULL;
+ 	init.num_parents = parent_name ? 1 : 0;
+ 	init.ops = ops;
+@@ -181,3 +223,8 @@
+ 
+ 	return clk;
+ }
++EXPORT_SYMBOL(mtk_clk_register_gate);
++
++MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("MediaTek GATE");
++MODULE_AUTHOR("MediaTek Inc.");
+Index: linux-5.4.179/drivers/clk/mediatek/clk-mtk.c
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/clk-mtk.c	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/clk/mediatek/clk-mtk.c	2022-07-22 11:23:09.000000000 +0800
+@@ -13,6 +13,7 @@
+ #include <linux/clkdev.h>
+ #include <linux/mfd/syscon.h>
+ #include <linux/device.h>
++#include <linux/module.h>
+ 
+ #include "clk-mtk.h"
+ #include "clk-gate.h"
+@@ -41,6 +42,7 @@
+ 
+ 	return NULL;
+ }
++EXPORT_SYMBOL(mtk_alloc_clk_data);
+ 
+ void mtk_clk_register_fixed_clks(const struct mtk_fixed_clk *clks,
+ 		int num, struct clk_onecell_data *clk_data)
+@@ -67,6 +69,7 @@
+ 			clk_data->clks[rc->id] = clk;
+ 	}
+ }
++EXPORT_SYMBOL(mtk_clk_register_fixed_clks);
+ 
+ void mtk_clk_register_factors(const struct mtk_fixed_factor *clks,
+ 		int num, struct clk_onecell_data *clk_data)
+@@ -93,6 +96,7 @@
+ 			clk_data->clks[ff->id] = clk;
+ 	}
+ }
++EXPORT_SYMBOL(mtk_clk_register_factors);
+ 
+ int mtk_clk_register_gates_with_dev(struct device_node *node,
+ 		const struct mtk_gate *clks,
+@@ -137,6 +141,7 @@
+ 
+ 	return 0;
+ }
++EXPORT_SYMBOL(mtk_clk_register_gates_with_dev);
+ 
+ int mtk_clk_register_gates(struct device_node *node,
+ 		const struct mtk_gate *clks,
+@@ -145,6 +150,7 @@
+ 	return mtk_clk_register_gates_with_dev(node,
+ 		clks, num, clk_data, NULL);
+ }
++EXPORT_SYMBOL(mtk_clk_register_gates);
+ 
+ struct clk *mtk_clk_register_composite(const struct mtk_composite *mc,
+ 		void __iomem *base, spinlock_t *lock)
+@@ -232,6 +238,7 @@
+ 
+ 	return ERR_PTR(ret);
+ }
++EXPORT_SYMBOL(mtk_clk_register_composite);
+ 
+ void mtk_clk_register_composites(const struct mtk_composite *mcs,
+ 		int num, void __iomem *base, spinlock_t *lock,
+@@ -258,6 +265,7 @@
+ 			clk_data->clks[mc->id] = clk;
+ 	}
+ }
++EXPORT_SYMBOL(mtk_clk_register_composites);
+ 
+ void mtk_clk_register_dividers(const struct mtk_clk_divider *mcds,
+ 			int num, void __iomem *base, spinlock_t *lock,
+@@ -286,3 +294,8 @@
+ 			clk_data->clks[mcd->id] = clk;
+ 	}
+ }
++EXPORT_SYMBOL(mtk_clk_register_dividers);
++
++MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("MediaTek MTK");
++MODULE_AUTHOR("MediaTek Inc.");
+Index: linux-5.4.179/drivers/clk/mediatek/clk-mux.c
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/clk-mux.c	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/clk/mediatek/clk-mux.c	2022-07-22 11:23:09.000000000 +0800
+@@ -8,6 +8,7 @@
+ #include <linux/of_address.h>
+ #include <linux/slab.h>
+ #include <linux/mfd/syscon.h>
++#include <linux/module.h>
+ 
+ #include "clk-mtk.h"
+ #include "clk-mux.h"
+@@ -133,11 +134,13 @@
+ 	.get_parent = mtk_clk_mux_get_parent,
+ 	.set_parent = mtk_clk_mux_set_parent_lock,
+ };
++EXPORT_SYMBOL(mtk_mux_ops);
+ 
+ const struct clk_ops mtk_mux_clr_set_upd_ops = {
+ 	.get_parent = mtk_clk_mux_get_parent,
+ 	.set_parent = mtk_clk_mux_set_parent_setclr_lock,
+ };
++EXPORT_SYMBOL(mtk_mux_clr_set_upd_ops);
+ 
+ const struct clk_ops mtk_mux_gate_ops = {
+ 	.enable = mtk_clk_mux_enable,
+@@ -146,6 +149,7 @@
+ 	.get_parent = mtk_clk_mux_get_parent,
+ 	.set_parent = mtk_clk_mux_set_parent_lock,
+ };
++EXPORT_SYMBOL(mtk_mux_gate_ops);
+ 
+ const struct clk_ops mtk_mux_gate_clr_set_upd_ops = {
+ 	.enable = mtk_clk_mux_enable_setclr,
+@@ -154,6 +158,7 @@
+ 	.get_parent = mtk_clk_mux_get_parent,
+ 	.set_parent = mtk_clk_mux_set_parent_setclr_lock,
+ };
++EXPORT_SYMBOL(mtk_mux_gate_clr_set_upd_ops);
+ 
+ struct clk *mtk_clk_register_mux(const struct mtk_mux *mux,
+ 				 struct regmap *regmap,
+@@ -186,6 +191,7 @@
+ 
+ 	return clk;
+ }
++EXPORT_SYMBOL(mtk_clk_register_mux);
+ 
+ int mtk_clk_register_muxes(const struct mtk_mux *muxes,
+ 			   int num, struct device_node *node,
+@@ -221,3 +227,8 @@
+ 
+ 	return 0;
+ }
++EXPORT_SYMBOL(mtk_clk_register_muxes);
++
++MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("MediaTek MUX");
++MODULE_AUTHOR("MediaTek Inc.");
+Index: linux-5.4.179/drivers/clk/mediatek/clk-mux.h
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/clk-mux.h	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/clk/mediatek/clk-mux.h	2022-07-22 11:23:09.000000000 +0800
+@@ -77,6 +77,21 @@
+ 			_width, _gate, _upd_ofs, _upd,			\
+ 			CLK_SET_RATE_PARENT)
+ 
++#define MUX_CLR_SET_UPD_FLAGS(_id, _name, _parents, _mux_ofs,		\
++			_mux_set_ofs, _mux_clr_ofs, _shift, _width,	\
++			_upd_ofs, _upd, _flags)				\
++		GATE_CLR_SET_UPD_FLAGS(_id, _name, _parents, _mux_ofs,	\
++			_mux_set_ofs, _mux_clr_ofs, _shift, _width,	\
++			0, _upd_ofs, _upd, _flags,			\
++			mtk_mux_clr_set_upd_ops)
++
++#define MUX_CLR_SET_UPD(_id, _name, _parents, _mux_ofs,			\
++			_mux_set_ofs, _mux_clr_ofs, _shift, _width,	\
++			_upd_ofs, _upd)					\
++		MUX_CLR_SET_UPD_FLAGS(_id, _name, _parents,		\
++			_mux_ofs, _mux_set_ofs, _mux_clr_ofs, _shift,	\
++			_width, _upd_ofs, _upd,	CLK_SET_RATE_PARENT)
++
+ struct clk *mtk_clk_register_mux(const struct mtk_mux *mux,
+ 				 struct regmap *regmap,
+ 				 spinlock_t *lock);
+Index: linux-5.4.179/drivers/clk/mediatek/reset.c
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/reset.c	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/clk/mediatek/reset.c	2022-07-22 11:23:45.302223335 +0800
+@@ -122,6 +122,7 @@
+ 		kfree(data);
+ 		return;
+ 	}
++	kfree(data);
+ }
+ 
+ void mtk_register_reset_controller(struct device_node *np,
+@@ -130,6 +131,7 @@
+ 	mtk_register_reset_controller_common(np, num_regs, regofs,
+ 		&mtk_reset_ops);
+ }
++EXPORT_SYMBOL(mtk_register_reset_controller);
+ 
+ void mtk_register_reset_controller_set_clr(struct device_node *np,
+ 	unsigned int num_regs, int regofs)
+@@ -137,3 +139,8 @@
+ 	mtk_register_reset_controller_common(np, num_regs, regofs,
+ 		&mtk_reset_ops_set_clr);
+ }
++EXPORT_SYMBOL(mtk_register_reset_controller_set_clr);
++
++MODULE_LICENSE("GPL");
++MODULE_DESCRIPTION("MediaTek MTK");
++MODULE_AUTHOR("MediaTek Inc.");

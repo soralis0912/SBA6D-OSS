@@ -1,0 +1,188 @@
+--- a/net/netfilter/nf_conntrack_standalone.c
++++ b/net/netfilter/nf_conntrack_standalone.c
+@@ -275,25 +275,121 @@ static const char* l4proto_name(u16 prot
+ 
+ 	return "unknown";
+ }
++#ifdef CONFIG_HW_NAT
++extern int (*ppe_get_conn_stats)(struct hnat_flow_tuple *tuple, u64 *pkt_cnt, u64 *byte_cnt);
++#endif
+ 
++#ifdef CONFIG_HW_NAT
++static unsigned int
++seq_print_acct(struct seq_file *s, const struct nf_conn *ct, int dir, struct hnat_flow_tuple *hnat_tuple)
++#else
+ static unsigned int
+ seq_print_acct(struct seq_file *s, const struct nf_conn *ct, int dir)
++#endif
+ {
+ 	struct nf_conn_acct *acct;
+ 	struct nf_conn_counter *counter;
++	u64 packets_hw = 0;
++	u64 bytes_hw = 0;
++	unsigned long long packets_sum = 0;
++	unsigned long long bytes_sum = 0;
+ 
+ 	acct = nf_conn_acct_find(ct);
+ 	if (!acct)
+ 		return 0;
+ 
++#ifdef CONFIG_HW_NAT
++	if (ppe_get_conn_stats) {
++		if (ppe_get_conn_stats(hnat_tuple, &packets_hw, &bytes_hw) == 1) {
++			if (hnat_tuple->pkt_type == IPV4_5T) {
++				pr_debug("src=%x, dst=%x, sport=%d, dport=%d, hw packets=%llu, bytes=%llu\n",
++					hnat_tuple->sipv4, hnat_tuple->dipv4, hnat_tuple->sp, hnat_tuple->dp,
++					packets_hw, bytes_hw);
++			} else {
++				pr_debug("src=%x:%x:%x:%x, dst=%x:%x:%x:%x, sport=%d, dport=%d, hw packets=%llu, bytes=%llu\n",
++					hnat_tuple->sipv6_0,hnat_tuple->sipv6_1,hnat_tuple->sipv6_2,hnat_tuple->sipv6_3,
++					hnat_tuple->dipv6_0,hnat_tuple->dipv6_1,hnat_tuple->dipv6_2,hnat_tuple->dipv6_3,
++					hnat_tuple->sp, hnat_tuple->dp,
++					packets_hw, bytes_hw);
++			}
++		}
++	}
++#endif
++
+ 	counter = acct->counter;
++
++	packets_sum = (unsigned long long)(atomic64_read(&counter[dir].packets) + packets_hw);
++	bytes_sum = (unsigned long long)(atomic64_read(&counter[dir].bytes) + bytes_hw);
++
+ 	seq_printf(s, "packets=%llu bytes=%llu ",
+-		   (unsigned long long)atomic64_read(&counter[dir].packets),
+-		   (unsigned long long)atomic64_read(&counter[dir].bytes));
++			packets_sum, bytes_sum);
+ 
+ 	return 0;
+ }
+ 
++#ifdef CONFIG_HW_NAT
++void convert_tuple(struct nf_conntrack_tuple *nf_tuple, struct nf_conntrack_l4proto *l4proto, struct hnat_flow_tuple *hnat_tuple)
++{
++	hnat_tuple->is_udp = 0;
++	hnat_tuple->pkt_type = 0;
++	hnat_tuple->sipv4 = 0;
++	hnat_tuple->dipv4 = 0;
++	hnat_tuple->sipv6_0 = 0;
++	hnat_tuple->sipv6_1 = 0;
++	hnat_tuple->sipv6_2 = 0;
++	hnat_tuple->sipv6_3 = 0;
++	hnat_tuple->dipv6_0 = 0;
++	hnat_tuple->dipv6_1 = 0;
++	hnat_tuple->dipv6_2 = 0;
++	hnat_tuple->dipv6_3 = 0;
++	hnat_tuple->sp = 0;
++	hnat_tuple->dp = 0;
++
++	switch (nf_tuple->src.l3num) {
++	case NFPROTO_IPV4:
++		hnat_tuple->pkt_type = IPV4_5T;
++		hnat_tuple->sipv4 = htonl(nf_tuple->src.u3.ip);
++		hnat_tuple->dipv4 = htonl(nf_tuple->dst.u3.ip);
++		break;
++	case NFPROTO_IPV6:
++		hnat_tuple->pkt_type = IPV6_5T;
++		hnat_tuple->sipv6_0 = htonl(nf_tuple->src.u3.ip6[0]);
++		hnat_tuple->sipv6_1 = htonl(nf_tuple->src.u3.ip6[1]);
++		hnat_tuple->sipv6_2 = htonl(nf_tuple->src.u3.ip6[2]);
++		hnat_tuple->sipv6_3 = htonl(nf_tuple->src.u3.ip6[3]);
++		hnat_tuple->dipv6_0 = htonl(nf_tuple->dst.u3.ip6[0]);
++		hnat_tuple->dipv6_1 = htonl(nf_tuple->dst.u3.ip6[1]);
++		hnat_tuple->dipv6_2 = htonl(nf_tuple->dst.u3.ip6[2]);
++		hnat_tuple->dipv6_3 = htonl(nf_tuple->dst.u3.ip6[3]);
++		break;
++	default:
++		break;
++	}
++
++	switch (l4proto->l4proto) {
++	case IPPROTO_TCP:
++		hnat_tuple->sp = ntohs(nf_tuple->src.u.tcp.port);
++		hnat_tuple->dp = ntohs(nf_tuple->dst.u.tcp.port);
++		break;
++	case IPPROTO_UDPLITE: /* fallthrough */
++	case IPPROTO_UDP:
++		hnat_tuple->is_udp = 1;
++		hnat_tuple->sp = ntohs(nf_tuple->src.u.udp.port);
++		hnat_tuple->dp = ntohs(nf_tuple->dst.u.udp.port);
++		break;
++	case IPPROTO_DCCP:
++		hnat_tuple->sp = ntohs(nf_tuple->src.u.dccp.port);
++		hnat_tuple->dp = ntohs(nf_tuple->dst.u.dccp.port);
++		break;
++	case IPPROTO_SCTP:
++		hnat_tuple->sp = ntohs(nf_tuple->src.u.sctp.port);
++		hnat_tuple->dp = ntohs(nf_tuple->dst.u.sctp.port);
++		break;
++	}
++}
++EXPORT_SYMBOL_GPL(convert_tuple);
++#endif
++
+ /* return 0 on success, 1 in case of error */
+ static int ct_seq_show(struct seq_file *s, void *v)
+ {
+@@ -303,6 +399,10 @@ static int ct_seq_show(struct seq_file *
+ 	struct net *net = seq_file_net(s);
+ 	int ret = 0;
+ 
++#ifdef CONFIG_HW_NAT
++	struct hnat_flow_tuple hnat_tuple = {0};
++#endif
++
+ 	WARN_ON(!ct);
+ 	if (unlikely(!atomic_inc_not_zero(&ct->ct_general.use)))
+ 		return 0;
+@@ -340,7 +440,13 @@ static int ct_seq_show(struct seq_file *
+ 	if (seq_has_overflowed(s))
+ 		goto release;
+ 
++#ifdef CONFIG_HW_NAT
++	convert_tuple(&ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple, l4proto, &hnat_tuple);
++
++	if (seq_print_acct(s, ct, IP_CT_DIR_ORIGINAL, &hnat_tuple))
++#else
+ 	if (seq_print_acct(s, ct, IP_CT_DIR_ORIGINAL))
++#endif
+ 		goto release;
+ 
+ 	if (!(test_bit(IPS_SEEN_REPLY_BIT, &ct->status)))
+@@ -350,7 +456,13 @@ static int ct_seq_show(struct seq_file *
+ 
+ 	ct_show_zone(s, ct, NF_CT_ZONE_DIR_REPL);
+ 
++#ifdef CONFIG_HW_NAT
++	convert_tuple(&ct->tuplehash[IP_CT_DIR_REPLY].tuple, l4proto, &hnat_tuple);
++
++	if (seq_print_acct(s, ct, IP_CT_DIR_REPLY, &hnat_tuple))
++#else
+ 	if (seq_print_acct(s, ct, IP_CT_DIR_REPLY))
++#endif
+ 		goto release;
+ 
+ 	if (test_bit(IPS_OFFLOAD_BIT, &ct->status))
+--- a/include/net/netfilter/nf_conntrack_core.h
++++ b/include/net/netfilter/nf_conntrack_core.h
+@@ -17,6 +17,9 @@
+ #include <net/netfilter/nf_conntrack.h>
+ #include <net/netfilter/nf_conntrack_ecache.h>
+ #include <net/netfilter/nf_conntrack_l4proto.h>
++#ifdef CONFIG_HW_NAT
++#include <net/ra_nat.h>
++#endif
+ 
+ /* This header is used to share core functionality between the
+    standalone connection tracking module, and the compatibility layer's use
+@@ -78,6 +81,10 @@ unsigned int nf_confirm(struct sk_buff *
+ void print_tuple(struct seq_file *s, const struct nf_conntrack_tuple *tuple,
+ 		 const struct nf_conntrack_l4proto *proto);
+ 
++#ifdef CONFIG_HW_NAT
++void convert_tuple(struct nf_conntrack_tuple *nf_tuple, struct nf_conntrack_l4proto *l4proto, struct hnat_flow_tuple *hnat_tuple);
++#endif
++
+ #define CONNTRACK_LOCKS 1024
+ 
+ extern spinlock_t nf_conntrack_locks[CONNTRACK_LOCKS];

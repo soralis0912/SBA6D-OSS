@@ -1,0 +1,22 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
++++ b/drivers/net/ethernet/stmicro/stmmac/stmmac_main.c
+@@ -1241,6 +1241,9 @@ static void stmmac_free_tx_buffer(struct
+ {
+ 	struct stmmac_tx_queue *tx_q = &priv->tx_queue[queue];
+ 
++	if (ZERO_OR_NULL_PTR(tx_q->tx_skbuff_dma))
++		return;
++
+ 	if (tx_q->tx_skbuff_dma[i].buf) {
+ 		if (tx_q->tx_skbuff_dma[i].map_as_page)
+ 			dma_unmap_page(priv->device,
+@@ -1254,6 +1257,9 @@ static void stmmac_free_tx_buffer(struct
+ 					 DMA_TO_DEVICE);
+ 	}
+ 
++	if (ZERO_OR_NULL_PTR(tx_q->tx_skbuff))	
++		return;
++
+ 	if (tx_q->tx_skbuff[i]) {
+ 		dev_kfree_skb_any(tx_q->tx_skbuff[i]);
+ 		tx_q->tx_skbuff[i] = NULL;

@@ -1,0 +1,20 @@
+--- a/drivers/net/phy/phy-core.c
++++ b/drivers/net/phy/phy-core.c
+@@ -287,10 +287,15 @@ void phy_resolve_aneg_pause(struct phy_d
+ {
+ 	if (phydev->duplex == DUPLEX_FULL) {
+ 		phydev->pause = linkmode_test_bit(ETHTOOL_LINK_MODE_Pause_BIT,
+-						  phydev->lp_advertising);
++						  phydev->lp_advertising) &&
++				linkmode_test_bit(ETHTOOL_LINK_MODE_Pause_BIT,
++						  phydev->advertising);
+ 		phydev->asym_pause = linkmode_test_bit(
+ 			ETHTOOL_LINK_MODE_Asym_Pause_BIT,
+-			phydev->lp_advertising);
++			phydev->lp_advertising) &&
++			linkmode_test_bit(
++				ETHTOOL_LINK_MODE_Asym_Pause_BIT,
++				phydev->advertising);
+ 	}
+ }
+ EXPORT_SYMBOL_GPL(phy_resolve_aneg_pause);

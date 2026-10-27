@@ -1,0 +1,63 @@
+--- a/drivers/iommu/dma-iommu.c
++++ b/drivers/iommu/dma-iommu.c
+@@ -23,6 +23,9 @@
+ #include <linux/pci.h>
+ #include <linux/scatterlist.h>
+ #include <linux/vmalloc.h>
++#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
++#include "../misc/mediatek/iommu/iommu_iova_dbg.h"
++#endif
+ 
+ struct iommu_dma_msi_page {
+ 	struct list_head	list;
+@@ -419,6 +422,16 @@ static dma_addr_t iommu_dma_alloc_iova(s
+ 		iova = alloc_iova_fast(iovad, iova_len, dma_limit >> shift,
+ 				       true);
+ 
++#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
++	if (iova) {
++		mtk_iova_dbg_alloc(dev, ((dma_addr_t)iova << shift), size);
++	} else {
++		pr_info("%s fail! dev:%s, size:0x%zx\n",
++			__func__, dev_name(dev), size);
++		mtk_iova_dbg_dump(dev);
++	}
++#endif
++
+ 	return (dma_addr_t)iova << shift;
+ }
+ 
+@@ -436,6 +449,9 @@ static void iommu_dma_free_iova(struct i
+ 	else
+ 		free_iova_fast(iovad, iova_pfn(iovad, iova),
+ 				size >> iova_shift(iovad));
++#if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_DBG)
++	mtk_iova_dbg_free(iova, size);
++#endif
+ }
+ 
+ static void __iommu_dma_unmap(struct device *dev, dma_addr_t dma_addr,
+--- a/drivers/iommu/iova.c
++++ b/drivers/iommu/iova.c
+@@ -207,6 +207,8 @@ static int __alloc_and_insert_iova_range
+ 	} while (curr && new_pfn <= curr_iova->pfn_hi);
+ 
+ 	if (limit_pfn < size || new_pfn < iovad->start_pfn) {
++		pr_info("[iommu_debug] %s fail, size:0x%lx,limit:0x%lx, new:0x%lx, start::0x%lx\n",
++			__func__, size, limit_pfn, new_pfn, iovad->start_pfn);
+ 		iovad->max32_alloc_size = size;
+ 		goto iova32_full;
+ 	}
+@@ -394,7 +396,11 @@ free_iova(struct iova_domain *iovad, uns
+ 
+ 	if (iova)
+ 		__free_iova(iovad, iova);
+-
++	else {
++		pr_info("[iommu_debug] find iova fail!! start:0x%lx, cur:0x%lx\n",
++			iovad->start_pfn, pfn);
++		dump_stack();
++	}
+ }
+ EXPORT_SYMBOL_GPL(free_iova);
+ 

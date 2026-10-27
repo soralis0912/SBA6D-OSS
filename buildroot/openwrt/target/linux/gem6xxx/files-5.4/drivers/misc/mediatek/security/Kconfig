@@ -1,0 +1,27 @@
+config MTK_SECURITY_EXTENSION
+	bool "Mediatek security extension suite support"
+	default n
+	help
+		Mediatek security extension suite
+		If configures to be y, It can enable the security extension suite
+		in kernel.
+		If configures to be n, Other modules cannot use the exported APIs.
+
+config MTK_SECURE_DATA_PROTECTION
+	bool "Mediatek secure data protection support"
+	select MTK_SECURITY_EXTENSION
+	default n
+	help
+		Mediatek Secure Data Protection module can protect data such as password.
+		If configures to be y, It can use encrypt/decrypt API to protect data by hw
+		in kernel.
+		If configures to be n, Other modules cannot use the exported APIs.
+
+config MTK_SECURE_STATUS_QUERY
+	bool "Mediatek secure status query support"
+	select MTK_SECURITY_EXTENSION
+	default n
+	help
+		Mediatek Secure Status Query API acquire the status of secure device.
+		If configures to be y, You can use query API to acquire status.
+		If configures to be n, Other modules cannot use the exported APIs.

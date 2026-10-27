@@ -1,0 +1,11 @@
+--- a/net/ipv6/netfilter/nf_reject_ipv6.c
++++ b/net/ipv6/netfilter/nf_reject_ipv6.c
+@@ -181,7 +181,7 @@ void nf_send_reset6(struct net *net, str
+ 
+ 	nskb->mark = fl6.flowi6_mark;
+ 
+-	skb_reserve(nskb, hh_len + dst->header_len);
++	skb_reserve(nskb, hh_len + 15 + dst->header_len);
+ 	ip6h = nf_reject_ip6hdr_put(nskb, oldskb, IPPROTO_TCP,
+ 				    ip6_dst_hoplimit(dst));
+ 	nf_reject_ip6_tcphdr_put(nskb, oldskb, otcph, otcplen);

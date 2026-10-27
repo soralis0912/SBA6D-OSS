@@ -1,0 +1,27 @@
+--- a/drivers/phy/mediatek/Kconfig
++++ b/drivers/phy/mediatek/Kconfig
+@@ -33,6 +33,14 @@ config PHY_MTK_XSPHY
+ 	  USB3.1 GEN2 controllers on MediaTek chips. The driver supports
+ 	  multiple USB2.0, USB3.1 GEN2 ports.
+ 
++config PHY_MTK_PCIE
++    tristate "MediaTek PCIe-PHY Driver"
++    depends on ARCH_MEDIATEK && OF
++    select GENERIC_PHY
++    help
++	Say 'Y' here to add support for MediaTeck PCIe PHY driver,
++	This driver support for PCIe GEN3 port.
++
+ config PHY_MTK_FPGAPHY
+ 	tristate "MediaTek FPGA-PHY Driver"
+ 	depends on ARCH_MEDIATEK && OF
+--- a/drivers/phy/mediatek/Makefile
++++ b/drivers/phy/mediatek/Makefile
+@@ -6,4 +6,5 @@
+ obj-$(CONFIG_PHY_MTK_TPHY)		+= phy-mtk-tphy.o
+ obj-$(CONFIG_PHY_MTK_UFS)		+= phy-mtk-ufs.o
+ obj-$(CONFIG_PHY_MTK_XSPHY)		+= phy-mtk-xsphy.o
+-obj-$(CONFIG_PHY_MTK_FPGAPHY)	+= phy-mtk-fpgaphy.o
+\ No newline at end of file
++obj-$(CONFIG_PHY_MTK_PCIE)		+= phy-mtk-pcie.o
++obj-$(CONFIG_PHY_MTK_FPGAPHY)	+= phy-mtk-fpgaphy.o

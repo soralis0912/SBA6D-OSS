@@ -1,0 +1,166 @@
+--- a/drivers/gpu/drm/drm_atomic_helper.c
++++ b/drivers/gpu/drm/drm_atomic_helper.c
+@@ -1462,7 +1462,7 @@ drm_atomic_helper_wait_for_vblanks(struc
+ 		ret = wait_event_timeout(dev->vblank[i].queue,
+ 				old_state->crtcs[i].last_vblank_count !=
+ 					drm_crtc_vblank_count(crtc),
+-				msecs_to_jiffies(100));
++				msecs_to_jiffies(150));
+ 
+ 		WARN(!ret, "[CRTC:%d:%s] vblank wait timed out\n",
+ 		     crtc->base.id, crtc->name);
+--- a/drivers/gpu/drm/drm_atomic_uapi.c
++++ b/drivers/gpu/drm/drm_atomic_uapi.c
+@@ -299,6 +299,13 @@ drm_atomic_set_crtc_for_connector(struct
+ 	struct drm_connector *connector = conn_state->connector;
+ 	struct drm_crtc_state *crtc_state;
+ 
++	if (connector->registration_state != DRM_CONNECTOR_REGISTERED && crtc) {
++		DRM_DEBUG_ATOMIC("[CONNECTOR:%d:%s] is not registered\n",
++				 connector->base.id, connector->name);
++
++		return -EINVAL;
++	}
++
+ 	if (conn_state->crtc == crtc)
+ 		return 0;
+ 
+--- a/drivers/gpu/drm/drm_connector.c
++++ b/drivers/gpu/drm/drm_connector.c
+@@ -94,6 +94,7 @@ static struct drm_conn_prop_enum_list dr
+ 	{ DRM_MODE_CONNECTOR_DPI, "DPI" },
+ 	{ DRM_MODE_CONNECTOR_WRITEBACK, "Writeback" },
+ 	{ DRM_MODE_CONNECTOR_SPI, "SPI" },
++	{ DRM_MODE_CONNECTOR_DBI, "DBI" },
+ };
+ 
+ void drm_connector_ida_init(void)
+--- a/drivers/gpu/drm/drm_encoder.c
++++ b/drivers/gpu/drm/drm_encoder.c
+@@ -63,6 +63,7 @@ static const struct drm_prop_enum_list d
+ 	{ DRM_MODE_ENCODER_DSI, "DSI" },
+ 	{ DRM_MODE_ENCODER_DPMST, "DP MST" },
+ 	{ DRM_MODE_ENCODER_DPI, "DPI" },
++	{ DRM_MODE_ENCODER_DBI, "DBI" },
+ };
+ 
+ int drm_encoder_register_all(struct drm_device *dev)
+--- a/drivers/gpu/drm/drm_modeset_helper.c
++++ b/drivers/gpu/drm/drm_modeset_helper.c
+@@ -58,7 +58,8 @@ void drm_helper_move_panel_connectors_to
+ 				 &dev->mode_config.connector_list, head) {
+ 		if (connector->connector_type == DRM_MODE_CONNECTOR_LVDS ||
+ 		    connector->connector_type == DRM_MODE_CONNECTOR_eDP ||
+-		    connector->connector_type == DRM_MODE_CONNECTOR_DSI)
++		    connector->connector_type == DRM_MODE_CONNECTOR_DSI ||
++		    connector->connector_type == DRM_MODE_CONNECTOR_DBI)
+ 			list_move_tail(&connector->head, &panel_list);
+ 	}
+ 
+--- a/drivers/gpu/drm/mediatek/Kconfig
++++ b/drivers/gpu/drm/mediatek/Kconfig
+@@ -26,3 +26,5 @@ config DRM_MEDIATEK_HDMI
+ 	select GENERIC_PHY
+ 	help
+ 	  DRM/KMS HDMI driver for Mediatek SoCs
++
++source "drivers/gpu/drm/mediatek/mediatek_v2/Kconfig"
+--- a/drivers/gpu/drm/mediatek/Makefile
++++ b/drivers/gpu/drm/mediatek/Makefile
+@@ -1,5 +1,9 @@
+ # SPDX-License-Identifier: GPL-2.0
+ 
++ifeq (y, $(filter y, $(CONFIG_DRM_MEDIATEK_V2)))
++obj-$(CONFIG_DRM_MEDIATEK) += mediatek_v2/
++else
++
+ mediatek-drm-y := mtk_disp_color.o \
+ 		  mtk_disp_ovl.o \
+ 		  mtk_disp_rdma.o \
+@@ -24,3 +28,4 @@ mediatek-drm-hdmi-objs := mtk_cec.o \
+ 			  mtk_hdmi_phy.o
+ 
+ obj-$(CONFIG_DRM_MEDIATEK_HDMI) += mediatek-drm-hdmi.o
++endif
+\ No newline at end of file
+--- a/include/uapi/drm/drm_mode.h
++++ b/include/uapi/drm/drm_mode.h
+@@ -318,6 +318,7 @@ struct drm_mode_get_plane_res {
+ #define DRM_MODE_ENCODER_DSI	6
+ #define DRM_MODE_ENCODER_DPMST	7
+ #define DRM_MODE_ENCODER_DPI	8
++#define DRM_MODE_ENCODER_DBI	9
+ 
+ struct drm_mode_get_encoder {
+ 	__u32 encoder_id;
+@@ -362,6 +363,8 @@ enum drm_mode_subconnector {
+ #define DRM_MODE_CONNECTOR_DPI		17
+ #define DRM_MODE_CONNECTOR_WRITEBACK	18
+ #define DRM_MODE_CONNECTOR_SPI		19
++#define DRM_MODE_CONNECTOR_DBI		20
++
+ 
+ struct drm_mode_get_connector {
+ 
+--- a/drivers/gpu/drm/panel/Kconfig
++++ b/drivers/gpu/drm/panel/Kconfig
+@@ -355,4 +355,48 @@ config DRM_PANEL_TRULY_NT35597_WQXGA
+ 	help
+ 	  Say Y here if you want to enable support for Truly NT35597 WQXGA Dual DSI
+ 	  Video Mode panel
++
++config DRM_PANEL_SITRONIX_ST7796S_DBI_B_9BITS
++	tristate "Sitronix ST7796S panel(DBI-B 9bits)"
++	depends on OF && SPI
++	depends on BACKLIGHT_CLASS_DEVICE
++	help
++	  Say Y here if you want to enable support for the Sitronix
++	  ST7796S controller with DBI-B 9 bits for 320x480 LCD panels
++
++config DRM_PANEL_SITRONIX_ST7796S_DBI_B_8BITS
++	tristate "Sitronix ST7796S panel(DBI-B 8bits)"
++	depends on OF && SPI
++	depends on BACKLIGHT_CLASS_DEVICE
++	help
++	  Say Y here if you want to enable support for the Sitronix
++	  ST7796S controller with DBI-B 8 bits for 320x480 LCD panels
++
++config DRM_PANEL_SITRONIX_ST7796S_DBI_C_3WIRE
++	tristate "Sitronix ST7796S panel(DBI-C 3wire)"
++	depends on OF && SPI
++	depends on BACKLIGHT_CLASS_DEVICE
++	help
++	  Say Y here if you want to enable support for the Sitronix
++	  ST7796S controller with DBI-C 3wire for 320x480 LCD panels
++
++config DRM_PANEL_SITRONIX_ST7796S_DBI_C_4WIRE
++	tristate "Sitronix ST7796S panel(dBI-C 4wire)"
++	depends on OF && SPI
++	depends on BACKLIGHT_CLASS_DEVICE
++	help
++	  Say Y here if you want to enable support for the Sitronix
++	  ST7796S controller with DBI-C 4wire for 320x480 LCD panels
++
++config DRM_PANEL_TRULY_NT35521
++	tristate "TRULY NT35521 HD video mode panel"
++	depends on OF
++	depends on DRM_MIPI_DSI
++	depends on BACKLIGHT_CLASS_DEVICE
++	help
++	  Say Y here if you want to enable support for TRULY NT35521S
++	  mode FHD panel. The panel has a 720x1280 resolution.
++	  It provides a MIPI DSI interface
++	  to host.
++
+ endmenu
+--- a/drivers/gpu/drm/panel/Makefile
++++ b/drivers/gpu/drm/panel/Makefile
+@@ -38,3 +38,8 @@ obj-$(CONFIG_DRM_PANEL_TPO_TD028TTEC1) +
+ obj-$(CONFIG_DRM_PANEL_TPO_TD043MTEA1) += panel-tpo-td043mtea1.o
+ obj-$(CONFIG_DRM_PANEL_TPO_TPG110) += panel-tpo-tpg110.o
+ obj-$(CONFIG_DRM_PANEL_TRULY_NT35597_WQXGA) += panel-truly-nt35597.o
++obj-$(CONFIG_DRM_PANEL_TRULY_NT35521) += panel-truly-nt35521.o
++obj-$(CONFIG_DRM_PANEL_SITRONIX_ST7796S_DBI_B_9BITS) += panel-sitronix-st7796s-dbi-b-9bits.o
++obj-$(CONFIG_DRM_PANEL_SITRONIX_ST7796S_DBI_B_8BITS) += panel-sitronix-st7796s-dbi-b-8bits.o
++obj-$(CONFIG_DRM_PANEL_SITRONIX_ST7796S_DBI_C_3WIRE) += panel-sitronix-st7796s-dbi-c-3wire.o
++obj-$(CONFIG_DRM_PANEL_SITRONIX_ST7796S_DBI_C_4WIRE) += panel-sitronix-st7796s-dbi-c-4wire.o

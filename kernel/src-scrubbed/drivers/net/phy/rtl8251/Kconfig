@@ -1,0 +1,4 @@
+config QUEC_REALTEK_RTL8251
+	bool "Quec support Realtek PHYs"
+	---help---
+	  Supports the Realtek 8251 PHY.

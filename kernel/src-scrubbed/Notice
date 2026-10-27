@@ -1,0 +1,40 @@
+Quectel files-5.4
+
+This folders is equivalent to the kernel root directory.
+If you need to add additional code, please follow the kernel folder architecture.
+
+MTK extra code: openwrt/target/linux/gem6xxx/files-5.4
+                openwrt/target/linux/gem6xxx/patches-5.4
+If you need to modify Kconfig or Makefile files, modify them in the MTK path,
+or copy the corresponding files in the MTK path and add code
+
+本路径完全等价于kernel根目录，如需添加额外代码，请完全按照kernel文件夹架构进行存放。
+MTK extra code: openwrt/target/linux/gem6xxx/files-5.4
+                openwrt/target/linux/gem6xxx/patches-5.4
+
+Quectel inner code: quectel/kernel/files-5.4
+                    quectel/kernel/patches-5.4
+
+重点-针对files-5.4
+1、SW新增功能代码时，需在quectel/kernel/files-5.4下按照kernel文件夹架构新增存放。
+2、SW在调试某些功能需改动到MTK路径下源文件、Kconfig或Makefile，直接修改MTK files-5.4。
+Note：如果SW新增功能涉及到MTK路径下源文件、Kconfig或Makefile，同样按照上面两点描述各自改动后提交代码。
+
+核心思想：MTK files-5.4路径下已有的，尽量修改MTK路径下的内容，方便后续合入新SDK时进行对比（减少工作量）。
+         MTK files-5.4路径下没有的，放在quectel/kernel/files-5.4路径下。
+
+
+
+重点-针对patches-5.4
+1、如果open source同一个文件打入多笔patch，可能会导致后一笔打入失败，这时候需要SW自己修复conflict，并修正为新的patch。
+
+比如openwrt/dl下某个组件MTK打了origin1.patch，然后quectel在origin1.patch基础上增加了quectel.patch。
+那么若下一次SDK新增了origin2.patch，与quectel.patch出现了冲突导致patching失败，编译报错。
+此时需要SW对应工程师解决冲突后，删除原有quectel.patch，替换为解决冲突后的quectel_new.patch，并重新验证功能、提交代码。
+
+
+kernel编译步骤：
+1.解压缩linux-5.4.179.tar.xz包
+2.替换拷贝files-5.4(先后顺序为：linux GENERIC files -> MTK files -> quectel files)
+3.打入patches-5.4(先后顺序为：linux GENERIC patches -> MTK patches -> quectel patches)
+4.编译

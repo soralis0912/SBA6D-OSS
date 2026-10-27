@@ -1,0 +1,12 @@
+Package: ddns-scripts-services
+Version: 2.8.2-12
+Depends: libc
+Provides: ddns-scripts_service
+Source: /home/altim/work/t830/feeds/packages/net/ddns-scripts
+SourceName: ddns-scripts-services
+License: GPL-2.0
+Section: net
+SourceDateEpoch: 1730886256
+Architecture: all
+Installed-Size: 3991
+Description:  Dynamic DNS Client definitions for supported services

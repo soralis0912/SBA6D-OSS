@@ -1,0 +1,11 @@
+config MTK_BMP380_IIO_SUPPORT
+	bool "MTK_BMP380_IIO_SUPPORT for MediaTek package"
+	default n
+	help
+	  Enable MTK BMP380 IIO subsystem support.
+	  BMP380 is a low-power and low-noise
+	  barometric pressure sensor.
+	  If in doubt, say N here.
+
+source "drivers/misc/mediatek/sensor/iio/smi230/accel/Kconfig"
+source "drivers/misc/mediatek/sensor/iio/smi230/gyro/Kconfig"

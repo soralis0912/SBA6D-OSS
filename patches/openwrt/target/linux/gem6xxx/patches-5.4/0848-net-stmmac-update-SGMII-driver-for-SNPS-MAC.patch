@@ -1,0 +1,31 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.c
+@@ -50,7 +50,7 @@
+ #define ETH_FINE_DLY_GTXC	BIT(1)
+ #define ETH_FINE_DLY_RXC	BIT(0)
+ 
+-/* config for mt273 bollinger */
++/* Peri Configuration register for mt2737 */
+ #define MT2737_PERI_ETH_CTRL1		0xB0C
+ #define MT2737_SGMII_CLK_INTERNAL		BIT(29)
+ #define MT2737_RMII_CLK_SEL		GENMASK(28, 27)
+@@ -885,6 +885,7 @@ static int mt2737_set_interface(struct m
+ 	case PHY_INTERFACE_MODE_SGMII:
+ 		intf_val &= ~MT2737_ETH_PHY_SEL;
+ 		intf_val &= ~MT2737_ETH_INTF_SEL;
++		intf_val |= MT2737_SGMII_CLK_INTERNAL;
+ 
+ 		plat->dvfsrc_vcore_power = regulator_get(plat->dev, "dvfsrc-vcore");
+ 		if(!plat->dvfsrc_vcore_power) {
+@@ -1038,8 +1039,10 @@ static int mt2737_set_delay(struct media
+ 		delay_val |= FIELD_PREP(MT2737_DLY_RXC_COARSE_STG, mac_delay->rx_delay);
+ 		delay_val |= FIELD_PREP(MT2737_DLY_RXC_INV, mac_delay->rx_inv);
+ 		break;
++	case PHY_INTERFACE_MODE_SGMII:
++		break;
+ 	default:
+-		dev_err(plat->dev, "phy interface not need delay macro such as SGMII\n");
++		dev_err(plat->dev, "phy interface not supported by SNPS MAC\n");
+ 		return -EINVAL;
+ 	}
+ 

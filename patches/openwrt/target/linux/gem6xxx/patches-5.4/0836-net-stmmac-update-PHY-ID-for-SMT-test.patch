@@ -1,0 +1,13 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.c
+@@ -450,8 +450,8 @@ static ssize_t stmmac_store(struct devic
+ 			 reg, origin, priv->mii->read(priv->mii, phy_addr, reg));
+ 	} else if (!strncmp(buf, "smt", 3)) {
+ 		eth_smt_result = 0;
+-		if(priv->mii->read(priv->mii, phy_dev->mdio.addr, 2) == 0x22 &&
+-			priv->mii->read(priv->mii, phy_dev->mdio.addr, 3) == 0x1642)
++		if(priv->mii->read(priv->mii, phy_dev->mdio.addr, 2) == 0x1c &&
++			priv->mii->read(priv->mii, phy_dev->mdio.addr, 3) == 0xc916)
+ 				eth_smt_result = 1;
+ 		dev_info(dev, "eth_smt_result:%d\n", eth_smt_result);
+ 	} else if (!strncmp(buf, "cl22w", 5) &&

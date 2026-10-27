@@ -1,0 +1,4 @@
+
+config MT753X_GSW
+	depends on PHYLIB
+	tristate "Driver for the MediaTek MT753x switch"

@@ -1,0 +1,22 @@
+--- a/drivers/mtd/parsers/Kconfig
++++ b/drivers/mtd/parsers/Kconfig
+@@ -138,6 +138,11 @@ config MTD_PARSER_TRX
+ 	  This driver will parse TRX header and report at least two partitions:
+ 	  kernel and rootfs.
+ 
++config MTD_PMT_PARTS
++	tristate "PMT partitioning support"
++	help
++	  This provides partions parsing PMT format.
++
+ config MTD_SHARPSL_PARTS
+ 	tristate "Sharp SL Series NAND flash partition parser"
+ 	depends on MTD_NAND_SHARPSL || MTD_NAND_TMIO || COMPILE_TEST
+--- a/drivers/mtd/parsers/Makefile
++++ b/drivers/mtd/parsers/Makefile
+@@ -13,4 +13,5 @@ obj-$(CONFIG_MTD_AFS_PARTS)		+= afs.o
+ obj-$(CONFIG_MTD_PARSER_TRX)		+= parser_trx.o
+ obj-$(CONFIG_MTD_SHARPSL_PARTS)		+= sharpslpart.o
+ obj-$(CONFIG_MTD_REDBOOT_PARTS)		+= redboot.o
++obj-$(CONFIG_MTD_PMT_PARTS)			+= pmtpart.o
+ obj-$(CONFIG_MTD_ROUTERBOOT_PARTS)		+= routerbootpart.o

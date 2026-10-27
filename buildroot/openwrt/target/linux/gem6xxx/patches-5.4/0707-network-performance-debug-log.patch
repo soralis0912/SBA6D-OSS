@@ -1,0 +1,247 @@
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -3679,6 +3679,15 @@ struct netdev_queue *netdev_core_pick_tx
+ 	return netdev_get_tx_queue(dev, queue_index);
+ }
+ 
++static int dev_tx_profile;
++module_param(dev_tx_profile, uint, 0644);
++MODULE_PARM_DESC(dev_tx_profile, "enable dev_tx_profile debugging");
++struct timespec64 starttime_tx;
++static unsigned long long sen_data_len;
++static char *devname_tx_profile = "rndis0";
++module_param(devname_tx_profile, charp, 0644);
++MODULE_PARM_DESC(devname_tx_profile, "enable devname_tx_profile debugging");
++
+ /**
+  *	__dev_queue_xmit - transmit a buffer
+  *	@skb: buffer to transmit
+@@ -3712,6 +3721,45 @@ static int __dev_queue_xmit(struct sk_bu
+ 	struct Qdisc *q;
+ 	int rc = -ENOMEM;
+ 	bool again = false;
++	struct timespec64 curr_time, diff;
++
++	if (dev_tx_profile && (strncmp(devname_tx_profile, dev->name, IFNAMSIZ) == 0)) {
++		sen_data_len += skb->len;
++		if (unlikely(starttime_tx.tv_sec == 0)) {
++			ktime_get_real_ts64(&starttime_tx);
++		} else {
++			ktime_get_real_ts64(&curr_time);
++			diff = timespec64_sub(curr_time, starttime_tx);
++			if (diff.tv_sec == 1 ||
++			    (diff.tv_sec == 0 && diff.tv_nsec > 980000000)) {
++				netdev_err(dev,
++"[%s] txq_len=%d sen_data_len=%llu duration=%llu(s)/%ld(ns) speed=%llu mbps/%llu kbps/%llu bps\n",
++						__func__,
++						dev->qdisc->q.qlen,
++						sen_data_len,
++						(long long)diff.tv_sec,
++						diff.tv_nsec,
++						(sen_data_len >> 20) * 8,
++						(sen_data_len >> 10) * 8,
++						sen_data_len * 8);
++				sen_data_len = 0;
++				ktime_get_real_ts64(&starttime_tx);
++			}
++			if (diff.tv_sec > 1) {
++				netdev_err(dev,
++"[%s] txq_len=%d sen_data_len=%llu duration=%llu(s) sen_bits=%llu mb/%llu kb/%llu b\n",
++						__func__,
++						dev->qdisc->q.qlen,
++						sen_data_len,
++						(long long)diff.tv_sec,
++						(sen_data_len >> 20) * 8,
++						(sen_data_len >> 10) * 8,
++						sen_data_len * 8);
++				sen_data_len = 0;
++				ktime_get_real_ts64(&starttime_tx);
++			}
++		}
++	}
+ 
+ 	skb_reset_mac_header(skb);
+ 
+@@ -4161,6 +4209,15 @@ static bool skb_flow_limit(struct sk_buf
+ 	return false;
+ }
+ 
++static int dev_rx_profile;
++module_param(dev_rx_profile, uint, 0644);
++MODULE_PARM_DESC(dev_rx_profile, "enable dev_rx_profile debugging");
++struct timespec64 starttime_rx;
++static unsigned long long rec_data_len;
++static char *devname_rx_profile = "ccmni0";
++module_param(devname_rx_profile, charp, 0644);
++MODULE_PARM_DESC(devname_rx_profile, "enable devname_rx_profile debugging");
++
+ /*
+  * enqueue_to_backlog is called to queue an skb to a per CPU backlog
+  * queue (may be a remote CPU queue).
+@@ -4171,6 +4228,7 @@ static int enqueue_to_backlog(struct sk_
+ 	struct softnet_data *sd;
+ 	unsigned long flags;
+ 	unsigned int qlen;
++	struct timespec64 curr_time, diff;
+ 
+ 	sd = &per_cpu(softnet_data, cpu);
+ 
+@@ -4180,6 +4238,47 @@ static int enqueue_to_backlog(struct sk_
+ 	if (!netif_running(skb->dev))
+ 		goto drop;
+ 	qlen = skb_queue_len(&sd->input_pkt_queue);
++
++	if (dev_rx_profile && (strncmp(devname_rx_profile, skb->dev->name, IFNAMSIZ) == 0)) {
++		rec_data_len += skb->len;
++		if (unlikely(starttime_rx.tv_sec == 0)) {
++			ktime_get_real_ts64(&starttime_rx);
++		} else {
++			ktime_get_real_ts64(&curr_time);
++			diff = timespec64_sub(curr_time, starttime_rx);
++			if (diff.tv_sec == 1 ||
++			    (diff.tv_sec == 0 && diff.tv_nsec > 980000000)) {
++				netdev_err(skb->dev,
++"[%s] rxqlen=%d/%d rec_data_len=%llu duration=%llu(s)/%ld(ns) speed=%llu mbps/%llu kbps/%llu bps\n",
++						__func__,
++						qlen,
++						netdev_max_backlog,
++						rec_data_len,
++						(long long)diff.tv_sec,
++						diff.tv_nsec,
++						(rec_data_len >> 20) * 8,
++						(rec_data_len >> 10) * 8,
++						rec_data_len * 8);
++				rec_data_len = 0;
++				ktime_get_real_ts64(&starttime_rx);
++			}
++			if (diff.tv_sec > 1) {
++				netdev_err(skb->dev,
++"[%s] rxq_len=%d/%d rec_data_len=%llu duration=%llu(s) rec_bits=%llu mb/%llu kb/%llu b\n",
++						__func__,
++						qlen,
++						netdev_max_backlog,
++						rec_data_len,
++						(long long)diff.tv_sec,
++						(rec_data_len >> 20) * 8,
++						(rec_data_len >> 10) * 8,
++						rec_data_len * 8);
++				rec_data_len = 0;
++				ktime_get_real_ts64(&starttime_rx);
++			}
++		}
++	}
++
+ 	if (qlen <= netdev_max_backlog && !skb_flow_limit(skb, qlen)) {
+ 		if (qlen) {
+ enqueue:
+@@ -5042,9 +5141,52 @@ static void __netif_receive_skb_list_cor
+ 	__netif_receive_skb_list_ptype(&sublist, pt_curr, od_curr);
+ }
+ 
++static int dev_netif_rx_profile;
++module_param(dev_netif_rx_profile, uint, 0644);
++MODULE_PARM_DESC(dev_netif_rx_profile, "enable dev_netif_rx_profile debugging");
++struct timespec64 starttime_netif_rx;
++static unsigned long long netif_rec_data_len;
++
+ static int __netif_receive_skb(struct sk_buff *skb)
+ {
+ 	int ret;
++	struct timespec64 curr_time, diff;
++
++	if (dev_netif_rx_profile && (strncmp(devname_rx_profile, skb->dev->name, IFNAMSIZ) == 0)) {
++		netif_rec_data_len += skb->len;
++		if (unlikely(starttime_netif_rx.tv_sec == 0)) {
++			ktime_get_real_ts64(&starttime_netif_rx);
++		} else {
++			ktime_get_real_ts64(&curr_time);
++			diff = timespec64_sub(curr_time, starttime_netif_rx);
++			if (diff.tv_sec == 1 ||
++			    (diff.tv_sec == 0 && diff.tv_nsec > 980000000)) {
++				netdev_err(skb->dev,
++"[%s] rec_data_len=%llu duration=%llu(s)/%ld(ns) speed=%llu mbps/%llu kbps/%llu bps\n",
++						__func__,
++						netif_rec_data_len,
++						(long long)diff.tv_sec,
++						diff.tv_nsec,
++						(netif_rec_data_len >> 20) * 8,
++						(netif_rec_data_len >> 10) * 8,
++						netif_rec_data_len * 8);
++				netif_rec_data_len = 0;
++				ktime_get_real_ts64(&starttime_netif_rx);
++			}
++			if (diff.tv_sec > 1) {
++				netdev_err(skb->dev,
++"[%s] rec_data_len=%llu duration=%llu(s) rec_bits=%llu mb/%llu kb/%llu b\n",
++						__func__,
++						netif_rec_data_len,
++						(long long)diff.tv_sec,
++						(netif_rec_data_len >> 20) * 8,
++						(netif_rec_data_len >> 10) * 8,
++						netif_rec_data_len * 8);
++				netif_rec_data_len = 0;
++				ktime_get_real_ts64(&starttime_netif_rx);
++			}
++		}
++	}
+ 
+ 	if (sk_memalloc_socks() && skb_pfmemalloc(skb)) {
+ 		unsigned int noreclaim_flag;
+@@ -5067,13 +5209,57 @@ static int __netif_receive_skb(struct sk
+ 	return ret;
+ }
+ 
++static int dev_netif_list_rx_profile;
++module_param(dev_netif_list_rx_profile, uint, 0644);
++MODULE_PARM_DESC(dev_netif_list_rx_profile, "enable dev_netif_list_rx_profile debugging");
++struct timespec64 starttime_netif_list_rx;
++static unsigned long long netif_list_rec_data_len;
++
+ static void __netif_receive_skb_list(struct list_head *head)
+ {
+ 	unsigned long noreclaim_flag = 0;
+ 	struct sk_buff *skb, *next;
+ 	bool pfmemalloc = false; /* Is current sublist PF_MEMALLOC? */
++	struct timespec64 curr_time, diff;
+ 
+ 	list_for_each_entry_safe(skb, next, head, list) {
++		if (dev_netif_list_rx_profile &&
++		    (strncmp(devname_rx_profile, skb->dev->name, IFNAMSIZ) == 0)) {
++			netif_list_rec_data_len += skb->len;
++			if (unlikely(starttime_netif_list_rx.tv_sec == 0)) {
++				ktime_get_real_ts64(&starttime_netif_list_rx);
++			} else {
++				ktime_get_real_ts64(&curr_time);
++				diff = timespec64_sub(curr_time, starttime_netif_list_rx);
++				if (diff.tv_sec == 1 ||
++				    (diff.tv_sec == 0 && diff.tv_nsec > 980000000)) {
++					netdev_err(skb->dev,
++"[%s] rec_data_len=%llu duration=%llu(s)/%ld(ns) speed=%llu mbps/%llu kbps/%llu bps\n",
++							__func__,
++							netif_list_rec_data_len,
++							(long long)diff.tv_sec,
++							diff.tv_nsec,
++							(netif_list_rec_data_len >> 20) * 8,
++							(netif_list_rec_data_len >> 10) * 8,
++							netif_list_rec_data_len * 8);
++					netif_list_rec_data_len = 0;
++					ktime_get_real_ts64(&starttime_netif_list_rx);
++				}
++				if (diff.tv_sec > 1) {
++					netdev_err(skb->dev,
++"[%s] rec_data_len=%llu duration=%llu(s) rec_bits=%llu mb/%llu kb/%llu b\n",
++							__func__,
++							netif_list_rec_data_len,
++							(long long)diff.tv_sec,
++							(netif_list_rec_data_len >> 20) * 8,
++							(netif_list_rec_data_len >> 10) * 8,
++							netif_list_rec_data_len * 8);
++					netif_list_rec_data_len = 0;
++					ktime_get_real_ts64(&starttime_netif_list_rx);
++				}
++			}
++		}
++
+ 		if ((sk_memalloc_socks() && skb_pfmemalloc(skb)) != pfmemalloc) {
+ 			struct list_head sublist;
+ 

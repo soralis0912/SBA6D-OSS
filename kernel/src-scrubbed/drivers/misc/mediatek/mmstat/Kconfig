@@ -1,0 +1,19 @@
+config MMSTAT_TRACER
+	tristate "Trace memory status periodically"
+	depends on TRACING
+	help
+	  Periodic tracing of memory status.
+
+	  Mmstat tracer will track memory usage periodically according to
+	  indicated timer interval, which includes meminfo, buddy system,
+	  hardware memory(if possible) and process memory.
+
+config MMSTAT_PAGE_DETAIL
+	tristate "Mmstat trace enhancement for page allocation"
+	depends on MMSTAT_TRACER
+	help
+	  Add DMA/PAGE_FRAG allocation status.
+
+	  Since direct page allocation is difficult to analysis, add two
+	  sub categories DMA / PAGE_FRAG to divide direct page allocation
+	  into hardware driver(DMA), network driver(page_frag) or others.

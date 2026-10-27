@@ -1,0 +1,93 @@
+Index: linux-5.4.143/drivers/clk/mediatek/Kconfig
+===================================================================
+--- linux-5.4.143.orig/drivers/clk/mediatek/Kconfig	2021-09-28 09:34:19.556315604 +0800
++++ linux-5.4.143/drivers/clk/mediatek/Kconfig	2021-09-28 09:41:09.468134307 +0800
+@@ -205,6 +205,69 @@ config COMMON_CLK_MT6797_VENCSYS
+        ---help---
+          This driver supports MediaTek MT6797 vencsys clocks.
+ 
++config COMMON_CLK_MT6880
++	bool "Clock driver for MediaTek MT6880"
++	select COMMON_CLK_MEDIATEK
++	---help---
++	  This driver supports MediaTek MT6880 basic clocks,
++	  which is used to control basic clock output.
++	  If you wish to use clock resources from the MT6880 SOC,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6880_AUDIOSYS
++	bool "Clock driver for MediaTek MT6880 audiosys"
++	depends on COMMON_CLK_MT6880
++	---help---
++	  This driver supports MediaTek MT6880 audiosys clocks,
++	  which is used to control audiosys clock output.
++	  If you wish to use clock resources from the audiosys device,
++	  say Y. Otherwise, say N. Might use CONFIG_SND_SOC_MT6880.
++
++config COMMON_CLK_MT6880_DBGSYS_DEM
++	bool "Clock driver for MediaTek MT6880 dbgsys_dem"
++	depends on COMMON_CLK_MT6880
++	---help---
++	  This driver supports MediaTek MT6880 dbgsys_dem clocks,
++	  which is used to control dbgsys_dem clock output.
++	  If you wish to use clock resources from the dbgsys_dem device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6880_GCE
++	bool "Clock driver for MediaTek MT6880 gce"
++	depends on COMMON_CLK_MT6880
++	---help---
++	  This driver supports MediaTek MT6880 gce clocks,
++	  which is used to control gce clock output.
++	  If you wish to use clock resources from the gce device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6880_IMP_IIC_WRAP_E
++	bool "Clock driver for MediaTek MT6880 imp_iic_wrap_e"
++	depends on COMMON_CLK_MT6880
++	---help---
++	  This driver supports MediaTek MT6880 imp_iic_wrap_e clocks,
++	  which is used to control imp_iic_wrap_e clock output.
++	  If you wish to use clock resources from the imp_iic_wrap_e device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6880_MFGSYS
++	bool "Clock driver for MediaTek MT6880 mfgsys"
++	depends on COMMON_CLK_MT6880 && CONFIG_MTK_GPU_SUPPORT
++	---help---
++	  This driver supports MediaTek MT6880 mfgsys clocks,
++	  which is used to control mfgsys clock output.
++	  If you wish to use clock resources from the mfgsys device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6880_MMSYS_CONFIG
++	bool "Clock driver for MediaTek MT6880 mmsys_config"
++	depends on COMMON_CLK_MT6880
++	---help---
++	  This driver supports MediaTek MT6880 mmsys_config clocks,
++	  which is used to control mmsys_config clock output.
++	  If you wish to use clock resources from the mmsys_config device,
++	  say Y. Otherwise, say N.
++
+ config COMMON_CLK_MT6890
+ 	bool "Clock driver for MediaTek MT6890"
+ 	select COMMON_CLK_MEDIATEK
+Index: linux-5.4.143/drivers/clk/mediatek/Makefile
+===================================================================
+--- linux-5.4.143.orig/drivers/clk/mediatek/Makefile	2021-09-28 09:34:19.556315604 +0800
++++ linux-5.4.143/drivers/clk/mediatek/Makefile	2021-09-28 09:41:24.116974961 +0800
+@@ -41,6 +41,14 @@ obj-$(CONFIG_COMMON_CLK_MT7629_ETHSYS) +
+ obj-$(CONFIG_COMMON_CLK_MT7629_HIFSYS) += clk-mt7629-hif.o
+ obj-$(CONFIG_COMMON_CLK_MT8135) += clk-mt8135.o
+ obj-$(CONFIG_COMMON_CLK_MT8173) += clk-mt8173.o
++obj-$(CONFIG_COMMON_CLK_MT6880) += clk-mt6880.o clkdbg.o clkchk.o clk-bringup.o clkchk-mt6880.o clkdbg-mt6880.o
++#obj-$(CONFIG_COMMON_CLK_MT6880) += clkdbg-mt6880.o clkchk-mt6880.o
++obj-$(CONFIG_COMMON_CLK_MT6880_AUDIOSYS) += clk-mt6880-audsys.o
++obj-$(CONFIG_COMMON_CLK_MT6880_DBGSYS_DEM) += clk-mt6880-dbgsys_dem.o
++obj-$(CONFIG_COMMON_CLK_MT6880_GCE) += clk-mt6880-gce.o
++obj-$(CONFIG_COMMON_CLK_MT6880_IMP_IIC_WRAP_E) += clk-mt6880-impe.o
++obj-$(CONFIG_COMMON_CLK_MT6880_MFGSYS) += clk-mt6880-mfgcfg.o
++obj-$(CONFIG_COMMON_CLK_MT6880_MMSYS_CONFIG) += clk-mt6880-mm.o
+ obj-$(CONFIG_COMMON_CLK_MT6890) += clk-mt6890.o clkdbg.o clkchk.o clk-bringup.o clkchk-mt6890.o clkdbg-mt6890.o
+ obj-$(CONFIG_COMMON_CLK_MT6890) += clkdbg-mt6890.o clkchk-mt6890.o
+ obj-$(CONFIG_COMMON_CLK_MT6890_AUDIOSYS) += clk-mt6890-audsys.o

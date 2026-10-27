@@ -1,0 +1,159 @@
+#!/bin/sh
+
+##
+# Copyright :
+#   Copyright (c) 2023, Quectel Wireless Solutions Co., Ltd. All rights reserved.
+#   Quectel Wireless Solutions Proprietary and Confidential.
+##
+
+##
+# @file    quec_bootctrl - shell file
+# @brief   This file is used to control boot control data in misc partition and C code use system system call to execute these commands.
+# @author  Randy.LI
+# @date    2023-6-25
+##
+
+. /lib/functions.sh
+
+include /lib/upgrade
+
+export QUEC_READ_BOOTCTRL_DATA=0
+export QUEC_QUERY_BOOTCTRL_INFO=0
+export QUEC_RESET_BOOTCTRL_DATA=0
+export QUEC_FORCE_ROLLBACK=0
+export QUEC_CUSTOM_SET=0
+export QUEC_HELP=0
+
+# parse parameters
+while [ -n "$1" ]; do
+    case "$1" in
+        -r) export QUEC_READ_BOOTCTRL_DATA=1;;
+        -q) export QUEC_QUERY_BOOTCTRL_INFO=1;;
+        -R) export QUEC_RESET_BOOTCTRL_DATA=1;;
+        -F) export QUEC_FORCE_ROLLBACK=1;;
+        -s) export QUEC_CUSTOM_SET=1;;
+        -h|--help) export QUEC_HELP=1;;
+        -*)
+            echo "Invaild option: $1" >&2
+            exit 1
+        ;;
+        *) break;;
+    esac
+    shift;
+done
+
+# command: quec_bootctrl -h|--help
+[ "$QUEC_HELP" -eq 1 ] && {
+	cat <<EOF
+Usage: $0 [-r] [-q] [-R] [-F]
+
+upgrade-option:
+    -r            read misc bootctrl data
+    -q            query misc bootctrl information
+    -R            reset misc bootctrl data
+    -F            Force A/B system rollback
+    -h | --help   display this help
+EOF
+    exit 0
+}
+
+FLASH_TYPE=$(get_flash_type)
+
+# command: quec_bootctrl -r
+# brief: read misc boot control data
+[ "$QUEC_READ_BOOTCTRL_DATA" -eq 1 ] && {
+    echo "read bootctrl $(get_bootctrl_string)"
+    exit 0
+}
+
+# command: quec_bootctrl -q
+[ "$QUEC_QUERY_BOOTCTRL_INFO" -eq 1 ] && {
+    bootslot=a
+    if [ "$(get_current_slot)" = '_a' ]; then
+        bootslot=a
+    elif [ "$(get_current_slot)" = '_b' ]; then
+        bootslot=b
+    fi
+    echo "+QBOOTCTRL: \"bootslot\",$bootslot"
+
+    current_bootctrl_string=$(get_bootctrl_string)
+    if [ -n $current_bootctrl_string ]; then
+        echo "+QBOOTCTRL: \"slot_a\",\"priority\",${current_bootctrl_string:0:2},\"ab_retry\",${current_bootctrl_string:2:2},\"success_boot\",${current_bootctrl_string:4:2},\"up_type\",${current_bootctrl_string:6:2}"
+        echo "+QBOOTCTRL: \"slot_b\",\"priority\",${current_bootctrl_string:10:2},\"ab_retry\",${current_bootctrl_string:12:2},\"success_boot\",${current_bootctrl_string:14:2},\"up_type\",${current_bootctrl_string:16:2}"
+    fi
+    exit 0
+}
+
+# command: quec_misc_bootctrl -R
+# brief: reset misc bootctrl data
+[ "$QUEC_RESET_BOOTCTRL_DATA" -eq 1 ] && {
+    set_bootctrl_string 1 $BOOTCTRL_MAX_PRI 1 00 1 01 1 00 1 $BOOTCTRL_MAX_PRI_MINUS_ONE 1 00 1 01 1 00
+    echo "reset bootctrl to $(get_bootctrl_string)"
+    exit 0
+}
+
+# command: quec_bootctrl -F
+# brief: force A/B system rollback
+[ "$QUEC_FORCE_ROLLBACK" -eq 1 ] && {
+    current_slot=$(get_current_slot)
+    echo "current_slot=$current_slot"
+
+    if [ "$current_slot" = "_a" ]; then
+        set_bootctrl $BOOTCTRL_OFFSET_PRIORITY_A \\x0e
+		set_bootctrl $BOOTCTRL_OFFSET_PRIORITY_B \\x0f
+    elif [ "$current_slot" = "_b" ]; then
+        set_bootctrl $BOOTCTRL_OFFSET_PRIORITY_A \\x0f
+		set_bootctrl $BOOTCTRL_OFFSET_PRIORITY_B \\x0e
+    else
+        echo "Invaild slot"
+    fi
+    echo "force rollback to slot $(get_current_slot) after reboot"
+
+    exit 0
+}
+
+# command: quec_bootctrl -s xx xx xx xx xx xx xx xx
+[ "$QUEC_CUSTOM_SET" -eq 1 ] && {
+    slot_a_prio=$1
+    slot_a_ab_retry=$2
+    slot_a_success_boot=$3
+    slot_a_up_type=$4
+    slot_b_prio=$5
+    slot_b_ab_retry=$6
+    slot_b_success_boot=$7
+    slot_b_up_type=$8
+
+    if [ -n $slot_a_prio ]; then
+        set_bootctrl $BOOTCTRL_OFFSET_PRIORITY_A \\x$slot_a_prio
+    fi
+
+    if [ -n $slot_a_ab_retry ]; then
+        set_bootctrl $BOOTCTRL_OFFSET_TRY_A \\x$slot_a_ab_retry
+    fi
+
+    if [ -n $slot_a_success_boot ]; then
+        set_bootctrl $BOOTCTRL_OFFSET_SUCCESS_A \\x$slot_a_success_boot
+    fi
+
+    if [ -n $slot_a_up_type ]; then
+        set_bootctrl $BOOTCTRL_OFFSET_UP_A \\x$slot_a_up_type
+    fi
+
+    if [ -n $slot_b_prio ]; then
+        set_bootctrl $BOOTCTRL_OFFSET_PRIORITY_B \\x$slot_b_prio
+    fi
+
+    if [ -n $slot_b_ab_retry ]; then
+        set_bootctrl $BOOTCTRL_OFFSET_TRY_B \\x$slot_b_ab_retry
+    fi
+
+    if [ -n $slot_a_success_boot ]; then
+        set_bootctrl $BOOTCTRL_OFFSET_SUCCESS_B \\x$slot_b_success_boot
+    fi
+
+    if [ -n $slot_a_up_type ]; then
+        set_bootctrl $BOOTCTRL_OFFSET_UP_B \\x$slot_b_up_type
+    fi
+
+    echo "custom bootctrl $(get_bootctrl_string)"
+}

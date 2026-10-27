@@ -1,0 +1,7 @@
+Category	Scope	Status	Rationale
+Signing material	openwrt/key-build*	Not included	Signing keys, certificates and revocation material are not distributable.
+Modem binaries	mtk/prebuilt/mdbin	Not included	Closed modem/DSP images and debug databases; no source form exists for redistribution.
+Toolchain runtime	libc, libpthread, librt	Not included	Built from an external prebuilt toolchain root (see package-info/config.buildinfo). Supplied under GPL-3.0-with-GCC-exception by the toolchain provider.
+MediaTek proprietary components	Packages marked Disclose=No in package-info/openwrt-packages-package-details.tsv	Not included	Proprietary MediaTek software, not open source and not subject to source disclosure. Covered by the MediaTek Open Source Software Statement.
+Quectel proprietary components	Packages marked Disclose=No in package-info/openwrt-packages-package-details.tsv	Not included	Proprietary Quectel software, not open source and not subject to source disclosure.
+Prebuilt binary payloads	Packages that install prebuilt binaries, libraries or firmware only	Not included	These packages ship binary artifacts rather than buildable source.

@@ -1,0 +1,212 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.c
+@@ -40,6 +40,35 @@
+ #define ETH_FINE_DLY_GTXC	BIT(1)
+ #define ETH_FINE_DLY_RXC	BIT(0)
+ 
++/* config for mt273 bollinger */
++#define MT2737_PERI_ETH_CTRL1		0xB0C
++#define MT2737_SGMII_CLK_INTERNAL		BIT(29)
++#define MT2737_RMII_CLK_SEL		GENMASK(28, 27)
++#define MT2737_RMII_CLK_EXT_TXC		0
++#define MT2737_RMII_CLK_EXT_RXC		1
++#define MT2737_RMII_CLK_INT_RXC		2
++#define MT2737_ETH_INTF_SEL		GENMASK(26, 24)
++#define MT2737_ETH_TXC_SHIFT		BIT(22)
++#define MT2737_ETH_PHY_SEL		BIT(21)
++#define MT2737_DLY_GTXC_INV		BIT(12)
++#define MT2737_DLY_GTXC_FINE_EN		BIT(11)
++#define MT2737_DLY_GTXC_FINE_STG	GENMASK(10, 6)
++#define MT2737_PERI_ETH_CTRL2		0xB10
++#define MT2737_PPS_OUTPUT_EN		GENMASK(31, 28)
++#define MT2737_PPS3_OUTPUT_EN		BIT(31)
++#define MT2737_PPS2_OUTPUT_EN		BIT(30)
++#define MT2737_PPS1_OUTPUT_EN		BIT(29)
++#define MT2737_PPS0_OUTPUT_EN		BIT(28)
++#define MT2737_DLY_RXC_INV		BIT(25)
++#define MT2737_DLY_RXC_FINE_EN		BIT(24)
++#define MT2737_DLY_RXC_FINE_STG		GENMASK(23, 19)
++#define MT2737_PERI_ETH_CTRL3		0x113040F4
++#define MT2737_SGMII_SEL		BIT(24)
++#define MT2737_PERI_ETH_CTRL4		0x4
++#define MT2737_SNPS_MAC_REST		BIT(25)
++#define MT2737_PERI_ETH_CTRL5		0x8
++#define MT2737_SNPS_MAC_CLEAR		BIT(25)
++
+ struct mac_delay_struct {
+ 	u32 tx_delay;
+ 	u32 rx_delay;
+@@ -56,6 +85,7 @@ struct mediatek_dwmac_plat_data {
+ 	struct device *dev;
+ 	int phy_mode;
+ 	bool rmii_rxc;
++	bool rmii_int_clk;
+ };
+ 
+ struct mediatek_dwmac_variant {
+@@ -76,6 +106,10 @@ static const char * const mt2712_dwmac_c
+ 	"axi", "apb", "mac_main", "ptp_ref"
+ };
+ 
++static const char * const mt2737_dwmac_clk_l[] = {
++	"mac_main", "ptp_ref", "eth_cg", "eth_rmii"
++};
++
+ static int mt2712_set_interface(struct mediatek_dwmac_plat_data *plat)
+ {
+ 	int rmii_rxc = plat->rmii_rxc ? RMII_CLK_SRC_RXC : 0;
+@@ -212,6 +246,143 @@ static const struct mediatek_dwmac_varia
+ 		.tx_delay_max = 17600,
+ };
+ 
++static int mt2737_set_interface(struct mediatek_dwmac_plat_data *plat)
++{
++	u32 intf_val = 0, intf_val2 = 0;
++	u32 err;
++
++	const struct mediatek_dwmac_variant *variant = plat->variant;
++	regmap_read(plat->peri_regmap, MT2737_PERI_ETH_CTRL1, &intf_val);
++	regmap_read(plat->peri_regmap, MT2737_PERI_ETH_CTRL3, &intf_val2);
++
++	/* select phy interface in top control domain */
++	switch (plat->phy_mode) {
++	case PHY_INTERFACE_MODE_MII:
++		/*MII/RMII external clock*/
++		intf_val &= ~MT2737_ETH_INTF_SEL;
++		intf_val |= FIELD_PREP(MT2737_ETH_INTF_SEL, PHY_INTF_MII);
++		intf_val &= ~MT2737_ETH_TXC_SHIFT;
++		break;
++	case PHY_INTERFACE_MODE_RMII:
++		intf_val &= ~MT2737_ETH_INTF_SEL;
++		intf_val |= FIELD_PREP(MT2737_ETH_INTF_SEL, PHY_INTF_RMII);
++		intf_val &= ~MT2737_ETH_TXC_SHIFT;
++		intf_val &= ~MT2737_RMII_CLK_SEL;
++		if (plat->rmii_int_clk)
++			intf_val |= FIELD_PREP(MT2737_RMII_CLK_SEL, MT2737_RMII_CLK_INT_RXC);
++		else if (plat->rmii_rxc)
++			intf_val |= FIELD_PREP(MT2737_RMII_CLK_SEL, MT2737_RMII_CLK_EXT_RXC);
++		else
++			intf_val |= FIELD_PREP(MT2737_RMII_CLK_SEL, MT2737_RMII_CLK_EXT_TXC);
++		break;
++
++	case PHY_INTERFACE_MODE_RGMII:
++	case PHY_INTERFACE_MODE_RGMII_TXID:
++	case PHY_INTERFACE_MODE_RGMII_RXID:
++	case PHY_INTERFACE_MODE_RGMII_ID:
++		intf_val &= ~MT2737_ETH_INTF_SEL;
++		intf_val |= FIELD_PREP(MT2737_ETH_INTF_SEL, PHY_INTF_RGMII);
++		break;
++
++	default:
++		dev_err(plat->dev, "phy interface not supported\n");
++		return -EINVAL;
++	}
++
++	regmap_write(plat->peri_regmap, MT2737_PERI_ETH_CTRL1, intf_val);
++	return 0;
++}
++
++static void mt2737_delay_ps2stage(struct mediatek_dwmac_plat_data *plat)
++{
++	struct mac_delay_struct *mac_delay = &plat->mac_delay;
++
++	switch (plat->phy_mode) {
++	case PHY_INTERFACE_MODE_RGMII:
++	case PHY_INTERFACE_MODE_RGMII_TXID:
++	case PHY_INTERFACE_MODE_RGMII_RXID:
++	case PHY_INTERFACE_MODE_RGMII_ID:
++		/* 80ps per stage for RGMII */
++		mac_delay->tx_delay /= 80;
++		mac_delay->rx_delay /= 80;
++		break;
++	default:
++		dev_err(plat->dev, "phy interface not supported\n");
++		break;
++	}
++}
++
++static void mt2737_delay_stage2ps(struct mediatek_dwmac_plat_data *plat)
++{
++	struct mac_delay_struct *mac_delay = &plat->mac_delay;
++
++	switch (plat->phy_mode) {
++	case PHY_INTERFACE_MODE_RGMII:
++	case PHY_INTERFACE_MODE_RGMII_TXID:
++	case PHY_INTERFACE_MODE_RGMII_RXID:
++	case PHY_INTERFACE_MODE_RGMII_ID:
++		/* 80ps per stage for RGMII */
++		mac_delay->tx_delay *= 80;
++		mac_delay->rx_delay *= 80;
++		break;
++	default:
++		dev_err(plat->dev, "phy interface not need delay macro such as MII/RMII\n");
++		break;
++	}
++}
++
++static int mt2737_set_delay(struct mediatek_dwmac_plat_data *plat)
++{
++	struct mac_delay_struct *mac_delay = &plat->mac_delay;
++	u32 delay_val = 0, rx_delay = 0, origin_val = 0, origin_val_rx = 0;
++
++	mt2737_delay_ps2stage(plat);
++
++	regmap_read(plat->peri_regmap, MT2737_PERI_ETH_CTRL1, &origin_val);
++	delay_val = origin_val;
++
++	regmap_read(plat->peri_regmap, MT2737_PERI_ETH_CTRL2, &origin_val_rx);
++	rx_delay = origin_val_rx;
++
++	switch (plat->phy_mode) {
++	case PHY_INTERFACE_MODE_RGMII:
++	case PHY_INTERFACE_MODE_RGMII_TXID:
++	case PHY_INTERFACE_MODE_RGMII_RXID:
++	case PHY_INTERFACE_MODE_RGMII_ID:
++		delay_val &= ~(MT2737_DLY_GTXC_FINE_EN | MT2737_DLY_GTXC_INV | MT2737_DLY_GTXC_FINE_STG);
++
++		delay_val |= FIELD_PREP(MT2737_DLY_GTXC_FINE_EN, !!mac_delay->tx_delay);
++		delay_val |= FIELD_PREP(MT2737_DLY_GTXC_FINE_STG, mac_delay->tx_delay);
++		delay_val |= FIELD_PREP(MT2737_DLY_GTXC_INV, mac_delay->tx_inv);
++
++		rx_delay &= ~(MT2737_DLY_RXC_FINE_EN | MT2737_DLY_RXC_INV | MT2737_DLY_RXC_FINE_STG);
++		rx_delay |= FIELD_PREP(MT2737_DLY_RXC_FINE_EN, !!mac_delay->rx_delay);
++		rx_delay |= FIELD_PREP(MT2737_DLY_RXC_FINE_STG, mac_delay->rx_delay);
++		rx_delay |= FIELD_PREP(MT2737_DLY_RXC_INV, mac_delay->rx_inv);
++		break;
++	default:
++		dev_err(plat->dev, "phy interface not need delay macro such as MII/RMII\n");
++		return -EINVAL;
++	}
++
++	regmap_write(plat->peri_regmap, MT2737_PERI_ETH_CTRL1, delay_val);
++	regmap_write(plat->peri_regmap, MT2737_PERI_ETH_CTRL2, rx_delay);
++
++	mt2737_delay_stage2ps(plat);
++
++	return 0;
++}
++
++static const struct mediatek_dwmac_variant mt2737_gmac_variant = {
++	.dwmac_set_phy_interface = mt2737_set_interface,
++	.dwmac_set_delay = mt2737_set_delay,
++	.clk_list = mt2737_dwmac_clk_l,
++	.num_clks = ARRAY_SIZE(mt2737_dwmac_clk_l),
++	.dma_bit_mask = 32,
++	.rx_delay_max = 2800,
++	.tx_delay_max = 2800,
++};
++
+ static int mediatek_dwmac_config_dt(struct mediatek_dwmac_plat_data *plat)
+ {
+ 	struct mac_delay_struct *mac_delay = &plat->mac_delay;
+@@ -250,6 +421,10 @@ static int mediatek_dwmac_config_dt(stru
+ 	mac_delay->tx_inv = of_property_read_bool(plat->np, "mediatek,txc-inverse");
+ 	mac_delay->rx_inv = of_property_read_bool(plat->np, "mediatek,rxc-inverse");
+ 	plat->rmii_rxc = of_property_read_bool(plat->np, "mediatek,rmii-rxc");
++	plat->rmii_int_clk =
++		of_property_read_bool(plat->np, "mediatek,rmii-internal-clk");
++	if (plat->rmii_int_clk)
++		plat->rmii_rxc = 0;
+ 
+ 	return 0;
+ }

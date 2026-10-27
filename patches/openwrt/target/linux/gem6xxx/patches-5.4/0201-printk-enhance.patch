@@ -1,0 +1,122 @@
+From 1a89541cbbfd3e81dac53355f406bb06c9ccc0df Mon Sep 17 00:00:00 2001
+From: Manny Chang <manny.chang@mediatek.com>
+Date: Thu, 10 Jun 2021 12:28:06 +0800
+Subject: [PATCH 1/1] [ALPS05681537] printk: Add printk log prefix
+
+Add prefix cpu_id/status/pid/porcess_name to each kernel log.
+porting from https://gerrit.mediatek.inc/c/quark/kernel-4.19/+/2570957
+
+Change-Id: I6e8d5ff7b3784d86adc4d67a81f5585d4f0cdaca
+Signed-off-by: Manny Chang <manny.chang@mediatek.com>
+CR-Id: ALPS05681537
+Feature: printk
+---
+ kernel/printk/printk.c | 48 +++++++++++++++++++++++++++++++++++++++++-
+ lib/Kconfig.debug      |  9 ++++++++
+ 2 files changed, 56 insertions(+), 1 deletion(-)
+
+diff --git a/kernel/printk/printk.c b/kernel/printk/printk.c
+index 5d817baf1dfe..d74eabff50e6 100644
+--- a/kernel/printk/printk.c
++++ b/kernel/printk/printk.c
+@@ -62,6 +62,10 @@
+ #include "braille.h"
+ #include "internal.h"
+ 
++#ifdef CONFIG_PRINTK_PREFIX_ENHANCE
++static DEFINE_PER_CPU(char, printk_state);
++#endif
++
+ int console_printk[4] = {
+ 	CONSOLE_LOGLEVEL_DEFAULT,	/* console_loglevel */
+ 	MESSAGE_LOGLEVEL_DEFAULT,	/* default_message_loglevel */
+@@ -624,8 +628,34 @@ static int log_store(u32 caller_id, int facility, int level,
+ 	u32 size, pad_len;
+ 	u16 trunc_msg_len = 0;
+ 
++#ifdef CONFIG_PRINTK_PREFIX_ENHANCE
++	int this_cpu = smp_processor_id();
++	char state = this_cpu_read(printk_state);
++	char tbuf[50];
++	unsigned int tlen = 0;
++
++	if (state == 0) {
++		this_cpu_write(printk_state, ' ');
++		state = ' ';
++	}
++	if (!(flags & LOG_CONT)) {
++		if (console_suspended == 0)
++			tlen = snprintf(tbuf, sizeof(tbuf), "%c(%x)[%d:%s]",
++					state, this_cpu, current->pid,
++					current->comm);
++		else
++			tlen = snprintf(tbuf, sizeof(tbuf), "%c(%x)", state,
++					this_cpu);
++		tlen = (tlen > 0) ? tlen : 0;
++	}
++#endif
++
+ 	/* number of '\0' padding bytes to next message */
+-	size = msg_used_size(text_len, dict_len, &pad_len);
++#ifdef CONFIG_PRINTK_PREFIX_ENHANCE
++		size = msg_used_size(text_len + tlen, dict_len, &pad_len);
++#else
++		size = msg_used_size(text_len, dict_len, &pad_len);
++#endif
+ 
+ 	if (log_make_free_space(size)) {
+ 		/* truncate the message if it is too long for empty buffer */
+@@ -648,7 +678,16 @@ static int log_store(u32 caller_id, int facility, int level,
+ 
+ 	/* fill message */
+ 	msg = (struct printk_log *)(log_buf + log_next_idx);
++#ifdef CONFIG_PRINTK_PREFIX_ENHANCE
++	memcpy(log_text(msg), tbuf, tlen);
++	if (tlen + text_len > LOG_LINE_MAX)
++		text_len = LOG_LINE_MAX - tlen;
++
++	memcpy(log_text(msg) + tlen, text, text_len);
++	text_len += tlen;
++#else
+ 	memcpy(log_text(msg), text, text_len);
++#endif
+ 	msg->text_len = text_len;
+ 	if (trunc_msg_len) {
+ 		memcpy(log_text(msg) + text_len, trunc_msg, trunc_msg_len);
+@@ -1994,6 +2033,13 @@ asmlinkage int vprintk_emit(int facility, int level,
+ 	if (unlikely(suppress_printk))
+ 		return 0;
+ 
++#ifdef CONFIG_PRINTK_PREFIX_ENHANCE
++	if (irqs_disabled())
++		this_cpu_write(printk_state, '-');
++	else
++		this_cpu_write(printk_state, ' ');
++#endif
++
+ 	if (level == LOGLEVEL_SCHED) {
+ 		level = LOGLEVEL_DEFAULT;
+ 		in_sched = true;
+diff --git a/lib/Kconfig.debug b/lib/Kconfig.debug
+index 1d521ca94a35..10ac72959908 100644
+--- a/lib/Kconfig.debug
++++ b/lib/Kconfig.debug
+@@ -35,6 +35,15 @@ config PRINTK_CALLER
+ 	  no option to enable/disable at the kernel command line parameter or
+ 	  sysfs interface.
+ 
++config PRINTK_PREFIX_ENHANCE
++	bool "Prefix cpu_id/status/pid/process_name to each kernel log"
++	depends on PRINTK
++	help
++	  PRINTK_PREFIX_ENHANCE which is used to control whether to show
++	  other information about this log. The information include
++	  which cpu about this process in, whether in isr, pid and thread
++	  name. These information can help to analyze issue.
++
+ config CONSOLE_LOGLEVEL_DEFAULT
+ 	int "Default console loglevel (1-15)"
+ 	range 1 15
+-- 
+2.18.0
+

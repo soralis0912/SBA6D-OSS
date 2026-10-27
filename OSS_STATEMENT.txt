@@ -1,0 +1,92 @@
+RG620TSBK241106 Open Source Software Statement
+==============================================
+
+Scope
+-----
+This package provides the source code, configuration, patches and
+build-related materials for the open source software used in this
+product, in fulfilment of the applicable GPL/LGPL license obligations.
+
+It is a source disclosure package, not the complete vendor SDK.
+
+Baseline
+--------
+  Product revision : RG620TSBK00AAR03A01G4G_OCPU_01.001.01.001
+  OpenWrt          : 21.02.7 (r16847-f8282da11e)
+  Linux kernel     : 5.4.238
+  OpenWrt target   : gem6xxx / evb6990_cpe_mt7990_emmc
+  OpenWrt profile  : DEVICE_evb6990_cpe_mt7990_emmc_debug
+
+Included material
+-----------------
+1. Linux kernel source
+   - kernel/src-scrubbed/                    full 5.4.238 source tree
+   - sources/upstream-archives/linux-5.4.238.tar.xz
+   - kernel patches under patches/openwrt/target/linux/gem6xxx/patches-5.4/
+   - target overlay under buildroot/openwrt/target/linux/gem6xxx/files-5.4/
+
+2. OpenWrt build system (buildroot)
+   - buildroot/openwrt/    OpenWrt 21.02.7 core build system
+   - buildroot/feeds/      package feeds
+                             packages, luci, routing  (upstream OSS)
+                             mtk  (MediaTek components covered by the
+                                   MediaTek Open Source Software Statement)
+
+3. OpenWrt target configuration / defconfig
+   - configs/openwrt.config
+   - configs/openwrt.target.config
+   - package-info/config.buildinfo
+   - package-info/target.mk
+   - package-info/device.mk
+
+4. Kernel configuration
+   - configs/kernel.config
+   - configs/kernel.config.target
+   - configs/kernel.config-5.4.fragment
+   - kernel/.config
+
+5. Device Tree Source
+   - dts/
+
+6. GPL/LGPL package source
+   - sources/upstream-archives/       upstream source tarballs
+   - sources/source-tree-candidates/  source trees
+   - sources/package-recipes/         build recipes
+   - buildroot/feeds/                 package build recipes and patches
+
+7. Build-required files and patches
+   - patches/                         kernel and package patches
+   - patches/openwrt/target/linux/gem6xxx/patches-5.4/0990-knos-patch.patch
+                                      Keyonet kernel modifications
+   - buildroot/openwrt/feeds.conf.default
+   - package-info/build-materials-manifest.tsv
+
+8. OSS inventory and license information
+   - package-info/openwrt-packages-package-details.tsv
+     All 372 installed packages with version, architecture, license,
+     disclosure status, category and description.
+   - package-info/gpl-lgpl-package-inventory.tsv
+     GPL/LGPL components with source archive and patch references.
+   - License texts:
+       kernel/src-scrubbed/COPYING
+       kernel/src-scrubbed/LICENSES/
+       buildroot/openwrt/LICENSES/
+
+Material not included
+---------------------
+Proprietary components, signing material, prebuilt modem binaries and
+similar non-disclosable items are not included in this package.
+EXCLUSIONS_JUSTIFICATION.tsv records what was excluded and why.
+
+In package-info/openwrt-packages-package-details.tsv the "Disclose"
+column marks each package: "Yes" for open source components whose
+source is provided here (282), "No" for proprietary components not
+subject to source disclosure (90).
+
+Reference files
+---------------
+  README.txt                                     package overview
+  BUILD_INSTRUCTIONS.txt                         build guidance
+  EXCLUSIONS_JUSTIFICATION.tsv                   exclusion rationale
+  package-info/openwrt-packages-package-details.tsv   OSS inventory
+  package-info/openwrt-packages-summary.tsv      build identification

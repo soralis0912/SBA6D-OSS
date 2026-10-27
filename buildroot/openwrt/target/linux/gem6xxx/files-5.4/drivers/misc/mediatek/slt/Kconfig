@@ -1,0 +1,4 @@
+config MTK_GEM_SLT
+	bool CONFIG_MTK_GEM_SLT
+	help
+	  For SLT2 and SLT3

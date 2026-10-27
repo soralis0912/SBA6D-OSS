@@ -1,0 +1,15 @@
+#!/bin/sh /etc/rc.common
+
+START=00
+
+start() {
+	CONFIG_FILE_TAR=/data/sysupgrade.tgz
+	if [ -f $CONFIG_FILE_TAR ]; then
+		echo "Restore $CONFIG_FILE_TAR" > /dev/kmsg
+		cd /
+		tar -xzf $CONFIG_FILE_TAR
+		rm -f $CONFIG_FILE_TAR
+	else
+		echo "Restore nothing"  > /dev/kmsg
+	fi
+}

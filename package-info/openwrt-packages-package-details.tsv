@@ -1,0 +1,373 @@
+#	Package	Version	Architecture	Size (Inst.)	License	Disclose	Category	Maintainer	Description
+1	1905daemon	1	aarch64_cortex-a55_neon-vfpv4	502952	BSD 3-Clause	Yes	MTK Properties	-	wifi app daemon
+2	464xlat	12	aarch64_cortex-a55_neon-vfpv4	4905	GPL-2.0	Yes	net	Hans Dedecker <dedeckeh@gmail.com>	464xlat provides support to deploy limited IPv4 access services to mobile and wireline IPv6-only edge networks without...
+3	AFC	1	aarch64_cortex-a55_neon-vfpv4	22484	MediaTek Proprietary	No	MTK Properties	-	AFC daemon
+4	adbd_usb	1	aarch64_cortex-a55_neon-vfpv4	47094	Apache License Version 2.0	Yes	sys	Jeremy Chou <jeremy.chou@mediatek.com>	This package is for adbd (USB)
+5	aee	1.0-1	aarch64_cortex-a55_neon-vfpv4	102598	MediaTek Proprietary	No	MTK Properties	Weiwei zhang<weiwei.zhang@mediatek.com>	This package for aee.
+6	alsa-lib	1.2.4-1	aarch64_cortex-a55_neon-vfpv4	402079	LGPL-2.1-or-later	Yes	libs	Ted Hess <thess@kitschensync.net>, Peter Wagner <tripolar@gmx.at>	This is the library package for alsa, needed by some userspace programs. You must have enabled the ALSA support in the...
+7	alsa-ucm-conf	1.2.4-1	all	26584	BSD-3-Clause	Yes	libs	-	This is a set of configuration files needed for some ALS utilities like alsactl.
+8	alsa-utils	1.2.4-1	aarch64_cortex-a55_neon-vfpv4	142381	GPL-2.0-or-later	Yes	sound	Ted Hess <thess@kitschensync.net>	ALSA (Advanced Linux Sound Architecture) utilities
+9	alsa-utils-seq	1.2.4-1	aarch64_cortex-a55_neon-vfpv4	74014	GPL-2.0-or-later	Yes	sound	Ted Hess <thess@kitschensync.net>	ALSA sequencer utilities
+10	alsa-utils-tests	1.2.4-1	aarch64_cortex-a55_neon-vfpv4	895960	GPL-2.0-or-later	Yes	sound	Ted Hess <thess@kitschensync.net>	ALSA utilities test data (adds ~1.3M to image)
+11	apcli_detectd	1	aarch64_cortex-a55_neon-vfpv4	4777	MediaTek Proprietary	No	MTK Properties	-	an program to detect the connection of apclients.
+12	atci_service	1.0-1	aarch64_cortex-a55_neon-vfpv4	26764	MediaTek Proprietary	No	sys	-	This package for USB at command.
+13	atcid	1.0-1	aarch64_cortex-a55_neon-vfpv4	33950	MediaTek Proprietary	No	sys	-	This package for USB at command.
+14	ated_ext	2	aarch64_cortex-a55_neon-vfpv4	19001	MediaTek Proprietary	No	MTK Properties	-	ated_ext Daemon
+15	atf	1	aarch64_cortex-a55_neon-vfpv4	106	MediaTek Proprietary	No	firmware	-	MT6880/MT6890 ATF (ARM Trusted Firmware)
+16	audio-ctrl-service	1	aarch64_cortex-a55_neon-vfpv4	15558	MediaTek Proprietary	No	MTK Properties	-	An program to query info from audio ctrl service
+43	datconf	1	aarch64_cortex-a55_neon-vfpv4	6321	MediaTek Proprietary	No	MTK Properties	Weijie Gao <weijie.gao@mediatek.com>	Utility for editing dat files used by MediaTek Wi-Fi drivers
+18	base-files	9-r16847-f8282da11e	aarch64_cortex-a55_neon-vfpv4	57407	GPL-2.0	Yes	base	-	This package contains a base filesystem and system scripts for OpenWrt.
+19	blkid	2.36.1-2	aarch64_cortex-a55_neon-vfpv4	43478	GPL-2.0	Yes	utils	-	The blkid program is the command-line interface to working with the libblkid library.
+20	bluedroid	6.0.0	aarch64_cortex-a55_neon-vfpv4	3805935	Apache License Version 2.0	Yes	libs	-	mtk bluedroid library
+21	busybox	1.33.2-1	aarch64_cortex-a55_neon-vfpv4	281869	GPL-2.0	Yes	base	Felix Fietkau <nbd@nbd.name>	The Swiss Army Knife of embedded Linux. It slices, it dices, it makes Julian Fries.
+22	ca-bundle	20211016-1	all	113267	MPL-2.0 AND GPL-2.0-or-later	Yes	base	OpenWrt team	System CA certificates as a bundle
+23	ccci_fsd	1	aarch64_cortex-a55_neon-vfpv4	33918	MediaTek Proprietary	No	sys	Yanjie Jiang <yanjie.jiang@mediatek.com>	This package for md fsd access.
+24	ccci_mdinit	1	aarch64_cortex-a55_neon-vfpv4	9178	MediaTek Proprietary	No	sys	Weilun Liu <weilun.liu@mediatek.com>	This package for md init FSM.
+25	ccci_rpcd_com	1	aarch64_cortex-a55_neon-vfpv4	7979	MediaTek Proprietary	No	sys	Yanjie Jiang <yanjie.jiang@mediatek.com>	This package for MD query AP side settings.
+26	cgi-io	2022-08-10-901b0f04-21	aarch64_cortex-a55_neon-vfpv4	10065	GPL-2.0-or-later	Yes	net	John Crispin <blogic@openwrt.org>	This package contains an cgi utility that is useful for up/downloading files
+27	collectd	5.12.0-10	aarch64_cortex-a55_neon-vfpv4	96367	GPL-2.0	Yes	utils	Jo-Philipp Wich <jo@mein.io>, Hannu Nyman <hannu.nyman@iki.fi>	collectd is a small daemon which collects system information periodically and provides mechanismns to store the values...
+28	collectd-mod-cpu	5.12.0-10	aarch64_cortex-a55_neon-vfpv4	4652	GPL-2.0	Yes	utils	Jo-Philipp Wich <jo@mein.io>, Hannu Nyman <hannu.nyman@iki.fi>	CPU input plugin
+29	collectd-mod-curl	5.12.0-10	aarch64_cortex-a55_neon-vfpv4	19994	GPL-2.0	Yes	utils	Jo-Philipp Wich <jo@mein.io>, Hannu Nyman <hannu.nyman@iki.fi>	cURL input plugin
+30	collectd-mod-disk	5.12.0-10	aarch64_cortex-a55_neon-vfpv4	5535	GPL-2.0	Yes	utils	Jo-Philipp Wich <jo@mein.io>, Hannu Nyman <hannu.nyman@iki.fi>	disk usage/timing input plugin
+31	collectd-mod-interface	5.12.0-10	aarch64_cortex-a55_neon-vfpv4	4492	GPL-2.0	Yes	utils	Jo-Philipp Wich <jo@mein.io>, Hannu Nyman <hannu.nyman@iki.fi>	network interfaces input plugin
+32	collectd-mod-iwinfo	5.12.0-10	aarch64_cortex-a55_neon-vfpv4	4604	GPL-2.0	Yes	utils	Jo-Philipp Wich <jo@mein.io>, Hannu Nyman <hannu.nyman@iki.fi>	libiwinfo wireless statistics plugin
+33	collectd-mod-load	5.12.0-10	aarch64_cortex-a55_neon-vfpv4	2609	GPL-2.0	Yes	utils	Jo-Philipp Wich <jo@mein.io>, Hannu Nyman <hannu.nyman@iki.fi>	system load input plugin
+34	collectd-mod-memory	5.12.0-10	aarch64_cortex-a55_neon-vfpv4	3289	GPL-2.0	Yes	utils	Jo-Philipp Wich <jo@mein.io>, Hannu Nyman <hannu.nyman@iki.fi>	physical memory usage input plugin
+35	collectd-mod-network	5.12.0-10	aarch64_cortex-a55_neon-vfpv4	16403	GPL-2.0	Yes	utils	Jo-Philipp Wich <jo@mein.io>, Hannu Nyman <hannu.nyman@iki.fi>	network input/output plugin
+36	collectd-mod-ping	5.12.0-10	aarch64_cortex-a55_neon-vfpv4	6074	GPL-2.0	Yes	utils	Jo-Philipp Wich <jo@mein.io>, Hannu Nyman <hannu.nyman@iki.fi>	ping status input plugin
+37	collectd-mod-rrdtool	5.12.0-10	aarch64_cortex-a55_neon-vfpv4	11953	GPL-2.0	Yes	utils	Jo-Philipp Wich <jo@mein.io>, Hannu Nyman <hannu.nyman@iki.fi>	RRDtool output plugin
+38	collectd-mod-uptime	5.12.0-10	aarch64_cortex-a55_neon-vfpv4	2197	GPL-2.0	Yes	utils	Jo-Philipp Wich <jo@mein.io>, Hannu Nyman <hannu.nyman@iki.fi>	uptime status input plugin
+39	collectd-mod-vmem	5.12.0-10	aarch64_cortex-a55_neon-vfpv4	3491	GPL-2.0	Yes	utils	Jo-Philipp Wich <jo@mein.io>, Hannu Nyman <hannu.nyman@iki.fi>	virtual memory usage input plugin
+40	connsyslogD	1	aarch64_cortex-a55_neon-vfpv4	41427	MediaTek Proprietary	No	sys	-	This package for connsyslogD.
+41	conntrack	1.4.6-3	aarch64_cortex-a55_neon-vfpv4	22437	GPL-2.0-or-later	Yes	net	Jo-Philipp Wich <jo@mein.io>	Conntrack is a userspace command line program targeted at system administrators. It enables them to view and manage the...
+42	curl	7.83.1-5.1	aarch64_cortex-a55_neon-vfpv4	57615	MIT	Yes	net	Stan Grishin <stangri@melmac.ca>	A client-side URL transfer utility
+44	datconf-lua	1	aarch64_cortex-a55_neon-vfpv4	6676	MediaTek Proprietary	No	MTK Properties	Weijie Gao <weijie.gao@mediatek.com>	Lua plugin for datconf
+45	dconfig	1.0-1	aarch64_cortex-a55_neon-vfpv4	25241	MediaTek Proprietary	No	MTK Properties	-	doeapp/dconfig -utils.
+61	gps_fw	1.0.0-1	aarch64_cortex-a55_neon-vfpv4	105	MediaTek Proprietary	No	MTK Properties	-	GNSS Firmware
+46	ddns-scripts	2.8.2-12	all	23778	GPL-2.0	Yes	net	-	Dynamic DNS Client scripts (with IPv6 support) A highly configurable set of scripts for doing dynamic dns updates. -...
+47	ddns-scripts-services	2.8.2-12	all	3992	GPL-2.0	Yes	net	-	Dynamic DNS Client definitions for supported services
+48	dnsmasq	2.85-3	aarch64_cortex-a55_neon-vfpv4	135498	GPL-2.0	Yes	net	-	It is intended to provide coupled DNS and DHCP service to a LAN.
+49	dpm	1	aarch64_cortex-a55_neon-vfpv4	104	MediaTek Proprietary	No	opt	-	DPM is the dram power management module for MTK chipset
+50	dropbear	2020.81-2	aarch64_cortex-a55_neon-vfpv4	106746	MIT	Yes	net	-	A small SSH2 server/client designed for small memory environments.
+51	dtc	1.6.0-1	aarch64_cortex-a55_neon-vfpv4	46054	GPL-2.0	Yes	utils	Yousong Zhou <yszhou4tech@gmail.com>	Device Tree Compiler for Flat Device Trees Device Tree Compiler, dtc, takes as input a device-tree in a given format...
+52	e2fsprogs	1.45.6-2	aarch64_cortex-a55_neon-vfpv4	185993	GPL-2.0	Yes	utils	-	This package contains essential ext2 filesystem utilities which consists of e2fsck, mke2fs and most of the other core...
+53	ebtables	2018-06-27-48cff25d-1	aarch64_cortex-a55_neon-vfpv4	81777	GPL-2.0	Yes	net	-	The ebtables program is a filtering tool for a bridging firewall. The filtering is focussed on the Link Layer Ethernet...
+54	ebtables-utils	2018-06-27-48cff25d-1	aarch64_cortex-a55_neon-vfpv4	4133	GPL-2.0	Yes	net	-	The ebtables program is a filtering tool for a bridging firewall. The filtering is focussed on the Link Layer Ethernet...
+63	hwnat	1	aarch64_cortex-a55_neon-vfpv4	9350	MediaTek Proprietary	No	MTK Properties	-	An program to query info from hwnat driver
+56	ethtool	5.10-1	aarch64_cortex-a55_neon-vfpv4	42031	GPL-2.0	Yes	net	Felix Fietkau <nbd@nbd.name>	ethtool is a small utility for examining and tuning your ethernet-based network interface
+57	firewall	2021-03-23-61db17ed-1.1	aarch64_cortex-a55_neon-vfpv4	53902	ISC	Yes	net	Jo-Philipp Wich <jo@mein.io>	This package provides a config-compatible C implementation of the UCI firewall.
+58	fstools	2021-01-04-c53b1882-1	aarch64_cortex-a55_neon-vfpv4	19896	GPL-2.0	Yes	base	John Crispin <john@phrozen.org>	OpenWrt filesystem tools
+59	fwtool	2019-11-12-8f7fe925-1	aarch64_cortex-a55_neon-vfpv4	4862	GPL-2.0	Yes	utils	Felix Fietkau <nbd@nbd.name>	Utility for appending and extracting firmware metadata and signatures
+60	getrandom	2020-10-25-9ef88681-2	aarch64_cortex-a55_neon-vfpv4	2202	GPL-2.0	Yes	base	John Crispin <john@phrozen.org>	OpenWrt getrandom system helper
+78	kmod-btmtk_uart	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	567476	MediaTek Proprietary	No	MTK Properties	-	BT uart driver
+62	hostapd-common	2022-07-29-b704dc72-11.1	aarch64_cortex-a55_neon-vfpv4	17206	BSD-3-Clause	Yes	net	Felix Fietkau <nbd@nbd.name>	hostapd/wpa_supplicant common support files
+149	lbs_em	1	aarch64_cortex-a55_neon-vfpv4	242470	Apache-2.0 AND MIT-V2	Yes	MTK Properties	-	MTK LBS Engineer Tool
+64	ip-bridge	5.11.0-3	aarch64_cortex-a55_neon-vfpv4	30173	GPL-2.0	Yes	net	Russell Senior <russell@personaltelco.net>	Bridge configuration utility from iproute2
+65	ip-tiny	5.11.0-3	aarch64_cortex-a55_neon-vfpv4	151618	GPL-2.0	Yes	net	Russell Senior <russell@personaltelco.net>	Routing control utility (minimal)
+66	ip6tables	1.8.7-1	aarch64_cortex-a55_neon-vfpv4	215	GPL-2.0	Yes	net	-	IPv6 firewall administration tool
+67	iperf	2.0.13-2	aarch64_cortex-a55_neon-vfpv4	45560	BSD-3-Clause	Yes	net	Felix Fietkau <nbd@nbd.name>	Iperf is a modern alternative for measuring TCP and UDP bandwidth performance, allowing the tuning of various...
+68	iperf3	3.10.1-1	aarch64_cortex-a55_neon-vfpv4	50578	BSD-3-Clause	Yes	net	Felix Fietkau <nbd@nbd.name>	Iperf is a modern alternative for measuring TCP and UDP bandwidth performance, allowing the tuning of various...
+69	ipset	7.6-1	aarch64_cortex-a55_neon-vfpv4	1867	GPL-2.0	Yes	net	Jo-Philipp Wich <jo@mein.io>	IPset administration utility
+70	iptables	1.8.7-1	aarch64_cortex-a55_neon-vfpv4	26476	GPL-2.0	Yes	net	-	IP firewall administration tool.
+71	iptables-mod-conntrack-extra	1.8.7-1	aarch64_cortex-a55_neon-vfpv4	14418	GPL-2.0	Yes	net	-	Extra iptables extensions for connection tracking.
+72	iptables-mod-ipopt	1.8.7-1	aarch64_cortex-a55_neon-vfpv4	18928	GPL-2.0	Yes	net	-	iptables extensions for matching/changing IP packet options.
+73	iw	5.19-1	aarch64_cortex-a55_neon-vfpv4	57600	GPL-2.0	Yes	net	Felix Fietkau <nbd@nbd.name>	cfg80211 interface configuration utility
+74	iwinfo	2023-07-01-ca79f641-1	aarch64_cortex-a55_neon-vfpv4	8089	GPL-2.0	Yes	utils	Jo-Philipp Wich <jo@mein.io>	Command line frontend for the wireless information library.
+75	jshn	2021-05-16-b14c4688-2	aarch64_cortex-a55_neon-vfpv4	7271	ISC	Yes	utils	Felix Fietkau <nbd@nbd.name>	Library for parsing and generating JSON from shell scripts
+76	jsonfilter	2018-02-04-c7e938d6-1	aarch64_cortex-a55_neon-vfpv4	10889	ISC	Yes	base	Jo-Philipp Wich <jo@mein.io>	OpenWrt JSON filter utility
+77	kernel	5.4.238-1-d55d2fc2afb1d8c27093c15e4eb2acc4	aarch64_cortex-a55_neon-vfpv4	104	GPL-2.0	Yes	sys	-	Virtual kernel package
+153	libaudioparamparser	1	aarch64_cortex-a55_neon-vfpv4	166481	Multi-Licensed OSS	Yes	MTK Properties	-	An program to query info from audio mixer control
+79	kmod-cfg80211	5.4.238+5.15.81-1-1	aarch64_cortex-a55_neon-vfpv4	160706	Dual BSD/GPL	Yes	kernel	Felix Fietkau <nbd@nbd.name>	cfg80211 is the Linux wireless LAN (802.11) configuration API.
+80	kmod-connac_if	5.4.238+TEST-1	aarch64_cortex-a55_neon-vfpv4	8857	Dual BSD/GPL	Yes	kernel	-	MediaTek HWIFI CONNAC3 layer driver
+81	kmod-conninfra	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	116634	MediaTek Proprietary	No	kernel	YL Wang <yl.wang@mediatek.com>	Support for connectivity conninfra driver.
+82	kmod-crypto-aead	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	234	GPL-2.0	Yes	kernel	-	CryptoAPI AEAD support
+83	kmod-crypto-authenc	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	195	GPL-2.0	Yes	kernel	-	Combined mode wrapper for IPsec
+84	kmod-crypto-crc32c	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	244	GPL-2.0	Yes	kernel	-	CRC32c CRC module
+85	kmod-crypto-hash	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	239	GPL-2.0	Yes	kernel	-	CryptoAPI hash support
+86	kmod-crypto-manager	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	241	GPL-2.0	Yes	kernel	-	CryptoAPI algorithm manager
+87	kmod-crypto-null	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	195	GPL-2.0	Yes	kernel	-	Null CryptoAPI module
+88	kmod-crypto-pcompress	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	104	GPL-2.0	Yes	kernel	-	CryptoAPI Partial (de)compression operations
+89	kmod-crypto-user	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	20808	GPL-2.0	Yes	kernel	-	CryptoAPI userspace interface
+90	kmod-cryptodev	5.4.238+1.12-gem6xxx-2	aarch64_cortex-a55_neon-vfpv4	23034	GPL-2.0	Yes	kernel	Ansuel Smith <ansuelsmth@gmail.com>	This is a driver for that allows to use the Linux kernel supported hardware ciphers by user-space applications.
+91	kmod-ebtables	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	27744	GPL-2.0	Yes	kernel	-	ebtables is a general, extensible frame/packet identification framework. It provides you to do Ethernet...
+92	kmod-ebtables-ipv4	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	4699	GPL-2.0	Yes	kernel	-	This option adds the IPv4 support to ebtables, which allows basic IPv4 header field filtering, ARP filtering as well as...
+93	kmod-ebtables-ipv6	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	2083	GPL-2.0	Yes	kernel	-	This option adds the IPv6 support to ebtables, which allows basic IPv6 header field filtering and target support.
+94	kmod-ebtables-watchers	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	3922	GPL-2.0	Yes	kernel	-	This option adds the log watchers, that you can use in any rule in any ebtables table.
+95	kmod-fs-autofs4	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	18228	GPL-2.0	Yes	kernel	-	Kernel module for AutoFS4 support
+96	kmod-fs-ext4	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	240	GPL-2.0	Yes	kernel	-	Kernel module for EXT4 filesystem support
+97	kmod-gps_drv	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	94007	GPL-2.0	Yes	kernel	Hua Fu <Hua.Fu@mediatek.com>	Support for MTK MT6880 GPS.
+98	kmod-gre	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	11405	GPL-2.0	Yes	kernel	-	Generic Routing Encapsulation support
+99	kmod-gre6	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	15306	GPL-2.0	Yes	kernel	-	Generic Routing Encapsulation support over IPv6
+100	kmod-hw_nat	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	110754	MediaTek Proprietary	No	kernel	-	MTK hw_nat driver
+101	kmod-ifb	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	4276	GPL-2.0	Yes	kernel	-	The Intermediate Functional Block
+102	kmod-input-core	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	104	GPL-2.0	Yes	kernel	-	Kernel modules for support of input device
+103	kmod-ip6-tunnel	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	18879	GPL-2.0	Yes	kernel	-	Kernel modules for IPv6-in-IPv6 and IPv4-in-IPv6 tunnelling
+104	kmod-ip6tables	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	7398	GPL-2.0	Yes	kernel	-	Netfilter IPv6 firewalling support
+105	kmod-ipt-conntrack	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	5926	GPL-2.0	Yes	kernel	-	Netfilter (IPv4) kernel modules for connection tracking Includes: - conntrack - defrag - iptables_raw - NOTRACK - state
+106	kmod-ipt-conntrack-extra	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	17733	GPL-2.0	Yes	kernel	-	Netfilter (IPv4) extra kernel modules for connection tracking Includes: - connbytes - connmark/CONNMARK - conntrack -...
+107	kmod-ipt-core	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	20636	GPL-2.0	Yes	kernel	-	Netfilter core kernel modules Includes: - comment - limit - LOG - mac - multiport - REJECT - TCPMSS
+108	kmod-ipt-ipopt	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	8513	GPL-2.0	Yes	kernel	-	Netfilter (IPv4) modules for matching/changing IP packet options Includes: - CLASSIFY - dscp/DSCP - ecn/ECN - hl/HL -...
+109	kmod-ipt-ipset	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	170075	GPL-2.0	Yes	kernel	-	IPset netfilter modules
+110	kmod-ipt-nat	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	5118	GPL-2.0	Yes	kernel	-	Netfilter (IPv4) kernel modules for basic NAT targets Includes: - MASQUERADE
+111	kmod-ipt-raw	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	2144	GPL-2.0	Yes	kernel	-	Netfilter IPv4 raw table support
+112	kmod-iptunnel	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	192	GPL-2.0	Yes	kernel	-	Kernel module for generic IP tunnel support
+113	kmod-iptunnel6	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	2576	GPL-2.0	Yes	kernel	-	Kernel modules for IPv6 tunneling
+114	kmod-lib-crc-ccitt	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	2389	GPL-2.0	Yes	kernel	-	Kernel module for CRC-CCITT support
+115	kmod-lib-crc16	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	231	GPL-2.0	Yes	kernel	-	Kernel module for CRC16 support
+116	kmod-libphy	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	230	GPL-2.0	Yes	kernel	-	PHY library
+117	kmod-mapfilter	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	29618	Dual BSD/GPL-2.0	Yes	kernel	-	MTK map filter
+118	kmod-mt7990	5.4.238+TEST-1	aarch64_cortex-a55_neon-vfpv4	8919	Dual BSD/GPL-2.0	Yes	kernel	-	MediaTek HWIFI MT7990 driver
+119	kmod-mt7991	5.4.238+TEST-1	aarch64_cortex-a55_neon-vfpv4	5547	Dual BSD/GPL-2.0	Yes	kernel	-	MediaTek HWIFI MT7991 driver
+120	kmod-mt_cfg80211	5.4.238+TEST-1	aarch64_cortex-a55_neon-vfpv4	194	Dual BSD/GPL-2.0	Yes	kernel	-	Virtual kernel package for cfg80211
+121	kmod-mt_hwifi	5.4.238+TEST-1	aarch64_cortex-a55_neon-vfpv4	5515554	Dual BSD/GPL-2.0	Yes	kernel	-	Provide HW abstraction layer for mt_wifi7(CONNAC3), mac80211 driver
+122	kmod-mt_wifi7	5.4.238+1.0-1	aarch64_cortex-a55_neon-vfpv4	4192736	Dual BSD/GPL-2.0	Yes	kernel	-	MTK wifi7 AP driver
+123	kmod-mt_wifi_cmn	5.4.238+TEST-1	aarch64_cortex-a55_neon-vfpv4	4927	Dual BSD/GPL-2.0	Yes	kernel	-	MTK wifi common layer
+124	kmod-mtk_pci	5.4.238+TEST-1	aarch64_cortex-a55_neon-vfpv4	20817	Dual BSD/GPL-2.0	Yes	kernel	-	MediaTek HWIFI PCI driver
+125	kmod-mtk_wed	5.4.238+TEST-1	aarch64_cortex-a55_neon-vfpv4	8074	Dual BSD/GPL-2.0	Yes	kernel	-	MediaTek HWIFI WED driver
+126	kmod-nat46	5.4.238+2020-08-17-362640b4-1	aarch64_cortex-a55_neon-vfpv4	17302	GPL-2.0	Yes	kernel	Hans Dedecker <dedeckeh@gmail.com>	Stateless NAT46 translation kernel module
+127	kmod-nf-conntrack	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	55096	GPL-2.0	Yes	kernel	-	Netfilter connection tracking
+128	kmod-nf-conntrack-netlink	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	15818	GPL-2.0	Yes	kernel	-	Kernel modules support for a netlink-based connection tracking userspace interface
+129	kmod-nf-conntrack6	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	104	GPL-2.0	Yes	kernel	-	Netfilter IPv6 connection tracking
+130	kmod-nf-ipt	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	27801	GPL-2.0	Yes	kernel	-	Iptables core
+131	kmod-nf-ipt6	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	12656	GPL-2.0	Yes	kernel	-	Ip6tables core
+132	kmod-nf-nat	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	16722	GPL-2.0	Yes	kernel	-	Netfilter NAT
+133	kmod-nf-reject	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	2764	GPL-2.0	Yes	kernel	-	Netfilter IPv4 reject support
+134	kmod-nf-reject6	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	3149	GPL-2.0	Yes	kernel	-	Netfilter IPv6 reject support
+135	kmod-nfnetlink	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	5299	GPL-2.0	Yes	kernel	-	Kernel modules support for a netlink-based userspace interface
+136	kmod-phy-air_en8811h	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	48898	GPL-2.0	Yes	kernel	-	Supports the Airoha EN8811H PHY.
+137	kmod-ppp	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	8086	GPL-2.0	Yes	kernel	-	Kernel modules for PPP support
+138	kmod-pppoe	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	8696	GPL-2.0	Yes	kernel	-	Kernel module for PPPoE (PPP over Ethernet) support
+139	kmod-pppox	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	104	GPL-2.0	Yes	kernel	-	Kernel helper module for PPPoE and PPTP support
+140	kmod-sched-connmark	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	4281	GPL-2.0	Yes	kernel	-	Traffic shaper conntrack mark support
+141	kmod-sched-core	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	30061	GPL-2.0	Yes	kernel	-	Core kernel scheduler support for IP traffic
+142	kmod-slhc	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	104	GPL-2.0	Yes	kernel	-	Serial Line Header Compression
+143	kmod-sound-core	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	42434	GPL-2.0	Yes	kernel	-	Kernel modules for sound support
+144	kmod-tun	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	184	GPL-2.0	Yes	kernel	-	Kernel support for the TUN/TAP tunneling device
+145	kmod-usb_net	5.4.238-1	aarch64_cortex-a55_neon-vfpv4	41199	GPL-2.0	Yes	kernel	-	Support MTK USB Network (ex: RNDIS, ECM, NCM, MBIM)
+146	kmod-warp	5.4.238+1.0-1	aarch64_cortex-a55_neon-vfpv4	249195	Dual BSD/GPL-2.0	Yes	kernel	-	MTK warp driver
+147	kmod-wifi_md_coex	5.4.238+1.0-1	aarch64_cortex-a55_neon-vfpv4	11834	MediaTek Proprietary	No	kernel	-	MTK wifi_md_coex
+148	kvcedit	1	aarch64_cortex-a55_neon-vfpv4	4400	MediaTek Proprietary	No	util	Weijie Gao <weijie.gao@mediatek.com>	Utility for editing key-value based config files
+163	libdtmf_detect	1	aarch64_cortex-a55_neon-vfpv4	9539	MediaTek Proprietary	No	MTK Properties	-	An program to detect DTMF
+150	ldd_symlink	1	aarch64_cortex-a55_neon-vfpv4	175	MediaTek Proprietary	No	sys	-	Add ldd symlink when external toolchain is used
+189	libmapd	1	aarch64_cortex-a55_neon-vfpv4	15616	MediaTek Proprietary	No	MTK Properties	-	mtk mapd library
+152	libatomic1	-3	aarch64_cortex-a55_neon-vfpv4	7645	GPL-3.0-with-GCC-exception	Yes	libs	Felix Fietkau <nbd@nbd.name>	Atomic support library
+192	libmnl_gnss	1.0.0-1	aarch64_cortex-a55_neon-vfpv4	3739589	MediaTek Proprietary	No	MTK Properties	-	libmnl_gnss is the algorithm library of MediaTek GNSS.
+154	libblkid1	2.36.1-2	aarch64_cortex-a55_neon-vfpv4	131786	GPL-2.0	Yes	libs	-	The libblkid library is used to identify block devices (disks) as to their content (e.g. filesystem type, partitions)...
+155	libblobmsg-json20210516	2021-05-16-b14c4688-2	aarch64_cortex-a55_neon-vfpv4	4514	ISC	Yes	libs	Felix Fietkau <nbd@nbd.name>	blobmsg <-> json conversion library
+156	libbz2-1.0	1.0.8-1	aarch64_cortex-a55_neon-vfpv4	26586	bzip2-1.0.8	Yes	libs	Steven Barth <cyrus@openwrt.org>	bzip2 is a freely available, patent free, high-quality data compressor. This packages provides libbz2 library.
+157	libc	-3	aarch64_cortex-a55_neon-vfpv4	297863	GPL-3.0-with-GCC-exception	Yes	libs	Felix Fietkau <nbd@nbd.name>	C library
+158	libcap-ng	0.8.1-1	aarch64_cortex-a55_neon-vfpv4	8439	GPL-2.0-or-later LGPL-2.1-or-later	Yes	libs	Lucian CRISTIAN <lucian.cristian@gmail.com>	POSIX capabilities library library
+159	libcares	1.17.2-1	aarch64_cortex-a55_neon-vfpv4	38643	MIT	Yes	libs	Karl Palsson <karlp@etactica.com>	c-ares is a C library for asynchronous DNS requests (including name resolves)
+160	libccci	0.1-1	aarch64_cortex-a55_neon-vfpv4	9871	LGPL-2.0	Yes	libs	-	This package is a ccci lib provided for user
+161	libcomerr0	1.45.6-2	aarch64_cortex-a55_neon-vfpv4	4696	GPL-2.0	Yes	libs	-	This package contains libcom_err, the common error description library bundled with e2fsprogs.
+162	libcurl4	7.83.1-5.1	aarch64_cortex-a55_neon-vfpv4	166269	MIT	Yes	libs	Stan Grishin <stangri@melmac.ca>	A client-side URL transfer library
+193	libmodemafectrl	1	aarch64_cortex-a55_neon-vfpv4	12190	MediaTek Proprietary	No	MTK Properties	-	An program to query info from audio mixer control
+164	libdw1	0.180-1	aarch64_cortex-a55_neon-vfpv4	222404	GPL-3.0-or-later	Yes	libs	Luiz Angelo Daros de Luca <luizluca@gmail.com>	ELF manipulation libraries (libdw)
+165	libelf1	0.180-1	aarch64_cortex-a55_neon-vfpv4	41612	GPL-3.0-or-later	Yes	libs	Luiz Angelo Daros de Luca <luizluca@gmail.com>	ELF manipulation libraries (libelf)
+166	libevent2-7	2.1.12-1	aarch64_cortex-a55_neon-vfpv4	111070	BSD-3-Clause	Yes	libs	Jo-Philipp Wich <jo@mein.io>	The libevent API provides a mechanism to execute a callback function when a specific event occurs on a file descriptor...
+167	libevent2-core7	2.1.12-1	aarch64_cortex-a55_neon-vfpv4	64779	BSD-3-Clause	Yes	libs	Jo-Philipp Wich <jo@mein.io>	The libevent API provides a mechanism to execute a callback function when a specific event occurs on a file descriptor...
+168	libevent2-extra7	2.1.12-1	aarch64_cortex-a55_neon-vfpv4	50553	BSD-3-Clause	Yes	libs	Jo-Philipp Wich <jo@mein.io>	The libevent API provides a mechanism to execute a callback function when a specific event occurs on a file descriptor...
+169	libevent2-openssl7	2.1.12-1	aarch64_cortex-a55_neon-vfpv4	8840	BSD-3-Clause	Yes	libs	Jo-Philipp Wich <jo@mein.io>	The libevent API provides a mechanism to execute a callback function when a specific event occurs on a file descriptor...
+170	libevent2-pthreads7	2.1.12-1	aarch64_cortex-a55_neon-vfpv4	2466	BSD-3-Clause	Yes	libs	Jo-Philipp Wich <jo@mein.io>	The libevent API provides a mechanism to execute a callback function when a specific event occurs on a file descriptor...
+171	libext2fs2	1.45.6-2	aarch64_cortex-a55_neon-vfpv4	181143	GPL-2.0	Yes	libs	-	libext2fs is a library which can access ext2, ext3 and ext4 filesystems.
+172	libgcc1	-3	aarch64_cortex-a55_neon-vfpv4	35628	GPL-3.0-with-GCC-exception	Yes	libs	Felix Fietkau <nbd@nbd.name>	GCC support library
+173	libgd	2.3.0-3	aarch64_cortex-a55_neon-vfpv4	92661	MIT	Yes	libs	Jo-Philipp Wich <jo@mein.io>	GD is an open source code library for the dynamic creation of images by programmers. GD creates PNG, JPEG and GIF...
+174	libip4tc2	1.8.7-1	aarch64_cortex-a55_neon-vfpv4	23758	GPL-2.0	Yes	libs	-	IPv4 firewall - shared libiptc library
+175	libip6tc2	1.8.7-1	aarch64_cortex-a55_neon-vfpv4	23683	GPL-2.0	Yes	libs	-	IPv6 firewall - shared libiptc library
+176	libipset13	7.6-1	aarch64_cortex-a55_neon-vfpv4	48038	GPL-2.0	Yes	net	Jo-Philipp Wich <jo@mein.io>	IPset administration utility
+177	libiwinfo-data	2023-07-01-ca79f641-1	aarch64_cortex-a55_neon-vfpv4	3063	GPL-2.0	Yes	opt	Jo-Philipp Wich <jo@mein.io>	libiwinfo Lua binding
+178	libiwinfo-lua	2023-07-01-ca79f641-1	aarch64_cortex-a55_neon-vfpv4	7174	GPL-2.0	Yes	lang	Jo-Philipp Wich <jo@mein.io>	This is the Lua binding for the iwinfo library. It provides access to all enabled backends.
+179	libiwinfo20230701	2023-07-01-ca79f641-1	aarch64_cortex-a55_neon-vfpv4	28884	GPL-2.0	Yes	libs	Jo-Philipp Wich <jo@mein.io>	Wireless information library with simplified API for nl80211 and wext driver interfaces.
+180	libjpeg-turbo	2.0.6-1	aarch64_cortex-a55_neon-vfpv4	95705	BSD-3-Clause IJG zlib	Yes	libs	Rosen Penev <rosenp@gmail.com>	libjpeg-turbo is a speed focused fork of libjpeg.
+181	libjson-c5	0.15-2	aarch64_cortex-a55_neon-vfpv4	29180	MIT	Yes	libs	Felix Fietkau <nbd@nbd.name>	This package contains a library for javascript object notation backends.
+182	libjson-script20210516	2021-05-16-b14c4688-2	aarch64_cortex-a55_neon-vfpv4	5931	ISC	Yes	utils	Felix Fietkau <nbd@nbd.name>	Minimalistic JSON based scripting engine
+183	libkvcutil	1	aarch64_cortex-a55_neon-vfpv4	7562	MediaTek Proprietary	No	libs	Weijie Gao <weijie.gao@mediatek.com>	C library for Key-value based config files
+184	libltdl7	2.4.6-2	aarch64_cortex-a55_neon-vfpv4	15752	GPL-2.0+	Yes	libs	-	A generic dynamic object loading library
+185	liblua5.1.5	5.1.5-9	aarch64_cortex-a55_neon-vfpv4	78539	MIT	Yes	libs	Jo-Philipp Wich <jo@mein.io>	Lua is a powerful light-weight programming language designed for extending applications. Lua is also frequently used as...
+186	liblucihttp-lua	2021-06-11-3dc89af4-1	aarch64_cortex-a55_neon-vfpv4	3941	ISC	Yes	libs	Jo-Philipp Wich <jo@mein.io>	Lua binding for the LuCI HTTP utility library
+187	liblucihttp0	2021-06-11-3dc89af4-1	aarch64_cortex-a55_neon-vfpv4	8349	ISC	Yes	libs	Jo-Philipp Wich <jo@mein.io>	LuCI HTTP utility library
+188	liblzo2	2.10-4	aarch64_cortex-a55_neon-vfpv4	39599	GPL-2.0-or-later	Yes	libs	-	LZO is a data compression library which is suitable for data de-/compression in real-time. This means it favours speed...
+194	libmtk_audio_mixer_ctrl	1	aarch64_cortex-a55_neon-vfpv4	342794	MediaTek Proprietary	No	MTK Properties	-	An program to query info from audio mixer control
+190	libmbedtls12	2.16.12-1	aarch64_cortex-a55_neon-vfpv4	199416	GPL-2.0-or-later	Yes	libs	-	The aim of the mbedtls project is to provide a quality, open-source cryptographic library written in C and targeted at...
+191	libmnl0	1.0.4-2	aarch64_cortex-a55_neon-vfpv4	7741	LGPL-2.1+	Yes	libs	Jo-Philipp Wich <jo@mein.io>	libmnl is a minimalistic user-space library oriented to Netlink developers. There are a lot of common tasks in parsing,...
+226	libspeech_drv	1	aarch64_cortex-a55_neon-vfpv4	249624	MediaTek Proprietary	No	MTK Properties	-	speech driver controled by audio ctrl service
+246	log_controld	1	aarch64_cortex-a55_neon-vfpv4	13583	MediaTek Proprietary	No	MTK Properties	-	This is log control daemon to control logs start or stop
+248	lppe_service	1	aarch64_cortex-a55_neon-vfpv4	55511	BSD-3-Clause AND Apache-2.0	Yes	MTK Properties	-	This is LPPe Service daemon
+195	libnandapi	1	aarch64_cortex-a55_neon-vfpv4	6020	GPL-2.0	Yes	libs	-	NAND API library
+196	libncurses6	6.2-3	aarch64_cortex-a55_neon-vfpv4	186125	MIT	Yes	libs	-	Terminal handling library (Unicode)
+197	libnetagent	1.0-1	aarch64_cortex-a55_neon-vfpv4	76474	MediaTek Proprietary	No	libs	-	netagent library
+198	libnetfilter-conntrack3	1.0.8-1	aarch64_cortex-a55_neon-vfpv4	39394	GPL-2.0-or-later	Yes	libs	Jo-Philipp Wich <jo@mein.io>	libnetfilter_conntrack is a userspace library providing a programming interface (API) to the in-kernel connection...
+199	libnetfilter-cthelper0	1.0.0-2	aarch64_cortex-a55_neon-vfpv4	4856	GPL-2.0+	Yes	libs	-	libnetfilter_cthelper is a userspace library providing a programming interface (API) to the in-kernel connection...
+200	libnetfilter-cttimeout1	1.0.0-2	aarch64_cortex-a55_neon-vfpv4	4994	GPL-2.0+	Yes	libs	-	libnetfilter_cttimeout is a userspace library providing a programming interface (API) to the in-kernel connection...
+201	libnetfilter-queue1	1.0.5-4	aarch64_cortex-a55_neon-vfpv4	11336	GPL-2.0-or-later	Yes	libs	-	libnetfilter_queue is a userspace library providing a programming interface (API) to packets that have been queued by...
+202	libnfnetlink0	1.0.1-4	aarch64_cortex-a55_neon-vfpv4	11045	GPL-2.0+	Yes	libs	Jo-Philipp Wich <jo@mein.io>	libnfnetlink is is the low-level library for netfilter related kernel/userspace communication. It provides a generic...
+203	libnghttp2-14	1.43.0-1	aarch64_cortex-a55_neon-vfpv4	71546	MIT	Yes	libs	Hans Dedecker <dedeckeh@gmail.com>	C library implementing the framing layer of the HTTP/2 protocol. It can be used to build a HTTP/2-capable HTTP client...
+204	libnl-core200	3.5.0-1	aarch64_cortex-a55_neon-vfpv4	44940	LGPL-2.1	Yes	libs	-	Common code for all netlink libraries
+205	libnl-genl200	3.5.0-1	aarch64_cortex-a55_neon-vfpv4	9029	LGPL-2.1	Yes	libs	-	Generic Netlink Library Functions
+206	libnl-tiny1	2023-07-27-bc92a280-1	aarch64_cortex-a55_neon-vfpv4	17590	LGPL-2.1	Yes	libs	Felix Fietkau <nbd@nbd.name>	This package contains a stripped down version of libnl
+207	libopenssl-afalg	1.1.1t-2	aarch64_cortex-a55_neon-vfpv4	6178	OpenSSL	Yes	libs	Eneas U de Queiroz <cotequeiroz@gmail.com>	This package adds an engine that enables hardware acceleration through the AF_ALG kernel interface. To use it, you need...
+208	libopenssl-conf	1.1.1t-2	aarch64_cortex-a55_neon-vfpv4	4784	OpenSSL	Yes	libs	Eneas U de Queiroz <cotequeiroz@gmail.com>	The OpenSSL Project is a collaborative effort to develop a robust, commercial-grade, full-featured, and Open Source...
+209	libopenssl1.1	1.1.1t-2	aarch64_cortex-a55_neon-vfpv4	1297820	OpenSSL	Yes	libs	Eneas U de Queiroz <cotequeiroz@gmail.com>	The OpenSSL Project is a collaborative effort to develop a robust, commercial-grade, full-featured, and Open Source...
+210	liboping	1.10.0-2	aarch64_cortex-a55_neon-vfpv4	8349	LGPL-2.1-or-later	Yes	libs	Jo-Philipp Wich <jo@mein.io>	C library to generate ICMP echo requests.
+211	libpcap1	1.9.1-3.1	aarch64_cortex-a55_neon-vfpv4	101545	BSD-3-Clause	Yes	libs	Felix Fietkau <nbd@nbd.name>	This package contains a system-independent library for user-level network packet capture.
+212	libpcre	8.44-3	aarch64_cortex-a55_neon-vfpv4	82025	BSD-3-Clause	Yes	libs	Thomas Heil <heil@terminal-consulting.de>	A Perl Compatible Regular Expression library
+213	libpng	1.6.37-10	aarch64_cortex-a55_neon-vfpv4	100371	Libpng GPL-2.0-or-later BSD-3-Clause	Yes	libs	Jo-Philipp Wich <jo@mein.io>	A PNG format files handling library
+214	libpthread	-3	aarch64_cortex-a55_neon-vfpv4	123	GPL-3.0-with-GCC-exception	Yes	libs	Felix Fietkau <nbd@nbd.name>	POSIX thread library
+271	luci-proto-mipc	1.0-1	aarch64_cortex-a55_neon-vfpv4	5032	MediaTek Proprietary	No	MTK Properties	-	MIPC protocol handler for netifd. End user can control MediaTek cellular data connection via this WEB UI.
+275	mapd	1	aarch64_cortex-a55_neon-vfpv4	1135611	MediaTek Proprietary	No	MTK Properties	-	wifi app daemon
+279	mdlogger	1.0-1	aarch64_cortex-a55_neon-vfpv4	146095	Apache License Version 2.0	Yes	MTK Properties	-	Modem logger daemon
+282	mii_mgr	1	aarch64_cortex-a55_neon-vfpv4	3183	MediaTek Proprietary	No	MTK Properties	-	MDC/MDIO command
+285	mipc-wan	1.0-1	aarch64_cortex-a55_neon-vfpv4	49158	MediaTek Proprietary	No	MTK Properties	-	mipc-wan is a command line tool for controlling Mediatek mobile broadband modems using the MICP APIs.
+288	mnld	1.0.0-1	aarch64_cortex-a55_neon-vfpv4	317752	MediaTek Proprietary	No	MTK Properties	-	mnld is the Deamon for MediaTek Navigation Library.
+289	monitor_hang	1.0-1	aarch64_cortex-a55_neon-vfpv4	3917	MediaTek Proprietary	No	MTK Properties	-	Monitor user space hang daemon
+222	librrd1	1.0.50-3	aarch64_cortex-a55_neon-vfpv4	142817	GPL-2.0	Yes	libs	Jo-Philipp Wich <jo@mein.io>	RRD is the Acronym for Round Robin Database. RRD is a system to store and display time-series data (i.e. network...
+223	librt	-3	aarch64_cortex-a55_neon-vfpv4	123	GPL-3.0-with-GCC-exception	Yes	libs	Felix Fietkau <nbd@nbd.name>	POSIX.1b RealTime extension library
+224	libsamplerate	0.1.9-1	aarch64_cortex-a55_neon-vfpv4	1340044	GPL-2.0	Yes	libs	Ted Hess <thess@kitschensync.net>	Secret Rabbit Code (aka libsamplerate) is a Sample Rate Converter for audio.
+225	libsndfile	2019-04-21-25824cb9-1	aarch64_cortex-a55_neon-vfpv4	161524	LGPLv2.1	Yes	libs	Peter Wagner <tripolar@gmx.at>	libsndfile is a library of C routines for reading and writing files containing sampled audio data.
+290	mrdump_tool	1.0-1	aarch64_cortex-a55_neon-vfpv4	22410	MediaTek Proprietary	No	MTK Properties	-	mrdump tool and host command -utils.
+227	libsqlite3-0	3400000-5	aarch64_cortex-a55_neon-vfpv4	535777	PUBLICDOMAIN	Yes	libs	-	SQLite is a small C library that implements a self-contained, embeddable, zero-configuration SQL database engine. This...
+228	libss2	1.45.6-2	aarch64_cortex-a55_neon-vfpv4	9562	GPL-2.0	Yes	libs	-	This pacakge contains libss, a command-line interface parsing library bundled with e2fsprogs.
+229	libstdcpp6	-3	aarch64_cortex-a55_neon-vfpv4	348990	GPL-3.0-with-GCC-exception	Yes	libs	Felix Fietkau <nbd@nbd.name>	GNU Standard C++ Library v3
+230	libtrm	1	aarch64_cortex-a55_neon-vfpv4	3080	MediaTek Proprietary	No	libs	-	Telephony Recovery Mechanism (TRM) library
+231	libubox20210516	2021-05-16-b14c4688-2	aarch64_cortex-a55_neon-vfpv4	24921	ISC	Yes	libs	Felix Fietkau <nbd@nbd.name>	Basic utility library
+232	libubus-lua	2021-06-30-4fc532c8-2	aarch64_cortex-a55_neon-vfpv4	7671	LGPL-2.1	Yes	libs	Felix Fietkau <nbd@nbd.name>	Lua binding for the OpenWrt RPC client
+233	libubus20210630	2021-06-30-4fc532c8-2	aarch64_cortex-a55_neon-vfpv4	11915	LGPL-2.1	Yes	libs	Felix Fietkau <nbd@nbd.name>	OpenWrt RPC client library
+234	libuci-lua	2021-04-14-4b3db117-5	aarch64_cortex-a55_neon-vfpv4	7828	LGPL-2.1	Yes	libs	Felix Fietkau <nbd@nbd.name>	Lua plugin for UCI
+235	libuci20130104	2021-04-14-4b3db117-5	aarch64_cortex-a55_neon-vfpv4	18584	LGPL-2.1	Yes	libs	Felix Fietkau <nbd@nbd.name>	C library for the Unified Configuration Interface (UCI)
+236	libuclient20201210	2023-04-13-007d9454-1	aarch64_cortex-a55_neon-vfpv4	11589	ISC	Yes	libs	Felix Fietkau <nbd@nbd.name>	HTTP/1.1 client library
+237	libunwind8	1.5.0-1	aarch64_cortex-a55_neon-vfpv4	60034	X11	Yes	libs	Yousong Zhou <yszhou4tech@gmail.com>	Libunwind defines a portable and efficient C programming interface (API) to determine the call-chain of a program.
+238	libustream-openssl20201210	2022-01-16-868fd881-2	aarch64_cortex-a55_neon-vfpv4	5439	ISC	Yes	libs	Felix Fietkau <nbd@nbd.name>	ustream SSL Library (openssl)
+239	libuuid1	2.36.1-2	aarch64_cortex-a55_neon-vfpv4	13263	GPL-2.0	Yes	libs	-	The UUID library is used to generate unique identifiers for objects that may be accessible beyond the local system....
+240	libwebp	1.1.0-2	aarch64_cortex-a55_neon-vfpv4	160822	BSD-3-Clause	Yes	libs	-	The libwebp package contains a library for the WebP format.
+241	libwolfssl5.5.3.99a5b54a	5.5.3-stable-2	aarch64_cortex-a55_neon-vfpv4	548673	GPL-2.0-or-later	Yes	libs	Eneas U de Queiroz <cotequeiroz@gmail.com>	wolfSSL (formerly CyaSSL) is an SSL library optimized for small footprint, both on disk and for memory use.
+242	libwpactrl20130104	1	aarch64_cortex-a55_neon-vfpv4	33965	MediaTek Proprietary	No	libs	-	C library for the wpa ctrl interface
+243	libxml2	2.9.14-1	aarch64_cortex-a55_neon-vfpv4	502213	MIT	Yes	libs	Michael Heimpold <mhei@heimpold.de>	A library for manipulating XML and HTML resources.
+244	libxtables12	1.8.7-1	aarch64_cortex-a55_neon-vfpv4	52162	GPL-2.0	Yes	libs	-	IPv4/IPv6 firewall - shared xtables library
+245	lk	1	aarch64_cortex-a55_neon-vfpv4	106	MIT-v2,Apache-2.0,BSD 2.0, zlib license, BSD-2-Clause	Yes	boot	-	MT6880/MT6890 lk Legacy lk based on gem-mp-1907 Common lk2 based on generic-trunk
+292	mtk_agpsd	1.0-1	aarch64_cortex-a55_neon-vfpv4	1047448	MediaTek Proprietary	No	MTK Properties	-	MTK AGPS daemon
+247	logd	2020-10-25-9ef88681-2	aarch64_cortex-a55_neon-vfpv4	15792	GPL-2.0	Yes	base	John Crispin <john@phrozen.org>	OpenWrt system log implementation
+293	mtk_netagent	1.0-1	aarch64_cortex-a55_neon-vfpv4	19370	MediaTek Proprietary	No	MTK Properties	-	NetAgent for network interface config
+249	lua	5.1.5-9	aarch64_cortex-a55_neon-vfpv4	5565	MIT	Yes	lang	Jo-Philipp Wich <jo@mein.io>	Lua is a powerful light-weight programming language designed for extending applications. Lua is also frequently used as...
+250	luasocket	2019-04-21-733af884-1	aarch64_cortex-a55_neon-vfpv4	62997	MIT	Yes	lang	W. Michael Petullo <mike@flyn.org>	LuaSocket is the most comprehensive networking support library for the Lua language. It provides easy access to TCP,...
+251	luci	git-22.347.19862-799eced	all	104	Apache-2.0	Yes	luci	OpenWrt LuCI community	Standard OpenWrt set including full admin with ppp support and the default Bootstrap theme
+252	luci-app-advanced-logger	git-22.259.24395-d9638b1	all	1637	MediaTek Proprietary	No	luci	OpenWrt LuCI community	MediaTek Advanced Log contronl Configuration.
+253	luci-app-firewall	git-23.205.24140-3c669cf	all	14209	Apache-2.0	Yes	luci	OpenWrt LuCI community	Firewall and Portforwarding application
+254	luci-app-ntpc	git-22.347.19862-799eced	all	1199	Apache License Version 2.0	Yes	luci	OpenWrt LuCI community	NTP time synchronisation configuration module
+255	luci-app-openvpn	git-23.205.24140-3c669cf	all	11870	Apache-2.0	Yes	luci	OpenWrt LuCI community	LuCI Support for OpenVPN
+256	luci-app-opkg	git-23.205.24140-3c669cf	all	8411	Apache License Version 2.0	Yes	luci	OpenWrt LuCI community	OPKG package management application
+257	luci-app-vnstat2	git-22.347.19862-799eced	all	2538	Apache-2.0	Yes	luci	OpenWrt LuCI community	LuCI Support for vnStat 2
+258	luci-app-vpnbypass	1.3.1-9	all	3263	GPL-3.0-or-later	Yes	luci	OpenWrt LuCI community	Provides Web UI for VPNBypass service.
+259	luci-app-wifi-mt7990	git-24.035.06637-7bab107	aarch64_cortex-a55_neon-vfpv4	537902	Apache License Version 2.0	Yes	luci	OpenWrt LuCI community	MediaTek Proprietary Configuration.
+260	luci-base	git-23.205.24140-3c669cf	aarch64_cortex-a55_neon-vfpv4	132288	MIT	Yes	luci	OpenWrt LuCI community	LuCI core libraries
+261	luci-compat	git-22.347.19862-799eced	all	45399	Apache License Version 2.0	Yes	luci	OpenWrt LuCI community	LuCI compatibility libraries
+262	luci-lib-base	git-22.347.19862-799eced	all	12491	Apache License Version 2.0	Yes	luci	OpenWrt LuCI community	basic libraries for luci
+263	luci-lib-ip	git-22.347.19862-799eced	aarch64_cortex-a55_neon-vfpv4	13063	Apache-2.0	Yes	luci	OpenWrt LuCI community	Lua library for IP calculation and routing information
+264	luci-lib-jsonc	git-23.205.24140-3c669cf	aarch64_cortex-a55_neon-vfpv4	4883	Apache License Version 2.0	Yes	luci	OpenWrt LuCI community	Lua binding for JSON-C
+265	luci-lib-nixio	git-22.347.19862-799eced	aarch64_cortex-a55_neon-vfpv4	34263	Apache-2.0	Yes	luci	OpenWrt LuCI community	NIXIO POSIX library
+266	luci-mod-admin-full	git-22.347.19862-799eced	all	104	Apache-2.0	Yes	luci	OpenWrt LuCI community	LuCI Administration - full-featured for full control
+267	luci-mod-network	git-23.205.24140-3c669cf	all	46213	Apache-2.0	Yes	luci	OpenWrt LuCI community	LuCI Network Administration
+268	luci-mod-status	git-23.205.24140-3c669cf	aarch64_cortex-a55_neon-vfpv4	29782	Apache-2.0	Yes	luci	OpenWrt LuCI community	LuCI Status Pages
+269	luci-mod-system	git-23.205.24140-3c669cf	all	17918	Apache-2.0	Yes	luci	OpenWrt LuCI community	LuCI Administration - Global System Settings
+270	luci-proto-ipv6	git-22.347.19862-799eced	all	2594	Apache-2.0	Yes	luci	OpenWrt LuCI community	Support for DHCPv6/6in4/6to4/6rd/DS-Lite
+295	mtk_phonecall_ioplugin	1	aarch64_cortex-a55_neon-vfpv4	8482	MediaTek Proprietary	No	MTK Properties	-	An program to query info from phonecall ioplugin
+272	luci-proto-ppp	git-22.347.19862-799eced	all	2207	Apache-2.0	Yes	luci	OpenWrt LuCI community	Support for PPP/PPPoE/PPPoA/PPtP
+273	luci-ssl-openssl	git-22.347.19862-799eced	all	104	Apache License Version 2.0	Yes	luci	OpenWrt LuCI community	LuCI with OpenSSL as the SSL backend (libustream-openssl). OpenSSL cmd tools (openssl-util) are used by uhttpd for SSL...
+274	luci-theme-bootstrap	git-23.205.24140-3c669cf	all	15728	Apache-2.0	Yes	luci	OpenWrt LuCI community	Bootstrap Theme (default)
+327	regs	1	aarch64_cortex-a55_neon-vfpv4	3333	GPL-2.0-or-later	Yes	MTK Properties	Bill Farrow (bfarrow@beyondelectronics.us) (2010)	Register Read/Write
+276	mcf_cmd	1.0-1	aarch64_cortex-a55_neon-vfpv4	5669	MediaTek Proprietary	No	utils	-	mcf cmd
+277	mcupm	1	aarch64_cortex-a55_neon-vfpv4	105	MediaTek Proprietary	No	opt	-	MT6880/MT6890 mcupm
+278	mddb_installer	1	aarch64_cortex-a55_neon-vfpv4	12379368	MediaTek Proprietary	No	sys	-	install MDDB related binaries to rootfs
+334	scd	1.0-1	aarch64_cortex-a55_neon-vfpv4	7452	MediaTek Proprietary	No	MTK Properties	-	System Control Daemon -application.
+280	medmcu	1	aarch64_cortex-a55_neon-vfpv4	104	MIT License V2	Yes	opt	-	M80 MED-MCU is a CPU offload SW module to handle packet forwarding between Frame Engine and DPMAIF
+281	meta_tst	1	aarch64_cortex-a55_neon-vfpv4	58689	MediaTek Proprietary	No	sys	-	This package for meta service.
+335	sigma_daemon	1	aarch64_cortex-a55_neon-vfpv4	265815	ISC License	Yes	MTK Properties	-	SIGMA_DAEMON. Upstream Wi-Fi Alliance code under ISC License with added MTK header. Disclose under ISC License to satisfy attribution requirements.
+283	miniupnpd	2.2.1-3	aarch64_cortex-a55_neon-vfpv4	74177	BSD-3-Clause	Yes	net	-	Lightweight UPnP IGD, NAT-PMP & PCP daemon
+284	mipc	1	aarch64_cortex-a55_neon-vfpv4	16889	MediaTek Proprietary	No	libs	-	MIPC library
+336	sigma_dut	1	aarch64_cortex-a55_neon-vfpv4	100090	ISC License	Yes	MTK Properties	-	SIGMA_DUT. Upstream Wi-Fi Alliance code under ISC License with added MTK header. Disclose under ISC License to satisfy attribution requirements.
+342	switch	1	aarch64_cortex-a55_neon-vfpv4	30003	GPL-2.0	Yes	MTK Properties	-	Switch cmd
+287	mmc-utils	2019-10-10-73d6c59a-2	aarch64_cortex-a55_neon-vfpv4	34497	GPL-2.0	Yes	utils	Michael Heimpold <mhei@heimpold.de>	This package contains the userspace mmc utils, the userspace counterpart to the Linux MMC/SD subsystem.
+367	wapp	1	aarch64_cortex-a55_neon-vfpv4	691339	BSD-3-Clause	Yes	MTK Properties	-	wifi app daemon
+368	wificonf	1	aarch64_cortex-a55_neon-vfpv4	7206	MediaTek Proprietary	No	MTK Properties	Hua Shao <nossiac@163.com>	Read/Write MTK WiFi profiles
+17	auto_adapt	1.0-1	aarch64_cortex-a55_neon-vfpv4	14545	Quectel Proprietary	No	Quectel Properties	-	Quectel WAN Auto Adapt Program
+291	mtd	26	aarch64_cortex-a55_neon-vfpv4	11596	GPL-2.0+	Yes	utils	-	This package contains an utility useful to upgrade from other firmware or older OpenWrt releases.
+55	eth_firmware	1.0-1	aarch64_cortex-a55_neon-vfpv4	212731	Quectel Proprietary	No	Quectel Properties	-	This packge for eth_firmware
+151	led_controller	1.0-1	aarch64_cortex-a55_neon-vfpv4	9822	Quectel Proprietary	No	Quectel Properties	-	led_controller is a service to monitor UE status and control LED.
+294	mtk_nvram	1.0-1	aarch64_cortex-a55_neon-vfpv4	86938	MediaTek Proprietary	No	sys	-	This package for mtk nvram implementation
+215	libql_at	1.0-1	aarch64_cortex-a55_neon-vfpv4	11853	Quectel Proprietary	No	Quectel Properties	-	This packge for libql_at
+296	mwctl	1	aarch64_cortex-a55_neon-vfpv4	37828	GPLv2	Yes	devel	-	vendor cmd for logan/mt76 driver
+297	netifd	2021-10-30-8f82742c-1	aarch64_cortex-a55_neon-vfpv4	101933	GPL-2.0	Yes	base	Felix Fietkau <nbd@nbd.name>	OpenWrt Network Interface Configuration Daemon
+298	ntpclient	2015_365-4	aarch64_cortex-a55_neon-vfpv4	12129	GPL-2.0	Yes	net	Ted Hess <thess@kitschensync.net>	NTP client for setting system time from NTP servers.
+299	odhcp6c	2021-01-09-53f07e90-16	aarch64_cortex-a55_neon-vfpv4	27592	GPL-2.0	Yes	net	Hans Dedecker <dedeckeh@gmail.com>	Embedded DHCPv6-client for OpenWrt
+300	odhcpd-ipv6only	2021-07-18-bc9d317f-1	aarch64_cortex-a55_neon-vfpv4	42029	GPL-2.0	Yes	net	Hans Dedecker <dedeckeh@gmail.com>	odhcpd is a daemon for serving and relaying IP management protocols to configure clients and downstream routers. It...
+301	openssl-util	1.1.1t-2	aarch64_cortex-a55_neon-vfpv4	243172	OpenSSL	Yes	utils	Eneas U de Queiroz <cotequeiroz@gmail.com>	The OpenSSL Project is a collaborative effort to develop a robust, commercial-grade, full-featured, and Open Source...
+302	openvpn-openssl	2.5.3-4	aarch64_cortex-a55_neon-vfpv4	232896	GPL-2.0	Yes	net	Magnus Kroken <mkroken@gmail.com>	Open source VPN solution using OpenSSL
+303	openwrt-keyring	2021-02-20-49283916-2	aarch64_cortex-a55_neon-vfpv4	314	GPL-2.0	Yes	base	John Crispin <john@phrozen.org>	The keyring of with the developer using and gpg public keys.
+304	opkg	2021-06-13-1bf042dd-2	aarch64_cortex-a55_neon-vfpv4	74694	GPL-2.0	Yes	base	Jo-Philipp Wich <jo@mein.io>	Lightweight package management system opkg is the opkg Package Management System, for handling installation and removal...
+305	ppp	2.4.8.git-2020-10-03-3	aarch64_cortex-a55_neon-vfpv4	137271	BSD-4-Clause	Yes	net	Felix Fietkau <nbd@nbd.name>	This package contains the PPP (Point-to-Point Protocol) daemon.
+306	ppp-mod-pppoe	2.4.8.git-2020-10-03-3	aarch64_cortex-a55_neon-vfpv4	11733	BSD-4-Clause	Yes	net	Felix Fietkau <nbd@nbd.name>	This package contains a PPPoE (PPP over Ethernet) plugin for ppp.
+307	preloader	1	aarch64_cortex-a55_neon-vfpv4	103	MIT, BSD-4-Clause, BSD-3-Clause, Apache-2.0	Yes	boot	-	MT6880/MT6890 preloader
+308	procd	2021-03-08-2cfc26f8-2	aarch64_cortex-a55_neon-vfpv4	58660	GPL-2.0	Yes	base	John Crispin <john@phrozen.org>	OpenWrt system process manager
+309	ptgen	1	aarch64_cortex-a55_neon-vfpv4	653	MediaTek Proprietary	No	utils	-	Ptgen is the storage layout module for MTK chipset
+216	libql_atcmd	1.0-1	aarch64_cortex-a55_neon-vfpv4	50466	Quectel Proprietary	No	Quectel Properties	-	This packge for libql_atcmd
+217	libql_mipc	1.0-1	aarch64_cortex-a55_neon-vfpv4	3465	Quectel Proprietary	No	Quectel Properties	-	libql_mipc program
+218	libql_peripheral	1.0-1	aarch64_cortex-a55_neon-vfpv4	25600	Quectel Proprietary	No	Quectel Properties	-	Quectel peripheral device API & sample apps
+219	libql_qlog	1.0-1	aarch64_cortex-a55_neon-vfpv4	2074	Quectel Proprietary	No	Quectel Properties	-	libql_qlog program
+220	libql_speed_monitor	1.0-1	aarch64_cortex-a55_neon-vfpv4	7803	Quectel Proprietary	No	Quectel Properties	-	libql_speed_monitor program
+221	libqlcommon_tools	1.0-1	aarch64_cortex-a55_neon-vfpv4	6634	Quectel Proprietary	No	Quectel Properties	-	quectel common_tools lib
+286	mipc_submonitor	1.0-1	aarch64_cortex-a55_neon-vfpv4	12987	Quectel Proprietary	No	Quectel Properties	-	mipc_submonitor program
+310	ql-audio	1.0-1	aarch64_cortex-a55_neon-vfpv4	8209	Quectel Proprietary	No	Quectel Properties	-	AUDIO Adaptation Service Program
+311	ql-audio-sample	1.0-1	aarch64_cortex-a55_neon-vfpv4	2658	Quectel Proprietary	No	Quectel Properties	-	AUDIO Service test program
+312	ql-datacall	1.0-1	aarch64_cortex-a55_neon-vfpv4	21363	Quectel Proprietary	No	Quectel Properties	-	Network Service test program
+313	ql-iaapn	1.0-1	aarch64_cortex-a55_neon-vfpv4	3224	Quectel Proprietary	No	Quectel Properties	-	Network Service test program
+314	ql-ippt	1.0-1	aarch64_cortex-a55_neon-vfpv4	14033	Quectel Proprietary	No	Quectel Properties	-	Quectel IP Passthrough Auto Adapt Program
+315	ql-netd	1.0-1	aarch64_cortex-a55_neon-vfpv4	112949	Quectel Proprietary	No	Quectel Properties	-	Network Adaptation Service Program
+316	ql-ril-client	1.0-1	aarch64_cortex-a55_neon-vfpv4	43984	Quectel Proprietary	No	Quectel Properties	-	Telephony Service test program
+317	ql-ril-service	1.0-1	aarch64_cortex-a55_neon-vfpv4	156738	Quectel Proprietary	No	Quectel Properties	-	Telephony Adaptation Service Program
+325	qos-scripts	1.3.1-1	all	6391	GPL-2.0	Yes	utils	Felix Fietkau <nbd@nbd.name>	A set of scripts that abstract QoS configuration into a simple configuration file supporting stanzas that specify any...
+318	ql-slic	1.0-1	aarch64_cortex-a55_neon-vfpv4	77189	Quectel Proprietary	No	Quectel Properties	-	SLIC Adaptation Service Program
+319	ql-slic-sample	1.0-1	aarch64_cortex-a55_neon-vfpv4	92592	Quectel Proprietary	No	Quectel Properties	-	SLIC Service test program
+328	rpcd	2022-02-19-8d26a1ba-1	aarch64_cortex-a55_neon-vfpv4	27675	ISC	Yes	utils	Jo-Philipp Wich <jo@mein.io>	This package provides the UBUS RPC backend server to expose various functionality to frontend programs via JSON-RPC.
+329	rpcd-mod-file	2022-02-19-8d26a1ba-1	aarch64_cortex-a55_neon-vfpv4	7953	ISC	Yes	utils	Jo-Philipp Wich <jo@mein.io>	Provides ubus calls for file and directory operations.
+330	rpcd-mod-iwinfo	2022-02-19-8d26a1ba-1	aarch64_cortex-a55_neon-vfpv4	8323	ISC	Yes	utils	Jo-Philipp Wich <jo@mein.io>	Provides ubus calls for accessing iwinfo data.
+331	rpcd-mod-luci	20210614	aarch64_cortex-a55_neon-vfpv4	15145	Apache-2.0	Yes	libs	Jo-Philipp Wich <jo@mein.io>	Provides LuCI backend ubus RPC operations.
+332	rpcd-mod-rrdns	20170710	aarch64_cortex-a55_neon-vfpv4	4679	Apache-2.0	Yes	libs	Jo-Philipp Wich <jo@mein.io>	Provides rapid mass reverse DNS lookup functionality.
+333	rrdtool1	1.0.50-3	aarch64_cortex-a55_neon-vfpv4	11452	GPL-2.0-or-later	Yes	utils	Jo-Philipp Wich <jo@mein.io>	RRD is the Acronym for Round Robin Database. RRD is a system to store and display time-series data (i.e. network...
+320	ql-voice	1.0-1	aarch64_cortex-a55_neon-vfpv4	5450	Quectel Proprietary	No	Quectel Properties	-	VOICE Adaptation Service Program
+321	ql-voice-sample	1.0-1	aarch64_cortex-a55_neon-vfpv4	4250	Quectel Proprietary	No	Quectel Properties	-	VOICE Service test program
+322	ql_key_controller	1.0-1	aarch64_cortex-a55_neon-vfpv4	13322	Quectel Proprietary	No	Quectel Properties	-	Quectel key management daemon
+323	ql_powerd	1.0-1	aarch64_cortex-a55_neon-vfpv4	5216	Quectel Proprietary	No	Quectel Properties	-	ql_powerd program
+338	spmfw	1	aarch64_cortex-a55_neon-vfpv4	104	MediaTek Proprietary	No	firmware	-	SPM is the power management module for MTK chipset
+339	sspm	1	aarch64_cortex-a55_neon-vfpv4	104	MediaTek Proprietary	No	opt	-	secondary spm
+340	strace	5.10-1	aarch64_cortex-a55_neon-vfpv4	349640	LGPL-2.1-or-later	Yes	utils	Felix Fietkau <nbd@nbd.name>	A useful diagnostic, instructional, and debugging tool. Allows you to track what system calls a program makes while it...
+341	swconfig	12	aarch64_cortex-a55_neon-vfpv4	10038	GPL-2.0	Yes	base	Felix Fietkau <nbd@nbd.name>	Switch configuration utility
+324	ql_wifi_api	1.0-1	aarch64_cortex-a55_neon-vfpv4	52886	Quectel Proprietary	No	Quectel Properties	-	Quectel Wi-Fi API
+326	rawdata_test	1.0-1	aarch64_cortex-a55_neon-vfpv4	5021	Quectel Proprietary	No	Quectel Properties	-	rawdata_test
+344	sysstat	12.4.2-1	aarch64_cortex-a55_neon-vfpv4	297612	GPL-2.0-or-later	Yes	utils	Marko Ratkaj <marko.ratkaj@sartura.hr>	The sysstat utilities are a collection of performance monitoring tools for Linux. These include sar, sadf, mpstat,...
+345	tc-mod-iptables	5.11.0-3	aarch64_cortex-a55_neon-vfpv4	4206	GPL-2.0	Yes	net	Russell Senior <russell@personaltelco.net>	Traffic control module - iptables action
+346	tc-tiny	5.11.0-3	aarch64_cortex-a55_neon-vfpv4	170014	GPL-2.0	Yes	net	Russell Senior <russell@personaltelco.net>	Traffic control utility (minimal)
+347	tcpdump	4.9.3-4	aarch64_cortex-a55_neon-vfpv4	336579	BSD-3-Clause	Yes	net	Felix Fietkau <nbd@nbd.name>	Network monitoring and data acquisition tool
+348	terminfo	6.2-3	aarch64_cortex-a55_neon-vfpv4	7231	MIT	Yes	libs	-	Terminal Info Database (ncurses)
+349	thermal_core	1.0-1	aarch64_cortex-a55_neon-vfpv4	18354	MediaTek Proprietary	No	sys	-	This package is a daemon for thermal monitoring and policy change.
+350	ubox	2020-10-25-9ef88681-2	aarch64_cortex-a55_neon-vfpv4	18122	GPL-2.0	Yes	base	John Crispin <john@phrozen.org>	OpenWrt system helper toolbox
+351	ubus	2021-06-30-4fc532c8-2	aarch64_cortex-a55_neon-vfpv4	7063	LGPL-2.1	Yes	base	Felix Fietkau <nbd@nbd.name>	OpenWrt RPC client utility
+352	ubusd	2021-06-30-4fc532c8-2	aarch64_cortex-a55_neon-vfpv4	13684	LGPL-2.1	Yes	base	Felix Fietkau <nbd@nbd.name>	OpenWrt RPC daemon
+353	uci	2021-04-14-4b3db117-5	aarch64_cortex-a55_neon-vfpv4	7861	LGPL-2.1	Yes	base	Felix Fietkau <nbd@nbd.name>	Utility for the Unified Configuration Interface (UCI)
+354	uclibcxx	0.2.5-3	aarch64_cortex-a55_neon-vfpv4	68055	LGPL-2.1-or-later	Yes	libs	-	C++ library for embedded systems
+355	uclient-fetch	2023-04-13-007d9454-1	aarch64_cortex-a55_neon-vfpv4	8209	ISC	Yes	net	Felix Fietkau <nbd@nbd.name>	Tiny wget replacement using libuclient
+356	uhttpd	2021-03-21-15346de8-2	aarch64_cortex-a55_neon-vfpv4	31304	ISC	Yes	net	Felix Fietkau <nbd@nbd.name>	uHTTPd is a tiny single threaded HTTP server with TLS, CGI and Lua support. It is intended as a drop-in replacement for...
+357	uhttpd-mod-ubus	2021-03-21-15346de8-2	aarch64_cortex-a55_neon-vfpv4	9136	ISC	Yes	net	Felix Fietkau <nbd@nbd.name>	The ubus plugin adds a HTTP/JSON RPC proxy for ubus and publishes the session.* namespace and procedures.
+358	urandom-seed	3	aarch64_cortex-a55_neon-vfpv4	834	GPL-2.0-only	Yes	base	-	/etc/urandom.seed handling for OpenWrt
+359	urngd	2020-01-21-c7f7b6b6-1	aarch64_cortex-a55_neon-vfpv4	5584	GPL-2.0 BSD-3-Clause	Yes	utils	-	urngd is OpenWrt's micro non-physical true random number generator based on timing jitter.
+360	usb_init	1	aarch64_cortex-a55_neon-vfpv4	1634	MediaTek Proprietary	No	sys	Jeremy Chou <jeremy.chou@mediatek.com>	This package for USB configfs settings initialization.
+361	usign	2020-05-23-f1f65026-1	aarch64_cortex-a55_neon-vfpv4	12387	ISC	Yes	base	Felix Fietkau <nbd@nbd.name>	OpenWrt signature verification utility
+337	speed_monitor	1.0-1	aarch64_cortex-a55_neon-vfpv4	2788	Quectel Proprietary	No	Quectel Properties	-	speed monitor daemon
+363	vendor_info	1	aarch64_cortex-a55_neon-vfpv4	351	MediaTek Proprietary	No	sys	-	Collect vendor information and create /etc/vendor_info
+364	vnstat2	2.9-5	aarch64_cortex-a55_neon-vfpv4	95573	GPL-2.0-only	Yes	net	Jan Hoffmann <jan@3e8.eu>	vnStat is a network traffic monitor for Linux that keeps a log of daily network traffic for the selected interface(s)....
+365	vnstati2	2.9-5	aarch64_cortex-a55_neon-vfpv4	42247	GPL-2.0-only	Yes	net	Jan Hoffmann <jan@3e8.eu>	The purpose of vnstati is to provide image output support for statistics collected using vnstat. However, the image...
+366	vpnbypass	1.3.2-1	all	2473	GPL-3.0-or-later	Yes	net	Stan Grishin <stangri@melmac.net>	This service can be used to enable simple VPN split tunnelling. Supports accessing domains, IP ranges outside of your...
+343	switch_otg_daemon	1.0-1	aarch64_cortex-a55_neon-vfpv4	3188	Quectel Proprietary	No	Quectel Properties	-	switch-otg-key monitor daemon
+362	usxgmii_patch	1.0-1	aarch64_cortex-a55_neon-vfpv4	4040	Quectel Proprietary	No	Quectel Properties	-	Quectel usxgmii set patch Program
+369	wireless-regdb	2022.08.12-1	all	2205	ISC	Yes	firmware	Felix Fietkau <nbd@nbd.name>	Wireless Regulatory Database
+370	wireless-tools	29-6	aarch64_cortex-a55_neon-vfpv4	25392	GPL-2.0	Yes	net	Felix Fietkau <nbd@nbd.name>	This package contains a collection of tools for configuring wireless adapters implementing the "Linux Wireless...
+371	wpad-openssl	2022-07-29-b704dc72-11.1	aarch64_cortex-a55_neon-vfpv4	1112301	BSD-3-Clause	Yes	net	Felix Fietkau <nbd@nbd.name>	This package contains a full featured IEEE 802.1x/WPA/EAP/RADIUS Authenticator and Supplicant
+372	zlib	1.2.11-6	aarch64_cortex-a55_neon-vfpv4	43921	Zlib	Yes	libs	-	zlib is a lossless data-compression library. This package includes the shared library.

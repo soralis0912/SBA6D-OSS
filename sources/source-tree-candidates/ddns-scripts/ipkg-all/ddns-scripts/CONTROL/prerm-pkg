@@ -1,0 +1,6 @@
+#!/bin/sh
+if [ -n "${IPKG_INSTROOT}" ]; then
+	/etc/init.d/ddns stop
+	/etc/init.d/ddns disable
+fi
+exit 0

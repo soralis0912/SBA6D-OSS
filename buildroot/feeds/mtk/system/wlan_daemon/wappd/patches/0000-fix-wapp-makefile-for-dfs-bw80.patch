@@ -1,0 +1,14 @@
+--- a/Makefile
++++ b/Makefile
+@@ -92,7 +92,10 @@ CFLAGS += -DMAP_EHT_SUPPORT
+ CFLAGS += -DMTK_TK_HOSTAPD_SUPPORT
+ CFLAGS += -DMTK_MLO_MAP_SUPPORT
+ #enable flag for eagle faulty hardware for dedicated antenna BW80 CAC
+-#CFLAGS += -DZW_DFS_BW80_ONLY
++# Modify by Quectel to support 80M ZW DFS (ALPS08896659)
++ifeq ($(CONFIG_MAP_80M_ZW_DFS_SUPPORT), y)
++CFLAGS += -DZW_DFS_BW80_ONLY
++endif
+ endif
+ CFLAGS += -DSINGLE_BAND_SUPPORT
+ ifeq ($(CONFIG_MAP_R2_SUPPORT), y)

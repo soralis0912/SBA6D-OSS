@@ -1,0 +1,5 @@
+config MTK_SCDK
+	tristate "MTK SCD kernel module"
+	help
+		SCDK is a MediaTek kernel module for SCD(System Control Daemon) on openwrt platform.
+		SCDK provide ATF accessibility for SCD which do system related settings.

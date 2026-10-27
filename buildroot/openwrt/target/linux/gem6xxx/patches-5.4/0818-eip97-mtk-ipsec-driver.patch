@@ -1,0 +1,187 @@
+--- a/drivers/net/Kconfig
++++ b/drivers/net/Kconfig
+@@ -571,4 +571,14 @@ config NET_FAILOVER
+ 	  a VM with direct attached VF by failing over to the paravirtual
+ 	  datapath when the VF is unplugged.
+ 
++config IPSEC_HWCRYPTO
++	tristate "IPSEC HW crypto support"
++	depends on !CRYPTO_DEV_SAFEXCEL
++	default n
++	select XFRM
++	help
++	  This driver is designed to accelerates IPSEC VPN protocol handling.
++	  It interfaces with the SafeXcel EIP-97/EIP-197 crypto engines,
++	  and its config is mutually exclusive with the CRYPTO_DEV_SAFEXCEL config.
++
+ endif # NETDEVICES
+--- a/drivers/net/Makefile
++++ b/drivers/net/Makefile
+@@ -80,3 +80,5 @@ thunderbolt-net-y += thunderbolt.o
+ obj-$(CONFIG_THUNDERBOLT_NET) += thunderbolt-net.o
+ obj-$(CONFIG_NETDEVSIM) += netdevsim/
+ obj-$(CONFIG_NET_FAILOVER) += net_failover.o
++
++obj-$(CONFIG_IPSEC_HWCRYPTO) += ipsecCrypto/
+--- a/net/ipv4/esp4.c
++++ b/net/ipv4/esp4.c
+@@ -998,6 +998,50 @@ static int esp4_rcv_cb(struct sk_buff *s
+ 	return 0;
+ }
+ 
++#if IS_ENABLED(CONFIG_IPSEC_HWCRYPTO)
++int (*crypto_esp_sendReq_func_p)(struct xfrm_state *x_p, struct sk_buff *skb_p,
++								 unsigned int is_decrypt) = NULL;
++EXPORT_SYMBOL(crypto_esp_sendReq_func_p);
++
++int
++crypto_esp_input(
++	struct xfrm_state *x,
++	struct sk_buff *skb)
++{
++	int rc = 0;
++
++	if (crypto_esp_sendReq_func_p == NULL) {
++		rc = esp_input(x, skb);
++	} else {
++		rc = crypto_esp_sendReq_func_p(x, skb, 1);
++		if (rc == -EACCES) {
++			rc = esp_input(x, skb);
++		}
++	}
++
++	return rc;
++}
++
++int
++crypto_esp_output(
++	struct xfrm_state *x,
++	struct sk_buff *skb)
++{
++	int rc = 0;
++
++	if (crypto_esp_sendReq_func_p == NULL) {
++		rc = esp_output(x, skb);
++	} else {
++		rc = crypto_esp_sendReq_func_p(x, skb, 0);
++		if (rc == -EACCES) {
++			rc = esp_output(x, skb);
++		}
++	}
++
++	return rc;
++}
++#endif
++
+ static const struct xfrm_type esp_type =
+ {
+ 	.description	= "ESP4",
+@@ -1006,8 +1050,13 @@ static const struct xfrm_type esp_type =
+ 	.flags		= XFRM_TYPE_REPLAY_PROT,
+ 	.init_state	= esp_init_state,
+ 	.destructor	= esp_destroy,
++#if IS_ENABLED(CONFIG_IPSEC_HWCRYPTO)
++	.input		= crypto_esp_input,
++	.output		= crypto_esp_output,
++#else
+ 	.input		= esp_input,
+ 	.output		= esp_output,
++#endif
+ };
+ 
+ static struct xfrm4_protocol esp4_protocol = {
+--- a/net/ipv6/esp6.c
++++ b/net/ipv6/esp6.c
+@@ -890,6 +890,50 @@ static int esp6_rcv_cb(struct sk_buff *s
+ 	return 0;
+ }
+ 
++#if IS_ENABLED(CONFIG_IPSEC_HWCRYPTO)
++int (*crypto_esp6_sendReq_func_p)(struct xfrm_state *x_p, struct sk_buff *skb_p,
++								  unsigned int is_decrypt) = NULL;
++EXPORT_SYMBOL(crypto_esp6_sendReq_func_p);
++
++int
++crypto_esp6_input(
++	struct xfrm_state *x,
++	struct sk_buff *skb)
++{
++	int rc = 0;
++
++	if (crypto_esp6_sendReq_func_p == NULL) {
++		rc = esp6_input(x, skb);
++	} else {
++		rc = crypto_esp6_sendReq_func_p(x, skb, 1);
++		if (rc == -EACCES) {
++			rc = esp6_input(x, skb);
++		}
++	}
++
++	return rc;
++}
++
++int
++crypto_esp6_output(
++	struct xfrm_state *x,
++	struct sk_buff *skb)
++{
++	int rc = 0;
++
++	if (crypto_esp6_sendReq_func_p == NULL) {
++		rc = esp6_output(x, skb);
++	} else {
++		rc = crypto_esp6_sendReq_func_p(x, skb, 0);
++		if (rc == -EACCES) {
++			rc = esp6_output(x, skb);
++		}
++	}
++
++	return rc;
++}
++#endif
++
+ static const struct xfrm_type esp6_type = {
+ 	.description	= "ESP6",
+ 	.owner		= THIS_MODULE,
+@@ -897,8 +941,13 @@ static const struct xfrm_type esp6_type
+ 	.flags		= XFRM_TYPE_REPLAY_PROT,
+ 	.init_state	= esp6_init_state,
+ 	.destructor	= esp6_destroy,
++#if IS_ENABLED(CONFIG_IPSEC_HWCRYPTO)
++	.input		= crypto_esp6_input,
++	.output		= crypto_esp6_output,
++#else
+ 	.input		= esp6_input,
+ 	.output		= esp6_output,
++#endif
+ 	.hdr_offset	= xfrm6_find_1stfragopt,
+ };
+ 
+--- a/net/xfrm/xfrm_state.c
++++ b/net/xfrm/xfrm_state.c
+@@ -653,6 +653,11 @@ void __xfrm_state_destroy(struct xfrm_st
+ }
+ EXPORT_SYMBOL(__xfrm_state_destroy);
+ 
++#if IS_ENABLED(CONFIG_IPSEC_HWCRYPTO)
++void (*crypto_deleteFlow_func_p)(unsigned int spi) = NULL;
++EXPORT_SYMBOL(crypto_deleteFlow_func_p);
++#endif
++
+ int __xfrm_state_delete(struct xfrm_state *x)
+ {
+ 	struct net *net = xs_net(x);
+@@ -677,6 +682,13 @@ int __xfrm_state_delete(struct xfrm_stat
+ 		 */
+ 		xfrm_state_put(x);
+ 		err = 0;
++
++#if IS_ENABLED(CONFIG_IPSEC_HWCRYPTO)
++		if ((x->type != NULL) && (x->type->proto == IPPROTO_ESP) &&
++			(crypto_deleteFlow_func_p != NULL)) {
++			crypto_deleteFlow_func_p(x->id.spi);
++		}
++#endif
+ 	}
+ 
+ 	return err;

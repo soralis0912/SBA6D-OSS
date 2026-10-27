@@ -1,0 +1,92 @@
+--- a/drivers/watchdog/mtk_wdt.c
++++ b/drivers/watchdog/mtk_wdt.c
+@@ -12,6 +12,7 @@
+ #include <linux/err.h>
+ #include <linux/init.h>
+ #include <linux/io.h>
++#include <linux/kdebug.h>
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+ #include <linux/moduleparam.h>
+@@ -23,6 +24,10 @@
+ #include <linux/of_platform.h>
+ #include <dt-bindings/soc/mediatek,boot-mode.h>
+ 
++#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
++#include <mt-plat/aee.h>
++#endif
++
+ #define WDT_MAX_TIMEOUT		31
+ #define WDT_MIN_TIMEOUT		1
+ #define WDT_LENGTH_TIMEOUT(n)	((n) << 5)
+@@ -62,6 +67,16 @@
+ #define WDT_DFD_TIMEOUT_MASK	0x1FFFF
+ #define WDT_LATCH_CTL2_KEY	0x95000000
+ 
++#define WDT_REQ_MODE	0x30
++#define WDT_REQ_MODE_SYSRST		(1 << 3)
++#define WDT_REQ_MODE_KEY		(0x33000000)
++
++#define WDT_SYSDBG_EN1		0x88
++#define WDT_SYSDBG_EN2		0x8C
++/*WDT_SYSDBG*/
++#define WDT_SYSDBG_EN1_KEY	(0x1B2A)
++#define WDT_SYSDBG_EN2_KEY	(0x4F59)
++
+ #define DRV_NAME		"mtk-wdt"
+ #define DRV_VERSION		"1.0"
+ 
+@@ -74,8 +89,40 @@
+ struct mtk_wdt_dev {
+ 	struct watchdog_device wdt_dev;
+ 	void __iomem *wdt_base;
++#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
++	struct notifier_block panic_notifier;
++#endif
+ };
+ 
++#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
++static void mtk_wdt_sysrst_request_mode_clear(struct mtk_wdt_dev *wdt_dev)
++{
++	void __iomem *wdt_base = wdt_dev->wdt_base;
++	u32 reg = readl(wdt_base + WDT_REQ_MODE);
++
++	pr_info("%s: mask pmic warm reset", __func__);
++
++	reg |= WDT_REQ_MODE_KEY;
++	reg = reg & ~WDT_REQ_MODE_SYSRST;
++
++	writel(reg, wdt_base + WDT_REQ_MODE);
++
++	writel(WDT_SYSDBG_EN1_KEY, wdt_base + WDT_SYSDBG_EN1);
++	writel(WDT_SYSDBG_EN2_KEY, wdt_base + WDT_SYSDBG_EN2);
++}
++
++static int mtk_wdt_exception_cb(
++	struct notifier_block *nb, unsigned long cmd, void *ptr)
++{
++	struct mtk_wdt_dev *wdt_dev = container_of(
++		nb, struct mtk_wdt_dev, panic_notifier);
++
++	mtk_wdt_sysrst_request_mode_clear(wdt_dev);
++
++	return NOTIFY_DONE;
++}
++#endif
++
+ static void mtk_wdt_parse_dt(struct device_node *np,
+ 				struct watchdog_device *wdt_dev)
+ {
+@@ -280,6 +327,12 @@
+ 	if (unlikely(err))
+ 		return err;
+ 
++#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
++	mtk_wdt->panic_notifier.notifier_call = mtk_wdt_exception_cb;
++	mtk_wdt->panic_notifier.priority = INT_MAX;
++
++	register_mtk_aee_exception_notifier(&mtk_wdt->panic_notifier);
++#endif
+ 	dev_info(dev, "Watchdog enabled (timeout=%d sec, nowayout=%d)\n",
+ 		 mtk_wdt->wdt_dev.timeout, nowayout);
+ 

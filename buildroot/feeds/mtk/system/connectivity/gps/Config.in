@@ -1,0 +1,9 @@
+if PACKAGE_mnld
+
+config MTK_GPS_DBG_SOCKET_SUPPORT
+	bool "Support GPS DBG SOCKET"
+	default n
+	help
+		Support GPS DBG SOCKET
+
+endif

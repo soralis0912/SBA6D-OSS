@@ -1,0 +1,174 @@
+src/vnstatd.o: src/vnstatd.c \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/stdc-predef.h \
+ src/common.h src/config.h \
+ /home/altim/work/t830/openwrt/../mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/fortify/stdio.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/stdio.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/features.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/sys/glibc-types.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/sys/cdefs.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/bits/alltypes.h \
+ /home/altim/work/t830/openwrt/../mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/fortify/fortify-headers.h \
+ /home/altim/work/t830/openwrt/../mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/fortify/stdlib.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/stdlib.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/alloca.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/limits.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/bits/limits.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/stdint.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/bits/stdint.h \
+ /home/altim/work/t830/openwrt/../mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/fortify/unistd.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/unistd.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/bits/posix.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/locale.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/time.h \
+ /home/altim/work/t830/openwrt/../mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/fortify/string.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/string.h \
+ /home/altim/work/t830/openwrt/../mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/fortify/strings.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/strings.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/sys/types.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/endian.h \
+ /home/altim/work/t830/openwrt/../mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/fortify/sys/select.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/sys/select.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/sys/stat.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/bits/stat.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/dirent.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/ctype.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/signal.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/bits/signal.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/math.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/errno.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/bits/errno.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/sys/file.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/inttypes.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/syslog.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/sys/statvfs.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/pwd.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/grp.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/libgen.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/fcntl.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/bits/fcntl.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/sys/time.h \
+ src/datacache.h src/dbsql.h \
+ /home/altim/work/t830/openwrt/staging_dir/target-aarch64-openwrt-linux-musl_musl/usr/include/sqlite3.h \
+ /home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/stdarg.h \
+ src/iflist.h src/cfg.h src/ibw.h src/id.h src/misc.h src/daemon.h \
+ src/vnstatd.h
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/stdc-predef.h:
+
+src/common.h:
+
+src/config.h:
+
+/home/altim/work/t830/openwrt/../mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/fortify/stdio.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/stdio.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/features.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/sys/glibc-types.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/sys/cdefs.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/bits/alltypes.h:
+
+/home/altim/work/t830/openwrt/../mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/fortify/fortify-headers.h:
+
+/home/altim/work/t830/openwrt/../mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/fortify/stdlib.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/stdlib.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/alloca.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/limits.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/bits/limits.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/stdint.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/bits/stdint.h:
+
+/home/altim/work/t830/openwrt/../mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/fortify/unistd.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/unistd.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/bits/posix.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/locale.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/time.h:
+
+/home/altim/work/t830/openwrt/../mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/fortify/string.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/string.h:
+
+/home/altim/work/t830/openwrt/../mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/fortify/strings.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/strings.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/sys/types.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/endian.h:
+
+/home/altim/work/t830/openwrt/../mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/fortify/sys/select.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/sys/select.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/sys/stat.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/bits/stat.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/dirent.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/ctype.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/signal.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/bits/signal.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/math.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/errno.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/bits/errno.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/sys/file.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/inttypes.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/syslog.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/sys/statvfs.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/pwd.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/grp.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/libgen.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/fcntl.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/bits/fcntl.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/sys/time.h:
+
+src/datacache.h:
+
+src/dbsql.h:
+
+/home/altim/work/t830/openwrt/staging_dir/target-aarch64-openwrt-linux-musl_musl/usr/include/sqlite3.h:
+
+/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/include/stdarg.h:
+
+src/iflist.h:
+
+src/cfg.h:
+
+src/ibw.h:
+
+src/id.h:
+
+src/misc.h:
+
+src/daemon.h:
+
+src/vnstatd.h:

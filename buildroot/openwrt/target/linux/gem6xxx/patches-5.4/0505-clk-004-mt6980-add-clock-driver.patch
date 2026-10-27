@@ -1,0 +1,64 @@
+Index: linux-5.4.179/drivers/clk/mediatek/Kconfig
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/Kconfig	2022-05-27 16:04:11.563714965 +0800
++++ linux-5.4.179/drivers/clk/mediatek/Kconfig	2022-05-27 16:12:42.816710973 +0800
+@@ -331,6 +331,44 @@
+ 	  If you wish to use clock resources from the mmsys_config device,
+ 	  say Y. Otherwise, say N.
+ 
++config COMMON_CLK_MT6980
++	tristate "Clock driver for MediaTek MT6980"
++	depends on ARM64 || COMPILE_TEST
++	select COMMON_CLK_MEDIATEK
++	default MACH_MT6980
++	help
++	  This driver supports MediaTek MT6980 basic clocks,
++	  which is used to control basic clock output.
++	  If you wish to use clock resources from the MT6980 SOC,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6980_INFRACFG_AO
++	tristate "Clock driver for MediaTek MT6980 infracfg_ao"
++	depends on COMMON_CLK_MT6980
++	help
++	  This driver supports MediaTek MT6980 infracfg_ao clocks,
++	  which is used to control infracfg_ao clock output.
++	  If you wish to use clock resources from the infracfg_ao device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6980_PERI
++	tristate "Clock driver for MediaTek MT6980 peri"
++	depends on COMMON_CLK_MT6980
++	help
++	  This driver supports MediaTek MT6980 peri clocks,
++	  which is used to control peri clock output.
++	  If you wish to use clock resources from the peri device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6980_VLPCFG
++	tristate "Clock driver for MediaTek MT6980 vlpcfg"
++	depends on COMMON_CLK_MT6980
++	help
++	  This driver supports MediaTek MT6980 vlpcfg clocks,
++	  which is used to control vlpcfg clock output.
++	  If you wish to use clock resources from the vlpcfg device,
++	  say Y. Otherwise, say N.
++
+ config COMMON_CLK_MT6990
+ 	tristate "Clock driver for MediaTek MT6990"
+ 	depends on ARM64 || COMPILE_TEST
+Index: linux-5.4.179/drivers/clk/mediatek/Makefile
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/Makefile	2022-05-27 16:04:11.563714965 +0800
++++ linux-5.4.179/drivers/clk/mediatek/Makefile	2022-05-27 16:12:03.689931508 +0800
+@@ -57,6 +57,10 @@
+ obj-$(CONFIG_COMMON_CLK_MT6890_IMP_IIC_WRAP_E) += clk-mt6890-impe.o
+ obj-$(CONFIG_COMMON_CLK_MT6890_MFGSYS) += clk-mt6890-mfgcfg.o
+ obj-$(CONFIG_COMMON_CLK_MT6890_MMSYS_CONFIG) += clk-mt6890-mm.o
++obj-$(CONFIG_COMMON_CLK_MT6980) += clk-mt6980.o clkchk.o clkdbg.o clk-bringup.o clk-disable-unused.o clkchk-mt6980.o clkdbg-mt6980.o
++obj-$(CONFIG_COMMON_CLK_MT6980_INFRACFG_AO) += clk-mt6980-ifrao.o
++obj-$(CONFIG_COMMON_CLK_MT6980_PERI) += clk-mt6980-peri.o
++obj-$(CONFIG_COMMON_CLK_MT6980_VLPCFG) += clk-mt6980-vlpcfg.o
+ obj-$(CONFIG_COMMON_CLK_MT6990) += clk-mt6990.o clkchk.o clkdbg.o clk-bringup.o clk-disable-unused.o clkchk-mt6990.o clkdbg-mt6990.o
+ obj-$(CONFIG_COMMON_CLK_MT6990_AFE) += clk-mt6990-afe.o
+ obj-$(CONFIG_COMMON_CLK_MT6990_DBG) += clk-mt6990-dbg.o

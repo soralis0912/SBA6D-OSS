@@ -1,0 +1,24 @@
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -524,11 +524,21 @@ void set_pfnblock_flags_mask(struct page *page, unsigned long flags,
+ 	unsigned long *bitmap;
+ 	unsigned long bitidx, word_bitidx;
+ 	unsigned long old_word, word;
++	struct zone *z;
+
+ 	BUILD_BUG_ON(NR_PAGEBLOCK_BITS != 4);
+ 	BUILD_BUG_ON(MIGRATE_TYPES > (1 << PB_migratetype_bits));
+
+ 	bitmap = get_pageblock_bitmap(page, pfn);
++	if (!((unsigned long)bitmap & 0xffff000000000000)){
++		z = page_zone(page);
++
++		pr_err("[Err !!!] zone ID %lx bit %lx page %lx pfn %ld\n", page->flags, bitmap, (unsigned long) page, pfn);
++		pr_err("[Err !!!] zone %s\n", z->name);
++		pr_err("[Err !!!] zone  s %ld p %d start pfn %ld\n", z->spanned_pages, z->present_pages, z->zone_start_pfn);
++		pr_err("[Err !!!] page map %ld ref %ld valid %d", atomic_read(&page->_mapcount), page_ref_count(page), pfn_valid(pfn));
++
++	}
+ 	bitidx = pfn_to_bitidx(page, pfn);
+ 	word_bitidx = bitidx / BITS_PER_LONG;
+ 	bitidx &= (BITS_PER_LONG-1);

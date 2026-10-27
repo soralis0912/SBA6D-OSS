@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# For MTK USB3.0 IP
+
+config USB_MTU3
+	tristate "MediaTek USB3 Dual Role controller"
+	depends on USB || USB_GADGET
+	depends on ARCH_MEDIATEK || COMPILE_TEST
+	depends on EXTCON || !EXTCON
+	select USB_XHCI_MTK if USB_SUPPORT && USB_XHCI_HCD
+	help
+	  Say Y or M here if your system runs on MediaTek SoCs with
+	  Dual Role SuperSpeed USB controller. You can select usb
+	  mode as peripheral role or host role, or both.
+
+	  If you don't know what this is, please say N.
+
+	  Choose M here to compile this driver as a module, and it
+	  will be called mtu3.ko.
+
+
+if USB_MTU3
+choice
+	bool "MTU3 Mode Selection"
+	default USB_MTU3_DUAL_ROLE if (USB && USB_GADGET)
+	default USB_MTU3_HOST if (USB && !USB_GADGET)
+	default USB_MTU3_GADGET if (!USB && USB_GADGET)
+
+config USB_MTU3_HOST
+	bool "Host only mode"
+	depends on USB=y || USB=USB_MTU3
+	help
+	  Select this when you want to use MTU3 in host mode only,
+	  thereby the gadget feature will be regressed.
+
+config USB_MTU3_GADGET
+	bool "Gadget only mode"
+	depends on USB_GADGET=y || USB_GADGET=USB_MTU3
+	help
+	  Select this when you want to use MTU3 in gadget mode only,
+	  thereby the host feature will be regressed.
+
+config USB_MTU3_DUAL_ROLE
+	bool "Dual Role mode"
+	depends on ((USB=y || USB=USB_MTU3) && (USB_GADGET=y || USB_GADGET=USB_MTU3))
+	depends on (EXTCON=y || EXTCON=USB_MTU3)
+	select USB_ROLE_SWITCH
+	help
+	  This is the default mode of working of MTU3 controller where
+	  both host and gadget features are enabled.
+
+endchoice
+
+config USB_MTU3_DEBUG
+	bool "Enable Debugging Messages"
+	help
+	  Say Y here to enable debugging messages in the MTU3 Driver.
+
+config MTU3_MD_USB_EP0_CTRL
+	bool "MD USB EP0 Control"
+	depends on USB_MTU3
+	default n
+	help
+	  EP0 will be controlled by MD USB with this option enabled.
+
+config MTU3_USB_LOW_POWER
+	bool "USB LOW POWER MODE"
+	depends on USB_MTU3
+	default n
+	help
+	  Low power mode set Y will turn off USB clock and release
+	  wakelock by mtu3 when suspend.
+	  If you don't know what this is, please set N.
+endif
+
+config QL_CNT_USB_IDDIG
+	bool "quectel controlled usb otg id pin"
+	default n
+	help
+	  set y could enable quectel controlled usb otg id pin function.

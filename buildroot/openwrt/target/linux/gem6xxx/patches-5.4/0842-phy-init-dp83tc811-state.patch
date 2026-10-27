@@ -1,0 +1,22 @@
+--- a/drivers/net/phy/dp83tc811.c
++++ b/drivers/net/phy/dp83tc811.c
+@@ -14,6 +14,7 @@
+ #include <linux/of.h>
+ #include <linux/phy.h>
+ #include <linux/netdevice.h>
++#include <linux/phylink.h>
+ 
+ #define DP83TC811_PHY_ID	0x2000a253
+ #define DP83811_DEVADDR		0x1f
+@@ -277,6 +278,11 @@ static int dp83811_config_init(struct ph
+ {
+ 	int value, err;
+ 
++	phylink_set(phydev->supported, 100baseT_Full);
++	phylink_set(phydev->advertising, 100baseT_Full);
++	phydev->state = PHY_READY;
++	phydev->autoneg = AUTONEG_DISABLE;
++
+ 	value = phy_read(phydev, MII_DP83811_SGMII_CTRL);
+ 	if (phydev->interface == PHY_INTERFACE_MODE_SGMII) {
+ 		err = phy_write(phydev, MII_DP83811_SGMII_CTRL,

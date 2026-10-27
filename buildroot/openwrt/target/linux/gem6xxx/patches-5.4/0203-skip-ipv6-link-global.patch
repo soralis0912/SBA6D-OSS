@@ -1,0 +1,24 @@
+--- a/net/ipv6/addrconf.c
++++ b/net/ipv6/addrconf.c
+@@ -2285,6 +2285,10 @@ static int ipv6_generate_eui64(u8 *eui,
+ {
+ 	switch (dev->type) {
+ 	case ARPHRD_ETHER:
++		/* disable automatic ipv6 link-local address generation */
++		if (!strncmp(dev->name, "ccmni", 5) || !strncmp(dev->name, "erouter1", 8))
++			return - 1;
++		return addrconf_ifid_eui48(eui, dev);
+ 	case ARPHRD_FDDI:
+ 		return addrconf_ifid_eui48(eui, dev);
+ 	case ARPHRD_ARCNET:
+@@ -3363,6 +3367,10 @@ static void addrconf_dev_config(struct n
+ 	if (IS_ERR(idev))
+ 		return;
+ 
++	/* disable automatic ipv6 link-local address generation */
++	if (!strncmp(dev->name, "ccmni", 5) || !strncmp(dev->name, "erouter1", 8))
++		return;
++
+ 	/* this device type has no EUI support */
+ 	if (dev->type == ARPHRD_NONE &&
+ 	    idev->cnf.addr_gen_mode == IN6_ADDR_GEN_MODE_EUI64)

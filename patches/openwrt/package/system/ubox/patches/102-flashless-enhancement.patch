@@ -1,0 +1,193 @@
+Index: ubox-2020-10-25-9ef88681/log/logread.c
+===================================================================
+--- ubox-2020-10-25-9ef88681.orig/log/logread.c	2022-10-26 07:21:33.128731065 +0800
++++ ubox-2020-10-25-9ef88681/log/logread.c	2022-10-26 07:23:19.565362890 +0800
+@@ -22,6 +22,7 @@
+ #include <unistd.h>
+ #include <sys/types.h>
+ #include <sys/socket.h>
++#include <sys/time.h>
+ 
+ #define SYSLOG_NAMES
+ #include <syslog.h>
+@@ -65,6 +66,37 @@
+ 	__LOG_MAX
+ };
+ 
++/**********************************************************************
++ * Flashless Support (FLS)                                            *
++ **********************************************************************/
++
++
++
++
++
++/***********************************************************************
++ *                       SAP LOG COMMAND FORMAT                        *
++ *<FLS PATTERN HEAD> c <LOG         FILE          NAME> <MAGIC TAIL>   *
++ *$MMEEDDIIAATTEEKK@ 1 SAPLOG_FILE_2022_1007_042357.log $MEDIATEK123   *
++ *123456789012345678901234567890123456789012345678901234567890123456   *
++ *0        1         2         3         4         5         6         *
++ ***********************************************************************/
++
++#define FLS_PATTERN_HEAD "$MMEEDDIIAATTEEKK@" // 18
++#define FLS_DEFAULT_SAPLOG_NAME "SAPLOG_FILE" // 32
++#define FLS_PATTERN_TAIL "$MEDIATEK123"       // 12
++#define FLS_COMMAND_LENGTH 66 // 18+1+1+1+32+1+12 -- do not change
++#define FLS_COMMAND_FORMAT "%18.18s %d %32.32s %12.12s\n"
++
++#define FLS_DEFAULT_CURTIME "0000_0000_000000"
++
++
++enum {
++       FLS_CMD_START,
++       FLS_CMD_STOP,
++};
++
++
+ static const struct blobmsg_policy log_policy[] = {
+ 	[LOG_MSG] = { .name = "msg", .type = BLOBMSG_TYPE_STRING },
+ 	[LOG_ID] = { .name = "id", .type = BLOBMSG_TYPE_INT32 },
+@@ -80,6 +112,8 @@
+ static int log_type = LOG_STDOUT;
+ static int log_size, log_udp, log_follow, log_trailer_null = 0;
+ static int log_timestamp;
++static int log_fls = 0;
++
+ static int logd_conn_tries = LOGD_CONNECT_RETRY;
+ static int facility_include;
+ static int facility_exclude;
+@@ -396,6 +430,39 @@
+     syslog(LOG_ERR, "Logread receive sigbus error which may cause log time incorrect.\n");
+ }
+ 
++/* caller of fls_send() needs to check 'log_fls' before calling */
++static void fls_send(int cmd_type, char *filename) 
++{
++    char buf[256];
++    ssize_t byte;
++
++    if ((cmd_type != FLS_CMD_START) &&
++	(cmd_type != FLS_CMD_STOP)) {
++        syslog(LOG_DEBUG, "wrong command type specified, no command sent!\n");
++	return;
++    }
++
++    sprintf(buf, FLS_COMMAND_FORMAT, FLS_PATTERN_HEAD, cmd_type,
++	    filename ? filename : "NULL", FLS_PATTERN_TAIL);
++
++    syslog(LOG_DEBUG, "about to write to peer: %s, len: %zu\n",
++	   buf, strlen(buf));
++
++    byte = write(sender.fd, buf, strlen(buf));
++    if (byte < 0) {
++        syslog(LOG_ERR, "fls_send write failed\n");
++    } else {
++        syslog(LOG_DEBUG, "wrote: %zu\n", byte);
++    }
++}
++
++static void sigkill_handler()
++{
++    syslog(LOG_INFO, "Logread receive sigkill.\n");
++    if (log_fls)
++        fls_send(FLS_CMD_STOP, NULL);
++}
++
+ static const char* getcodetext(int value, CODE *codetable) {
+ 	CODE *i;
+ 
+@@ -580,6 +647,7 @@
+ 		"    -u			Use UDP as the protocol\n"
+ 		"    -t			Add an extra timestamp\n"
+ 		"    -0			Use \\0 instead of \\n as trailer when using TCP\n"
++		"    -a                 Running in peering with fls mode\n"
+ 		"\n", prog);
+ 	return 1;
+ }
+@@ -621,6 +689,29 @@
+ 	ustream_fd_init(&test_fd, fd);
+ }
+ 
++static char *fls_get_timestamp()
++{
++	char curTime[128] = {0};
++	struct tm *tmp;
++	time_t lt;
++
++	lt = time( NULL );
++	if (lt < 0)
++	  syslog(LOG_ERR, "time call failed\n");
++	tmp = localtime( &lt );
++	memset(curTime, 0x0, sizeof(curTime));
++	if (tmp != NULL) {
++	  if (!strftime(curTime, sizeof(curTime), "%Y_%m%d_%H%M%S", tmp))
++	    syslog(LOG_ERR, "strftime returns NULL\n");
++	} else {
++	  curTime[0] = 'E';
++	}
++
++	syslog(LOG_INFO, "TIME: %s\n", curTime );
++	return(strdup(curTime));
++}
++
++
+ static void logread_setup_output(void)
+ {
+ 	if (sender.fd || sender.cb)
+@@ -674,6 +765,17 @@
+ 		}
+ 	} else {
+ 		sender.fd = STDOUT_FILENO;
++		char filename[64];
++		char *p;
++		
++		if (log_fls) {
++		    p = fls_get_timestamp();
++		    // send out "start" and "filename" info to fls peer
++		    sprintf(filename, "%s_%s.log", FLS_DEFAULT_SAPLOG_NAME,
++			    p ? p : FLS_DEFAULT_CURTIME);
++		    fls_send(FLS_CMD_START, filename);
++		    free(p);
++		}
+ 	}
+ }
+ 
+@@ -691,7 +793,8 @@
+ 
+ 	signal(SIGPIPE, SIG_IGN);
+ 	signal(SIGBUS, sigbus_msg_handler);
+-	
++	signal(SIGKILL, sigkill_handler);
++
+ 	memset(configStr, 0, sizeof(configStr));
+ 	if (getCfgValue("ap_save_mode", configStr, sizeof(configStr))) {
+ 		if (atoi(configStr) == 1) {
+@@ -713,7 +816,7 @@
+ 		}
+ 	}
+ 
+-	while ((ch = getopt(argc, argv, "u0fcs:l:z:Z:r:F:p:S:P:h:e:t")) != -1) {
++	while ((ch = getopt(argc, argv, "u0fcs:l:z:Z:r:F:p:S:P:h:e:t:a")) != -1) {
+ 		switch (ch) {
+ 		case 'u':
+ 			log_udp = 1;
+@@ -768,6 +871,9 @@
+ 		case 't':
+ 			log_timestamp = 1;
+ 			break;
++		case 'a':
++		        log_fls = 1;
++			break;
+ 		default:
+ 			return usage(*argv);
+ 		}
+@@ -823,6 +929,8 @@
+ 
+ 	if (log_follow && pid_file)
+ 		unlink(pid_file);
++	if (log_fls)
++	    fls_send(FLS_CMD_STOP, NULL);
+ 
+ 	return ret;
+ }

@@ -1,0 +1,79 @@
+--- a/drivers/reset/reset-ti-syscon.c
++++ b/drivers/reset/reset-ti-syscon.c
+@@ -15,6 +15,7 @@
+  * GNU General Public License for more details.
+  */
+ 
++#include <linux/delay.h>
+ #include <linux/mfd/syscon.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
+@@ -56,10 +57,11 @@ struct ti_syscon_reset_data {
+ 	struct regmap *regmap;
+ 	struct ti_syscon_reset_control *controls;
+ 	unsigned int nr_controls;
++	unsigned int reset_duration_us;
+ };
+ 
+-#define to_ti_syscon_reset_data(_rcdev)	\
+-	container_of(_rcdev, struct ti_syscon_reset_data, rcdev)
++#define to_ti_syscon_reset_data(rcdev)	\
++	container_of(rcdev, struct ti_syscon_reset_data, rcdev)
+ 
+ /**
+  * ti_syscon_reset_assert() - assert device reset
+@@ -89,7 +91,7 @@ static int ti_syscon_reset_assert(struct
+ 	mask = BIT(control->assert_bit);
+ 	value = (control->flags & ASSERT_SET) ? mask : 0x0;
+ 
+-	return regmap_update_bits(data->regmap, control->assert_offset, mask, value);
++	return regmap_write_bits(data->regmap, control->assert_offset, mask, value);
+ }
+ 
+ /**
+@@ -120,7 +122,7 @@ static int ti_syscon_reset_deassert(stru
+ 	mask = BIT(control->deassert_bit);
+ 	value = (control->flags & DEASSERT_SET) ? mask : 0x0;
+ 
+-	return regmap_update_bits(data->regmap, control->deassert_offset, mask, value);
++	return regmap_write_bits(data->regmap, control->deassert_offset, mask, value);
+ }
+ 
+ /**
+@@ -158,9 +160,26 @@ static int ti_syscon_reset_status(struct
+ 		!(control->flags & STATUS_SET);
+ }
+ 
++static int ti_syscon_reset(struct reset_controller_dev *rcdev,
++				unsigned long id)
++{
++	struct ti_syscon_reset_data *data = to_ti_syscon_reset_data(rcdev);
++	int ret;
++
++	ret = ti_syscon_reset_assert(rcdev, id);
++	if (ret)
++		return ret;
++
++	if (data->reset_duration_us)
++		usleep_range(data->reset_duration_us, data->reset_duration_us * 2);
++
++	return ti_syscon_reset_deassert(rcdev, id);
++}
++
+ static const struct reset_control_ops ti_syscon_reset_ops = {
+ 	.assert		= ti_syscon_reset_assert,
+ 	.deassert	= ti_syscon_reset_deassert,
++	.reset      = ti_syscon_reset,
+ 	.status		= ti_syscon_reset_status,
+ };
+ 
+@@ -204,6 +223,9 @@ static int ti_syscon_reset_probe(struct
+ 		controls[i].flags = be32_to_cpup(list++);
+ 	}
+ 
++	of_property_read_u32(pdev->dev.of_node, "reset-duration-us",
++		&data->reset_duration_us);
++
+ 	data->rcdev.ops = &ti_syscon_reset_ops;
+ 	data->rcdev.owner = THIS_MODULE;
+ 	data->rcdev.of_node = np;

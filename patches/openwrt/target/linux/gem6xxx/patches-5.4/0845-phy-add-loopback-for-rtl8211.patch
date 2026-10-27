@@ -1,0 +1,28 @@
+--- a/drivers/net/phy/realtek.c
++++ b/drivers/net/phy/realtek.c
+@@ -209,6 +209,17 @@ static int rtl8211f_config_init(struct p
+ 	return 0;
+ }
+ 
++static int rtl8211f_loopback(struct phy_device *phydev, bool enable)
++{
++	int ret;
++
++	ret = genphy_loopback(phydev, enable);
++	if (ret)
++		return ret;
++
++	return genphy_restart_aneg(phydev);
++}
++
+ static int rtl8211e_config_init(struct phy_device *phydev)
+ {
+ 	int ret = 0, oldpage;
+@@ -521,6 +532,7 @@ static struct phy_driver realtek_drvs[]
+ 		.resume		= genphy_resume,
+ 		.read_page	= rtl821x_read_page,
+ 		.write_page	= rtl821x_write_page,
++		.set_loopback   = rtl8211f_loopback,
+ 	}, {
+ 		.name		= "Generic FE-GE Realtek PHY",
+ 		.match_phy_device = rtlgen_match_phy_device,

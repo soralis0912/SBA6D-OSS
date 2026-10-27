@@ -1,0 +1,2121 @@
+Index: linux-5.4.179/drivers/mmc/core/block.c
+===================================================================
+--- linux-5.4.179.orig/drivers/mmc/core/block.c	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/mmc/core/block.c	2022-08-29 17:56:45.576499845 +0800
+@@ -51,6 +51,7 @@
+ #include "block.h"
+ #include "core.h"
+ #include "card.h"
++#include "crypto.h"
+ #include "host.h"
+ #include "bus.h"
+ #include "mmc_ops.h"
+@@ -168,6 +169,11 @@ MODULE_PARM_DESC(perdev_minors, "Minors
+ 
+ static inline int mmc_blk_part_switch(struct mmc_card *card,
+ 				      unsigned int part_type);
++static void mmc_blk_rw_rq_prep(struct mmc_queue_req *mqrq,
++			       struct mmc_card *card,
++			       int disable_multi,
++			       struct mmc_queue *mq);
++static void mmc_blk_hsq_req_done(struct mmc_request *mrq);
+ 
+ static struct mmc_blk_data *mmc_blk_get(struct gendisk *disk)
+ {
+@@ -1316,6 +1322,8 @@ static void mmc_blk_data_prep(struct mmc
+ 
+ 	memset(brq, 0, sizeof(struct mmc_blk_request));
+ 
++    mmc_crypto_prepare_req(mqrq);
++
+ 	brq->mrq.data = &brq->data;
+ 	brq->mrq.tag = req->tag;
+ 
+@@ -1552,9 +1560,29 @@ static int mmc_blk_cqe_issue_flush(struc
+ 	return mmc_blk_cqe_start_req(mq->card->host, mrq);
+ }
+ 
++static int mmc_blk_hsq_issue_rw_rq(struct mmc_queue *mq, struct request *req)
++{
++	struct mmc_queue_req *mqrq = req_to_mmc_queue_req(req);
++	struct mmc_host *host = mq->card->host;
++	int err;
++	mmc_blk_rw_rq_prep(mqrq, mq->card, 0, mq);
++	mqrq->brq.mrq.done = mmc_blk_hsq_req_done;
++	mmc_pre_req(host, &mqrq->brq.mrq);
++
++	err = mmc_cqe_start_req(host, &mqrq->brq.mrq);
++	if (err)
++		mmc_post_req(host, &mqrq->brq.mrq, err);
++
++	return err;
++}
++
+ static int mmc_blk_cqe_issue_rw_rq(struct mmc_queue *mq, struct request *req)
+ {
+ 	struct mmc_queue_req *mqrq = req_to_mmc_queue_req(req);
++	struct mmc_host *host = mq->card->host;
++
++	if (host->hsq_enabled)
++		return mmc_blk_hsq_issue_rw_rq(mq, req);
+ 
+ 	mmc_blk_data_prep(mq, mqrq, 0, NULL, NULL);
+ 
+@@ -1940,6 +1968,41 @@ static void mmc_blk_urgent_bkops(struct
+ 		mmc_run_bkops(mq->card);
+ }
+ 
++static void mmc_blk_hsq_req_done(struct mmc_request *mrq)
++{
++	struct mmc_queue_req *mqrq =
++		container_of(mrq, struct mmc_queue_req, brq.mrq);
++	struct request *req = mmc_queue_req_to_req(mqrq);
++	struct request_queue *q = req->q;
++	struct mmc_queue *mq = q->queuedata;
++	struct mmc_host *host = mq->card->host;
++	unsigned long flags;
++
++	if (mmc_blk_rq_error(&mqrq->brq) ||
++	    mmc_blk_urgent_bkops_needed(mq, mqrq)) {
++		spin_lock_irqsave(&mq->lock, flags);
++		mq->recovery_needed = true;
++		mq->recovery_req = req;
++		spin_unlock_irqrestore(&mq->lock, flags);
++
++		host->cqe_ops->cqe_recovery_start(host);
++
++		schedule_work(&mq->recovery_work);
++		return;
++	}
++
++	mmc_blk_rw_reset_success(mq, req);
++
++	/*
++	 * Block layer timeouts race with completions which means the normal
++	 * completion path cannot be used during recovery.
++	 */
++	if (mq->in_recovery)
++		mmc_blk_cqe_complete_rq(mq, req);
++	else
++		blk_mq_complete_request(req);
++}
++
+ void mmc_blk_mq_complete(struct request *req)
+ {
+ 	struct mmc_queue *mq = req->q->queuedata;
+Index: linux-5.4.179/drivers/mmc/core/Kconfig
+===================================================================
+--- linux-5.4.179.orig/drivers/mmc/core/Kconfig	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/mmc/core/Kconfig	2022-08-29 17:56:45.576499845 +0800
+@@ -81,3 +81,11 @@ config MMC_TEST
+ 	  This driver is only of interest to those developing or
+ 	  testing a host driver. Most people should say N here.
+ 
++config MMC_CRYPTO
++    bool "MMC Crypto Engine Support"
++    depends on BLK_INLINE_ENCRYPTION
++    help
++      Enable Crypto Engine Support in MMC.
++      Enabling this makes it possible for the kernel to use the crypto
++      capabilities of the MMC device (if present) to perform crypto
++      operations on data being transferred to/from the device.
+Index: linux-5.4.179/drivers/mmc/core/Makefile
+===================================================================
+--- linux-5.4.179.orig/drivers/mmc/core/Makefile	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/mmc/core/Makefile	2022-08-29 17:56:45.576499845 +0800
+@@ -18,3 +18,6 @@ obj-$(CONFIG_MMC_BLOCK)		+= mmc_block.o
+ mmc_block-objs			:= block.o queue.o
+ obj-$(CONFIG_MMC_TEST)		+= mmc_test.o
+ obj-$(CONFIG_SDIO_UART)		+= sdio_uart.o
++mmc_core-$(CONFIG_MMC_CRYPTO)	+= crypto.o
++
++ccflags-y += -I$(srctree)/drivers/mmc/host/mediatek/
+Index: linux-5.4.179/drivers/mmc/core/core.c
+===================================================================
+--- linux-5.4.179.orig/drivers/mmc/core/core.c	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/mmc/core/core.c	2022-08-29 17:56:45.580499951 +0800
+@@ -37,6 +37,7 @@
+ 
+ #include "core.h"
+ #include "card.h"
++#include "crypto.h"
+ #include "bus.h"
+ #include "host.h"
+ #include "sdio_bus.h"
+@@ -1012,6 +1013,8 @@ void mmc_set_initial_state(struct mmc_ho
+ 		host->ops->hs400_enhanced_strobe(host, &host->ios);
+ 
+ 	mmc_set_ios(host);
++	
++	mmc_crypto_set_initial_state(host);
+ }
+ 
+ /**
+Index: linux-5.4.179/drivers/mmc/core/host.c
+===================================================================
+--- linux-5.4.179.orig/drivers/mmc/core/host.c	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/mmc/core/host.c	2022-08-29 17:56:45.580499951 +0800
+@@ -24,6 +24,7 @@
+ #include <linux/mmc/slot-gpio.h>
+ 
+ #include "core.h"
++#include "crypto.h"
+ #include "host.h"
+ #include "slot-gpio.h"
+ #include "pwrseq.h"
+Index: linux-5.4.179/drivers/mmc/core/mmc.c
+===================================================================
+--- linux-5.4.179.orig/drivers/mmc/core/mmc.c	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/mmc/core/mmc.c	2022-08-29 17:56:45.580499951 +0800
+@@ -654,6 +654,9 @@ static int mmc_decode_ext_csd(struct mmc
+ 				 mmc_hostname(card->host),
+ 				 card->ext_csd.cmdq_depth);
+ 		}
++		card->ext_csd.enhanced_rpmb_supported =
++					(card->ext_csd.rel_param &
++					 EXT_CSD_WR_REL_PARAM_EN_RPMB_REL_WR);
+ 	}
+ out:
+ 	return err;
+@@ -793,6 +796,8 @@ MMC_DEV_ATTR(enhanced_area_offset, "%llu
+ 		card->ext_csd.enhanced_area_offset);
+ MMC_DEV_ATTR(enhanced_area_size, "%u\n", card->ext_csd.enhanced_area_size);
+ MMC_DEV_ATTR(raw_rpmb_size_mult, "%#x\n", card->ext_csd.raw_rpmb_size_mult);
++MMC_DEV_ATTR(enhanced_rpmb_supported, "%#x\n",
++	card->ext_csd.enhanced_rpmb_supported);
+ MMC_DEV_ATTR(rel_sectors, "%#x\n", card->ext_csd.rel_sectors);
+ MMC_DEV_ATTR(ocr, "0x%08x\n", card->ocr);
+ MMC_DEV_ATTR(rca, "0x%04x\n", card->rca);
+@@ -850,6 +855,7 @@ static struct attribute *mmc_std_attrs[]
+ 	&dev_attr_enhanced_area_offset.attr,
+ 	&dev_attr_enhanced_area_size.attr,
+ 	&dev_attr_raw_rpmb_size_mult.attr,
++	&dev_attr_enhanced_rpmb_supported.attr,
+ 	&dev_attr_rel_sectors.attr,
+ 	&dev_attr_ocr.attr,
+ 	&dev_attr_rca.attr,
+@@ -1858,15 +1864,19 @@ static int mmc_init_card(struct mmc_host
+ 	 */
+ 	card->reenable_cmdq = card->ext_csd.cmdq_en;
+ 
+-	if (card->ext_csd.cmdq_en && !host->cqe_enabled) {
++	if (host->cqe_ops && !host->cqe_enabled) {
+ 		err = host->cqe_ops->cqe_enable(host, card);
+-		if (err) {
+-			pr_err("%s: Failed to enable CQE, error %d\n",
+-				mmc_hostname(host), err);
+-		} else {
++		if (!err) {
+ 			host->cqe_enabled = true;
+-			pr_info("%s: Command Queue Engine enabled\n",
+-				mmc_hostname(host));
++
++			if (card->ext_csd.cmdq_en) {
++				pr_info("%s: Command Queue Engine enabled\n",
++					mmc_hostname(host));
++			} else {
++				host->hsq_enabled = true;
++				pr_info("%s: Host Software Queue enabled\n",
++					mmc_hostname(host));
++			}
+ 		}
+ 	}
+ 
+Index: linux-5.4.179/drivers/mmc/core/queue.c
+===================================================================
+--- linux-5.4.179.orig/drivers/mmc/core/queue.c	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/mmc/core/queue.c	2022-08-29 17:56:45.580499951 +0800
+@@ -18,6 +18,7 @@
+ #include "queue.h"
+ #include "block.h"
+ #include "core.h"
++#include "crypto.h"
+ #include "card.h"
+ #include "host.h"
+ 
+@@ -62,7 +63,7 @@ enum mmc_issue_type mmc_issue_type(struc
+ {
+ 	struct mmc_host *host = mq->card->host;
+ 
+-	if (mq->use_cqe)
++	if (mq->use_cqe && !host->hsq_enabled)
+ 		return mmc_cqe_issue_type(host, req);
+ 
+ 	if (req_op(req) == REQ_OP_READ || req_op(req) == REQ_OP_WRITE)
+@@ -123,11 +124,14 @@ static enum blk_eh_timer_return mmc_mq_t
+ {
+ 	struct request_queue *q = req->q;
+ 	struct mmc_queue *mq = q->queuedata;
++	struct mmc_card *card = mq->card;
++	struct mmc_host *host = card->host;
+ 	unsigned long flags;
+ 	bool ignore_tout;
+ 
+ 	spin_lock_irqsave(&mq->lock, flags);
+-	ignore_tout = mq->recovery_needed || !mq->use_cqe;
++
++	ignore_tout = mq->recovery_needed || !mq->use_cqe || host->hsq_enabled;
+ 	spin_unlock_irqrestore(&mq->lock, flags);
+ 
+ 	return ignore_tout ? BLK_EH_RESET_TIMER : mmc_cqe_timed_out(req);
+@@ -138,12 +142,13 @@ static void mmc_mq_recovery_handler(stru
+ 	struct mmc_queue *mq = container_of(work, struct mmc_queue,
+ 					    recovery_work);
+ 	struct request_queue *q = mq->queue;
++	struct mmc_host *host = mq->card->host;
+ 
+ 	mmc_get_card(mq->card, &mq->ctx);
+ 
+ 	mq->in_recovery = true;
+ 
+-	if (mq->use_cqe)
++	if (mq->use_cqe && !host->hsq_enabled)
+ 		mmc_blk_cqe_recovery(mq);
+ 	else
+ 		mmc_blk_mq_recovery(mq);
+@@ -154,6 +159,9 @@ static void mmc_mq_recovery_handler(stru
+ 	mq->recovery_needed = false;
+ 	spin_unlock_irq(&mq->lock);
+ 
++	if (host->hsq_enabled)
++		host->cqe_ops->cqe_recovery_finish(host);
++
+ 	mmc_put_card(mq->card, &mq->ctx);
+ 
+ 	blk_mq_run_hw_queues(q, true);
+@@ -273,6 +281,14 @@ static blk_status_t mmc_mq_queue_rq(stru
+ 		}
+ 		break;
+ 	case MMC_ISSUE_ASYNC:
++		/*
++		 * For MMC host software queue, we only allow 2 requests in
++		 * flight to avoid a long latency.
++		 */
++		if (host->hsq_enabled && mq->in_flight[issue_type] > 2) {
++			spin_unlock_irq(&mq->lock);
++			return BLK_STS_RESOURCE;
++		}
+ 		break;
+ 	default:
+ 		/*
+@@ -426,7 +442,7 @@ int mmc_init_queue(struct mmc_queue *mq,
+ 	 * The queue depth for CQE must match the hardware because the request
+ 	 * tag is used to index the hardware queue.
+ 	 */
+-	if (mq->use_cqe)
++	if (mq->use_cqe && !host->hsq_enabled)
+ 		mq->tag_set.queue_depth =
+ 			min_t(int, card->ext_csd.cmdq_depth, host->cqe_qdepth);
+ 	else
+@@ -467,6 +483,7 @@ int mmc_init_queue(struct mmc_queue *mq,
+ 	blk_queue_rq_timeout(mq->queue, 60 * HZ);
+ 
+ 	mmc_setup_queue(mq, card);
++	mmc_crypto_setup_queue(mq->queue, host);
+ 	return 0;
+ 
+ free_tag_set:
+Index: linux-5.4.179/drivers/mmc/core/sd.c
+===================================================================
+--- linux-5.4.179.orig/drivers/mmc/core/sd.c	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/mmc/core/sd.c	2022-08-29 17:56:45.580499951 +0800
+@@ -1090,6 +1090,16 @@ retry:
+ 		}
+ 	}
+ 
++	if (host->cqe_ops && !host->cqe_enabled) {
++		err = host->cqe_ops->cqe_enable(host, card);
++		if (!err) {
++			host->cqe_enabled = true;
++			host->hsq_enabled = true;
++			pr_info("%s: Host Software Queue enabled\n",
++				mmc_hostname(host));
++		}
++	}
++
+ 	if (host->caps2 & MMC_CAP2_AVOID_3_3V &&
+ 	    host->ios.signal_voltage == MMC_SIGNAL_VOLTAGE_330) {
+ 		pr_err("%s: Host failed to negotiate down from 3.3V\n",
+Index: linux-5.4.179/drivers/mmc/host/Kconfig
+===================================================================
+--- linux-5.4.179.orig/drivers/mmc/host/Kconfig	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/mmc/host/Kconfig	2022-08-29 17:56:45.580499951 +0800
+@@ -489,6 +489,7 @@ config MMC_SDHCI_MSM
+ 	depends on ARCH_QCOM || (ARM && COMPILE_TEST)
+ 	depends on MMC_SDHCI_PLTFM
+ 	select MMC_SDHCI_IO_ACCESSORS
++	select MMC_CQHCI
+ 	help
+ 	  This selects the Secure Digital Host Controller Interface (SDHCI)
+ 	  support present in Qualcomm SOCs. The controller supports
+@@ -632,6 +633,7 @@ config MMC_SDHCI_SPRD
+ 	depends on ARCH_SPRD
+ 	depends on MMC_SDHCI_PLTFM
+ 	select MMC_SDHCI_IO_ACCESSORS
++	select MMC_HSQ
+ 	help
+ 	  This selects the SDIO Host Controller in Spreadtrum
+ 	  SoCs, this driver supports R11(IP version: R11P0).
+@@ -936,6 +938,17 @@ config MMC_CQHCI
+ 
+ 	  If unsure, say N.
+ 
++config MMC_HSQ
++	tristate "MMC Host Software Queue support"
++	help
++	  This selects the MMC Host Software Queue support. This may increase
++	  performance, if the host controller and its driver supports it.
++
++	  If you have a controller/driver supporting this interface, say Y or M
++	  here.
++
++	  If unsure, say N.
++
+ config MMC_TOSHIBA_PCI
+ 	tristate "Toshiba Type A SD/MMC Card Interface Driver"
+ 	depends on PCI
+Index: linux-5.4.179/drivers/mmc/host/Makefile
+===================================================================
+--- linux-5.4.179.orig/drivers/mmc/host/Makefile	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/mmc/host/Makefile	2022-08-29 17:56:45.580499951 +0800
+@@ -98,6 +98,7 @@ obj-$(CONFIG_MMC_SDHCI_BRCMSTB)		+= sdhc
+ obj-$(CONFIG_MMC_SDHCI_OMAP)		+= sdhci-omap.o
+ obj-$(CONFIG_MMC_SDHCI_SPRD)		+= sdhci-sprd.o
+ obj-$(CONFIG_MMC_CQHCI)			+= cqhci.o
++obj-$(CONFIG_MMC_HSQ)			+= mmc_hsq.o
+ 
+ ifeq ($(CONFIG_CB710_DEBUG),y)
+ 	CFLAGS-cb710-mmc	+= -DDEBUG
+@@ -105,3 +106,10 @@ endif
+ 
+ obj-$(CONFIG_MMC_SDHCI_XENON)	+= sdhci-xenon-driver.o
+ sdhci-xenon-driver-y		+= sdhci-xenon.o sdhci-xenon-phy.o
++
++obj-$(CONFIG_MMC_MTK)		+= mediatek/
++ifeq ($(CONFIG_MMC_MTK), y)
++ccflags-y += -I$(srctree)/drivers/mmc/core/
++ccflags-y += -I$(srctree)/drivers/mmc/host/mediatek/
++ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
++endif
+Index: linux-5.4.179/drivers/mmc/host/cqhci.c
+===================================================================
+--- linux-5.4.179.orig/drivers/mmc/host/cqhci.c	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/mmc/host/cqhci.c	2022-08-29 17:56:45.580499951 +0800
+@@ -18,7 +18,7 @@
+ #include <linux/mmc/card.h>
+ 
+ #include "cqhci.h"
+-
++#include "dbg.h"
+ #define DCMD_SLOT 31
+ #define NUM_SLOTS 32
+ 
+@@ -325,14 +325,20 @@ static int cqhci_enable(struct mmc_host
+ 	struct cqhci_host *cq_host = mmc->cqe_private;
+ 	int err;
+ 
++	if (!card->ext_csd.cmdq_en)
++		return -EINVAL;
++
+ 	if (cq_host->enabled)
+ 		return 0;
+ 
+ 	cq_host->rca = card->rca;
+ 
+ 	err = cqhci_host_alloc_tdl(cq_host);
+-	if (err)
++	if (err) {
++		pr_err("%s: Failed to enable CQE, error %d\n",
++		       mmc_hostname(mmc), err);
+ 		return err;
++	}
+ 
+ 	__cqhci_enable(cq_host);
+ 
+@@ -373,6 +379,16 @@ static void cqhci_off(struct mmc_host *m
+ 	else
+ 		pr_debug("%s: cqhci: CQE off\n", mmc_hostname(mmc));
+ 
++	/*
++	 * MTK PATCH: need disable cqhci for legacy cmds coz legacy cmds using
++	 * GPD DMA and it can only work when CQHCI disable.
++	 */
++	if (cq_host->quirks & CQHCI_QUIRK_DIS_BEFORE_NON_CQ_CMD) {
++		reg = cqhci_readl(cq_host, CQHCI_CFG);
++		reg &= ~CQHCI_ENABLE;
++		cqhci_writel(cq_host, reg, CQHCI_CFG);
++	}
++
+ 	mmc->cqe_on = false;
+ }
+ 
+@@ -561,6 +577,7 @@ static inline int cqhci_tag(struct mmc_r
+ static int cqhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
+ {
+ 	int err = 0;
++	u32 reg;
+ 	u64 data = 0;
+ 	u64 *task_desc = NULL;
+ 	int tag = cqhci_tag(mrq);
+@@ -577,6 +594,13 @@ static int cqhci_request(struct mmc_host
+ 		__cqhci_enable(cq_host);
+ 
+ 	if (!mmc->cqe_on) {
++		/* MTK PATCH: need enable cqhci after issue legacy cmds */
++		if (cq_host->quirks & CQHCI_QUIRK_DIS_BEFORE_NON_CQ_CMD) {
++			reg = cqhci_readl(cq_host, CQHCI_CFG);
++			reg |= CQHCI_ENABLE;
++			cqhci_writel(cq_host, reg, CQHCI_CFG);
++		}
++
+ 		cqhci_writel(cq_host, 0, CQHCI_CTL);
+ 		mmc->cqe_on = true;
+ 		pr_debug("%s: cqhci: CQE on\n", mmc_hostname(mmc));
+@@ -598,8 +622,20 @@ static int cqhci_request(struct mmc_host
+ 			       mmc_hostname(mmc), err);
+ 			return err;
+ 		}
++#if MTK_MMC_DEBUG
++		dbg_add_host_log(mmc, MAGIC_CQHCI_DBG_TYPE,
++			MAGIC_CQHCI_DBG_NUM_L + tag,
++			lower_32_bits(*task_desc));
++		dbg_add_host_log(mmc, MAGIC_CQHCI_DBG_TYPE,
++			MAGIC_CQHCI_DBG_NUM_U + tag,
++			upper_32_bits(*task_desc));
++#endif
+ 	} else {
+ 		cqhci_prep_dcmd_desc(mmc, mrq);
++#if MTK_MMC_DEBUG
++		dbg_add_host_log(mmc, MAGIC_CQHCI_DBG_TYPE_DCMD, mrq->cmd->opcode,
++			mrq->cmd->arg);
++#endif
+ 	}
+ 
+ 	spin_lock_irqsave(&cq_host->lock, flags);
+@@ -749,7 +785,16 @@ static void cqhci_finish_mrq(struct mmc_
+ 		else
+ 			data->bytes_xfered = data->blksz * data->blocks;
+ 	}
+-
++#if MTK_MMC_DEBUG
++	if (tag != DCMD_SLOT)
++		dbg_add_host_log(mmc, MAGIC_CQHCI_DBG_TYPE,
++		MAGIC_CQHCI_DBG_NUM_RI + tag,
++		cqhci_readl(cq_host, CQHCI_CRA));
++	else
++		dbg_add_host_log(mmc, (MAGIC_CQHCI_DBG_TYPE_DCMD + 1),
++			mrq->cmd->opcode,
++			mrq->cmd->resp[0]);	
++#endif
+ 	mmc_cqe_request_done(mmc, mrq);
+ }
+ 
+Index: linux-5.4.179/drivers/mmc/host/cqhci.h
+===================================================================
+--- linux-5.4.179.orig/drivers/mmc/host/cqhci.h	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/mmc/host/cqhci.h	2022-08-29 17:56:45.580499951 +0800
+@@ -164,6 +164,7 @@ struct cqhci_host {
+ 
+ 	u32 quirks;
+ #define CQHCI_QUIRK_SHORT_TXFR_DESC_SZ	0x1
++#define CQHCI_QUIRK_DIS_BEFORE_NON_CQ_CMD	(1 << 1)
+ 
+ 	bool enabled;
+ 	bool halted;
+Index: linux-5.4.179/drivers/mmc/host/mtk-sd.c
+===================================================================
+--- linux-5.4.179.orig/drivers/mmc/host/mtk-sd.c	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/mmc/host/mtk-sd.c	2022-08-29 18:10:48.824558618 +0800
+@@ -8,6 +8,8 @@
+ #include <linux/clk.h>
+ #include <linux/delay.h>
+ #include <linux/dma-mapping.h>
++#include <linux/gpio.h>
++#include <linux/gpio/consumer.h>
+ #include <linux/ioport.h>
+ #include <linux/irq.h>
+ #include <linux/of_address.h>
+@@ -32,8 +34,18 @@
+ #include <linux/mmc/sdio.h>
+ #include <linux/mmc/slot-gpio.h>
+ 
++#include "cqhci.h"
++#include "host.h"
++#include "card.h"
++#include "mtk_sd.h"
++#include "msdc_reg.h"
++#include "msdc_type.h"
++#include "dbg.h"
++
+ #define MAX_BD_NUM          1024
+ 
++static int msdc_execute_tuning(struct mmc_host *mmc, u32 opcode);
++
+ /*--------------------------------------------------------------------------*/
+ /* Common Definition                                                        */
+ /*--------------------------------------------------------------------------*/
+@@ -152,6 +164,7 @@
+ #define MSDC_INT_DMA_BDCSERR    (0x1 << 17)	/* W1C */
+ #define MSDC_INT_DMA_GPDCSERR   (0x1 << 18)	/* W1C */
+ #define MSDC_INT_DMA_PROTECT    (0x1 << 19)	/* W1C */
++#define MSDC_INT_CMDQ           (0x1 << 28)	/* W1C */
+ 
+ /* MSDC_INTEN mask */
+ #define MSDC_INTEN_MMCIRQ       (0x1 << 0)	/* RW */
+@@ -182,6 +195,7 @@
+ /* SDC_CFG mask */
+ #define SDC_CFG_SDIOINTWKUP     (0x1 << 0)	/* RW */
+ #define SDC_CFG_INSWKUP         (0x1 << 1)	/* RW */
++#define SDC_CFG_WRDTOC          (0x1fff  << 2)  /* RW */
+ #define SDC_CFG_BUSWIDTH        (0x3 << 16)	/* RW */
+ #define SDC_CFG_SDIO            (0x1 << 19)	/* RW */
+ #define SDC_CFG_SDIOIDE         (0x1 << 20)	/* RW */
+@@ -197,6 +211,7 @@
+ /* SDC_ADV_CFG0 mask */
+ #define SDC_RX_ENHANCE_EN	(0x1 << 20)	/* RW */
+ 
++#define DMA_SA_H4BIT     0x8c
+ /* DMA_SA_H4BIT mask */
+ #define DMA_ADDR_HIGH_4BIT      (0xf << 0)      /* RW */
+ 
+@@ -230,6 +245,7 @@
+ #define MSDC_PATCH_BIT_DECRCTMO   (0x1 << 30)	/* RW */
+ 
+ #define MSDC_PATCH_BIT1_CMDTA     (0x7 << 3)    /* RW */
++#define MSDC_PB1_BUSY_CHECK_SEL   (0x1 << 7)    /* RW */
+ #define MSDC_PATCH_BIT1_STOP_DLY  (0xf << 8)    /* RW */
+ 
+ #define MSDC_PATCH_BIT2_CFGRESP   (0x1 << 15)   /* RW */
+@@ -286,6 +302,7 @@
+ #define REQ_STOP_EIO (0x1 << 3)
+ #define REQ_STOP_TMO (0x1 << 4)
+ #define REQ_CMD_BUSY (0x1 << 5)
++#define REQ_CRC_STATUS_ERR (0x1 << 6)
+ 
+ #define MSDC_PREPARE_FLAG (0x1 << 0)
+ #define MSDC_ASYNC_FLAG (0x1 << 1)
+@@ -298,6 +315,13 @@
+ #define DEFAULT_DEBOUNCE	(8)	/* 8 cycles CD debounce */
+ 
+ #define PAD_DELAY_MAX	32 /* PAD delay cells */
++
++/* Because colgin does not have VMCH,so force to assgin OCR */
++#define MSDC_OCR_AVAIL\
++	(MMC_VDD_28_29 | MMC_VDD_29_30 | MMC_VDD_30_31)
++
++#define VOL_3000        3000  /*Set inital voltage of VMC to 3V*/
++
+ /*--------------------------------------------------------------------------*/
+ /* Descriptor Structure                                                     */
+ /*--------------------------------------------------------------------------*/
+@@ -334,108 +358,12 @@ struct mt_bdma_desc {
+ #define BDMA_DESC_BUFLEN_EXT	(0xffffff) /* bit0 ~ bit23 */
+ };
+ 
+-struct msdc_dma {
+-	struct scatterlist *sg;	/* I/O scatter list */
+-	struct mt_gpdma_desc *gpd;		/* pointer to gpd array */
+-	struct mt_bdma_desc *bd;		/* pointer to bd array */
+-	dma_addr_t gpd_addr;	/* the physical address of gpd array */
+-	dma_addr_t bd_addr;	/* the physical address of bd array */
+-};
+-
+-struct msdc_save_para {
+-	u32 msdc_cfg;
+-	u32 iocon;
+-	u32 sdc_cfg;
+-	u32 pad_tune;
+-	u32 patch_bit0;
+-	u32 patch_bit1;
+-	u32 patch_bit2;
+-	u32 pad_ds_tune;
+-	u32 pad_cmd_tune;
+-	u32 emmc50_cfg0;
+-	u32 emmc50_cfg3;
+-	u32 sdc_fifo_cfg;
+-	u32 emmc_top_control;
+-	u32 emmc_top_cmd;
+-	u32 emmc50_pad_ds_tune;
+-};
+-
+-struct mtk_mmc_compatible {
+-	u8 clk_div_bits;
+-	bool hs400_tune; /* only used for MT8173 */
+-	u32 pad_tune_reg;
+-	bool async_fifo;
+-	bool data_tune;
+-	bool busy_check;
+-	bool stop_clk_fix;
+-	bool enhance_rx;
+-	bool support_64g;
+-	bool use_internal_cd;
+-};
+-
+-struct msdc_tune_para {
+-	u32 iocon;
+-	u32 pad_tune;
+-	u32 pad_cmd_tune;
+-	u32 emmc_top_control;
+-	u32 emmc_top_cmd;
+-};
+-
+ struct msdc_delay_phase {
+ 	u8 maxlen;
+ 	u8 start;
+ 	u8 final_phase;
+ };
+ 
+-struct msdc_host {
+-	struct device *dev;
+-	const struct mtk_mmc_compatible *dev_comp;
+-	struct mmc_host *mmc;	/* mmc structure */
+-	int cmd_rsp;
+-
+-	spinlock_t lock;
+-	struct mmc_request *mrq;
+-	struct mmc_command *cmd;
+-	struct mmc_data *data;
+-	int error;
+-
+-	void __iomem *base;		/* host base address */
+-	void __iomem *top_base;		/* host top register base address */
+-
+-	struct msdc_dma dma;	/* dma channel */
+-	u64 dma_mask;
+-
+-	u32 timeout_ns;		/* data timeout ns */
+-	u32 timeout_clks;	/* data timeout clks */
+-
+-	struct pinctrl *pinctrl;
+-	struct pinctrl_state *pins_default;
+-	struct pinctrl_state *pins_uhs;
+-	struct delayed_work req_timeout;
+-	int irq;		/* host interrupt */
+-	struct reset_control *reset;
+-
+-	struct clk *src_clk;	/* msdc source clock */
+-	struct clk *h_clk;      /* msdc h_clk */
+-	struct clk *bus_clk;	/* bus clock which used to access register */
+-	struct clk *src_clk_cg; /* msdc source clock control gate */
+-	u32 mclk;		/* mmc subsystem clock frequency */
+-	u32 src_clk_freq;	/* source clock frequency */
+-	unsigned char timing;
+-	bool vqmmc_enabled;
+-	u32 latch_ck;
+-	u32 hs400_ds_delay;
+-	u32 hs200_cmd_int_delay; /* cmd internal delay for HS200/SDR104 */
+-	u32 hs400_cmd_int_delay; /* cmd internal delay for HS400 */
+-	bool hs400_cmd_resp_sel_rising;
+-				 /* cmd response sample selection for HS400 */
+-	bool hs400_mode;	/* current eMMC will run at hs400 mode */
+-	bool internal_cd;	/* Use internal card-detect logic */
+-	struct msdc_save_para save_para; /* used when gate HCLK */
+-	struct msdc_tune_para def_tune_para; /* default tune setting */
+-	struct msdc_tune_para saved_tune_para; /* tune result of CMD21/CMD19 */
+-};
+-
+ static const struct mtk_mmc_compatible mt8135_compat = {
+ 	.clk_div_bits = 8,
+ 	.hs400_tune = false,
+@@ -448,6 +376,18 @@ static const struct mtk_mmc_compatible m
+ 	.support_64g = false,
+ };
+ 
++static const struct mtk_mmc_compatible mt8168_compat = {
++	.clk_div_bits = 12,
++	.hs400_tune = false,
++	.pad_tune_reg = OFFSET_MSDC_PAD_TUNE0,
++	.async_fifo = true,
++	.data_tune = true,
++	.busy_check = true,
++	.stop_clk_fix = true,
++	.enhance_rx = true,
++	.support_64g = true,
++};
++
+ static const struct mtk_mmc_compatible mt8173_compat = {
+ 	.clk_div_bits = 8,
+ 	.hs400_tune = true,
+@@ -530,8 +470,45 @@ static const struct mtk_mmc_compatible m
+ 	.use_internal_cd = true,
+ };
+ 
++static const struct mtk_mmc_compatible mt6880_compat = {
++	.clk_div_bits = 12,
++	.hs400_tune = false,
++	.pad_tune_reg = OFFSET_MSDC_PAD_TUNE0,
++	.async_fifo = true,
++	.data_tune = true,
++	.busy_check = true,
++	.stop_clk_fix = true,
++	.enhance_rx = true,
++	.support_64g = true,
++};
++
++static const struct mtk_mmc_compatible mt6890_compat = {
++	.clk_div_bits = 12,
++	.hs400_tune = false,
++	.pad_tune_reg = OFFSET_MSDC_PAD_TUNE0,
++	.async_fifo = true,
++	.data_tune = true,
++	.busy_check = true,
++	.stop_clk_fix = true,
++	.enhance_rx = true,
++	.support_64g = true,
++};
++
++static const struct mtk_mmc_compatible mt6990_compat = {
++	.clk_div_bits = 12,
++	.hs400_tune = false,
++	.pad_tune_reg = OFFSET_MSDC_PAD_TUNE0,
++	.async_fifo = true,
++	.data_tune = true,
++	.busy_check = true,
++	.stop_clk_fix = true,
++	.enhance_rx = true,
++	.support_64g = true,
++};
++
+ static const struct of_device_id msdc_of_ids[] = {
+ 	{ .compatible = "mediatek,mt8135-mmc", .data = &mt8135_compat},
++	{ .compatible = "mediatek,mt8168-mmc", .data = &mt8168_compat},
+ 	{ .compatible = "mediatek,mt8173-mmc", .data = &mt8173_compat},
+ 	{ .compatible = "mediatek,mt8183-mmc", .data = &mt8183_compat},
+ 	{ .compatible = "mediatek,mt2701-mmc", .data = &mt2701_compat},
+@@ -539,6 +516,9 @@ static const struct of_device_id msdc_of
+ 	{ .compatible = "mediatek,mt7622-mmc", .data = &mt7622_compat},
+ 	{ .compatible = "mediatek,mt8516-mmc", .data = &mt8516_compat},
+ 	{ .compatible = "mediatek,mt7620-mmc", .data = &mt7620_compat},
++	{ .compatible = "mediatek,mt6880-mmc", .data = &mt6880_compat},
++	{ .compatible = "mediatek,mt6890-mmc", .data = &mt6890_compat},
++	{ .compatible = "mediatek,mt6990-mmc", .data = &mt6990_compat},
+ 	{}
+ };
+ MODULE_DEVICE_TABLE(of, msdc_of_ids);
+@@ -591,6 +571,49 @@ static void msdc_reset_hw(struct msdc_ho
+ 	writel(val, host->base + MSDC_INT);
+ }
+ 
++#define MSDC_DEBUG_REGISTER_COUNT_1  0x27
++#define MSDC_DBG_SEL_1             	(0xa0)
++#define MSDC_DBG_OUT_1             	(0xa4)
++#define EMMC50_CFG4_1              	(0x224)
++void msdc_dump_dbg_register(struct msdc_host *host)
++{
++	int i;
++	pr_info("MSDC debug register [set:out]\n");
++	for (i = 0; i < MSDC_DEBUG_REGISTER_COUNT_1 + 1; i++) {
++		writel(i,host->base+MSDC_DBG_SEL_1);
++		pr_info("[%.3hx:%.8x]",i, readl(host->base+MSDC_DBG_OUT_1));
++	}
++	writel(0x27,host->base+MSDC_DBG_SEL_1);
++	pr_info("MSDC debug 0x224 register [set:out]\n");
++	for (i = 0; i < 12; i++) {
++		writel(i,host->base+EMMC50_CFG4_1);
++		pr_info("[%.3hx:%.8x]", i, readl(host->base+MSDC_DBG_OUT_1));
++	}
++
++	writel(0,host->base + MSDC_DBG_SEL_1);
++}
++
++void msdc_dump_info(struct msdc_host *host)
++{
++	unsigned int i;
++
++	if (host->tuning_in_progress == true)
++		return;
++
++	pr_info("MSDC:normal\n");
++	for(i = 0; i < 0x8A; i++){
++		pr_info("[%08x]=%08x",0x1123000 + i*4, readl(host->base + i*4));
++	}
++	pr_info("MSDC:normal [%08x]=%08x",0x1123000 + 0xa0, readl(host->base + 0xa0));
++	pr_info("MSDC:normal [%08x]=%08x",0x1123000 + 0xa4, readl(host->base + 0xa4));
++
++	pr_info("MSDC:top reg\n");
++	for(i = 0; i < 0xb; i++) {
++		pr_info("[%08x]=%08x",0x11F1000 + i*4, readl(host->top_base + i*4));
++	}
++	msdc_dump_dbg_register(host);
++}
++
+ static void msdc_cmd_next(struct msdc_host *host,
+ 		struct mmc_request *mrq, struct mmc_command *cmd);
+ 
+@@ -701,10 +724,9 @@ static void msdc_unprepare_data(struct m
+ 	}
+ }
+ 
+-/* clock control primitives */
+-static void msdc_set_timeout(struct msdc_host *host, u32 ns, u32 clks)
++static u64 msdc_timeout_cal(struct msdc_host *host, u64 ns, u64 clks)
+ {
+-	u32 timeout, clk_ns;
++	u64 timeout, clk_ns;
+ 	u32 mode = 0;
+ 
+ 	host->timeout_ns = ns;
+@@ -713,9 +735,9 @@ static void msdc_set_timeout(struct msdc
+ 		timeout = 0;
+ 	} else {
+ 		clk_ns  = 1000000000UL / host->mmc->actual_clock;
+-		timeout = (ns + clk_ns - 1) / clk_ns + clks;
++		timeout = div64_u64((ns + clk_ns - 1), clk_ns) + clks;
+ 		/* in 1048576 sclk cycle unit */
+-		timeout = (timeout + (0x1 << 20) - 1) >> 20;
++		timeout = DIV_ROUND_UP(timeout, (0x1 << 20));
+ 		if (host->dev_comp->clk_div_bits == 8)
+ 			sdr_get_field(host->base + MSDC_CFG,
+ 				      MSDC_CFG_CKMOD, &mode);
+@@ -725,25 +747,67 @@ static void msdc_set_timeout(struct msdc
+ 		/*DDR mode will double the clk cycles for data timeout */
+ 		timeout = mode >= 2 ? timeout * 2 : timeout;
+ 		timeout = timeout > 1 ? timeout - 1 : 0;
+-		timeout = timeout > 255 ? 255 : timeout;
+ 	}
+-	sdr_set_field(host->base + SDC_CFG, SDC_CFG_DTOC, timeout);
++	return timeout;
++}
++
++/* clock control primitives */
++static void msdc_set_timeout(struct msdc_host *host, u64 ns, u64 clks)
++{
++	u64 timeout;
++
++	host->timeout_ns = ns;
++	host->timeout_clks = clks;
++
++	timeout = msdc_timeout_cal(host, ns, clks);
++	sdr_set_field(host->base + SDC_CFG, SDC_CFG_DTOC,
++		      (u32)(timeout > 255 ? 255 : timeout));
++}
++
++static void msdc_set_busy_timeout(struct msdc_host *host, u64 ns, u64 clks)
++{
++	u64 timeout;
++
++	timeout = msdc_timeout_cal(host, ns, clks);
++	sdr_set_field(host->base + SDC_CFG, SDC_CFG_WRDTOC,
++		      (u32)(timeout > 8191 ? 8191 : timeout));
+ }
+ 
+ static void msdc_gate_clock(struct msdc_host *host)
+ {
+-	clk_disable_unprepare(host->src_clk_cg);
+-	clk_disable_unprepare(host->src_clk);
+-	clk_disable_unprepare(host->bus_clk);
+-	clk_disable_unprepare(host->h_clk);
++	if (host->src_clk_cg)
++		clk_disable_unprepare(host->src_clk_cg);
++	if (host->src_clk)
++		clk_disable_unprepare(host->src_clk);
++	if (host->bus_clk)
++		clk_disable_unprepare(host->bus_clk);
++	if (host->h_clk)
++		clk_disable_unprepare(host->h_clk);
++	if (host->axi_clk)
++		clk_disable_unprepare(host->axi_clk);
++	if (host->ahb_clk)
++		clk_disable_unprepare(host->ahb_clk);
++	if (host->p_clk)
++		clk_disable_unprepare(host->p_clk);
+ }
+ 
+ static void msdc_ungate_clock(struct msdc_host *host)
+ {
+-	clk_prepare_enable(host->h_clk);
+-	clk_prepare_enable(host->bus_clk);
+-	clk_prepare_enable(host->src_clk);
+-	clk_prepare_enable(host->src_clk_cg);
++	if (host->p_clk)
++		clk_prepare_enable(host->p_clk);	//MSDC_PCLK_CK_MSDC1_CKEN
++	if (host->axi_clk)
++		clk_prepare_enable(host->axi_clk); //MSDC_AXI_CK_CKEN
++	if (host->ahb_clk)
++		clk_prepare_enable(host->ahb_clk); //MSDC_AHB2AXI_BRG_AXI_CKEN
++	if (host->bus_clk)
++		clk_prepare_enable(host->bus_clk);
++	if (host->h_clk)
++		clk_prepare_enable(host->h_clk);	//MSDC_HCLK_MST_CK_0P_CKEN
++	if (host->src_clk)
++		clk_prepare_enable(host->src_clk);
++	if (host->src_clk_cg)
++		clk_prepare_enable(host->src_clk_cg);	//MSDC_SRC_CK_0P_CKEN
++
+ 	while (!(readl(host->base + MSDC_CFG) & MSDC_CFG_CKSTB))
+ 		cpu_relax();
+ }
+@@ -754,10 +818,14 @@ static void msdc_set_mclk(struct msdc_ho
+ 	u32 flags;
+ 	u32 div;
+ 	u32 sclk;
++#ifndef MSDC_AUTOK
+ 	u32 tune_reg = host->dev_comp->pad_tune_reg;
++	void __iomem *top_base = host->top_base;
++#endif
++	void __iomem *base = host->base;
+ 
+ 	if (!hz) {
+-		dev_dbg(host->dev, "set mclk to 0\n");
++		dev_err(host->dev, "set mclk to 0\n");
+ 		host->mclk = 0;
+ 		host->mmc->actual_clock = 0;
+ 		sdr_clr_bits(host->base + MSDC_CFG, MSDC_CFG_CKPDN);
+@@ -849,6 +917,7 @@ static void msdc_set_mclk(struct msdc_ho
+ 	 * mmc_select_hs400() will drop to 50Mhz and High speed mode,
+ 	 * tune result of hs200/200Mhz is not suitable for 50Mhz
+ 	 */
++#ifndef MSDC_AUTOK
+ 	if (host->mmc->actual_clock <= 52000000) {
+ 		writel(host->def_tune_para.iocon, host->base + MSDC_IOCON);
+ 		if (host->top_base) {
+@@ -880,8 +949,10 @@ static void msdc_set_mclk(struct msdc_ho
+ 		sdr_set_field(host->base + tune_reg,
+ 			      MSDC_PAD_TUNE_CMDRRDLY,
+ 			      host->hs400_cmd_int_delay);
+-	dev_dbg(host->dev, "sclk: %d, timing: %d\n", host->mmc->actual_clock,
+-		timing);
++#endif
++
++	dev_dbg(host->dev, "sclk: %d, timing: %d, hz: %d\n", host->mmc->actual_clock,
++		timing, hz);
+ }
+ 
+ static inline u32 msdc_cmd_find_resp(struct msdc_host *host,
+@@ -1013,7 +1084,7 @@ static void msdc_track_cmd_data(struct m
+ 				struct mmc_command *cmd, struct mmc_data *data)
+ {
+ 	if (host->error)
+-		dev_dbg(host->dev, "%s: cmd=%d arg=%08X; host->error=0x%08X\n",
++		dev_err(host->dev, "%s: cmd=%d arg=%08X; host->error=0x%08X\n",
+ 			__func__, cmd->opcode, cmd->arg, host->error);
+ }
+ 
+@@ -1095,17 +1166,23 @@ static bool msdc_cmd_done(struct msdc_ho
+ 		if (events & MSDC_INT_RSPCRCERR) {
+ 			cmd->error = -EILSEQ;
+ 			host->error |= REQ_CMD_EIO;
++			host->need_tune |= TUNE_CMD_ERR;
+ 		} else if (events & MSDC_INT_CMDTMO) {
+ 			cmd->error = -ETIMEDOUT;
+ 			host->error |= REQ_CMD_TMO;
+ 		}
+ 	}
+ 	if (cmd->error)
+-		dev_dbg(host->dev,
++		dev_err(host->dev,
+ 				"%s: cmd=%d arg=%08X; rsp %08X; cmd_error=%d\n",
+ 				__func__, cmd->opcode, cmd->arg, rsp[0],
+ 				cmd->error);
+-
++#if MTK_MMC_DEBUG
++	if (host->id == MSDC_EMMC)
++		dbg_add_host_log(host->mmc, 1, cmd->opcode, cmd->resp[0]);
++	else
++		dbg_add_sd_log(host->mmc, 1, cmd->opcode, cmd->resp[0]);
++#endif
+ 	msdc_cmd_next(host, mrq, cmd);
+ 	return true;
+ }
+@@ -1174,6 +1251,12 @@ static void msdc_start_command(struct ms
+ 
+ 	writel(cmd->arg, host->base + SDC_ARG);
+ 	writel(rawcmd, host->base + SDC_CMD);
++#if MTK_MMC_DEBUG
++	if (host->id == MSDC_EMMC)
++		dbg_add_host_log(host->mmc, 0, cmd->opcode, cmd->arg);
++	else
++		dbg_add_sd_log(host->mmc, 0, cmd->opcode, cmd->arg);
++#endif
+ }
+ 
+ static void msdc_cmd_next(struct msdc_host *host,
+@@ -1288,7 +1371,13 @@ static bool msdc_data_xfer_done(struct m
+ 		} else {
+ 			dev_dbg(host->dev, "interrupt events: %x\n", events);
+ 			msdc_reset_hw(host);
+-			host->error |= REQ_DAT_ERR;
++			if (mrq->data->flags & MMC_DATA_WRITE) {
++				host->error |= REQ_CRC_STATUS_ERR;
++				host->need_tune = TUNE_DATA_WRITE;
++			} else {
++				host->error |= REQ_DAT_ERR;
++				host->need_tune = TUNE_DATA_READ;
++			}
+ 			data->bytes_xfered = 0;
+ 
+ 			if (events & MSDC_INT_DATTMO)
+@@ -1296,9 +1385,9 @@ static bool msdc_data_xfer_done(struct m
+ 			else if (events & MSDC_INT_DATCRCERR)
+ 				data->error = -EILSEQ;
+ 
+-			dev_dbg(host->dev, "%s: cmd=%d; blocks=%d",
++			dev_err(host->dev, "%s: cmd=%d; blocks=%d",
+ 				__func__, mrq->cmd->opcode, data->blocks);
+-			dev_dbg(host->dev, "data_error=%d xfer_size=%d\n",
++			dev_err(host->dev, "data_error=%d xfer_size=%d\n",
+ 				(int)data->error, data->bytes_xfered);
+ 		}
+ 
+@@ -1333,9 +1422,9 @@ static void msdc_set_buswidth(struct msd
+ 
+ static int msdc_ops_switch_volt(struct mmc_host *mmc, struct mmc_ios *ios)
+ {
+-	struct msdc_host *host = mmc_priv(mmc);
+ 	int ret = 0;
+ 
++	struct msdc_host *host = mmc_priv(mmc);
+ 	if (!IS_ERR(mmc->supply.vqmmc)) {
+ 		if (ios->signal_voltage != MMC_SIGNAL_VOLTAGE_330 &&
+ 		    ios->signal_voltage != MMC_SIGNAL_VOLTAGE_180) {
+@@ -1345,7 +1434,7 @@ static int msdc_ops_switch_volt(struct m
+ 
+ 		ret = mmc_regulator_set_vqmmc(mmc, ios);
+ 		if (ret) {
+-			dev_dbg(host->dev, "Regulator set error %d (%d)\n",
++			dev_err(host->dev, "Regulator set error %d (%d)\n",
+ 				ret, ios->signal_voltage);
+ 		} else {
+ 			/* Apply different pinctrl settings for different signal voltage */
+@@ -1354,7 +1443,16 @@ static int msdc_ops_switch_volt(struct m
+ 			else
+ 				pinctrl_select_state(host->pinctrl, host->pins_default);
+ 		}
++	} else if (mmc->caps2 & MMC_CAP2_HS400) {
++		if (ios->signal_voltage != MMC_SIGNAL_VOLTAGE_120 &&
++			ios->signal_voltage != MMC_SIGNAL_VOLTAGE_180) {
++			dev_err(host->dev, "Unsupported signal voltage!\n");
++			return -EINVAL;
++		}
++		/* Assume used a fixed voltage, apply uhs pin control */
++		pinctrl_select_state(host->pinctrl, host->pins_uhs);
+ 	}
++
+ 	return ret;
+ }
+ 
+@@ -1418,6 +1516,36 @@ static void msdc_enable_sdio_irq(struct
+ 		pm_runtime_put_noidle(host->dev);
+ }
+ 
++#if IS_ENABLED(CONFIG_MMC_CQHCI)
++static irqreturn_t msdc_cmdq_irq(struct msdc_host *host, u32 intsts)
++{
++	int cmd_err = 0, dat_err = 0;
++
++	if (intsts & MSDC_INT_RSPCRCERR) {
++		cmd_err = (unsigned int)-EILSEQ;
++		dev_err(host->dev, "%s: CMD CRC ERR", __func__);
++	} else if (intsts & MSDC_INT_CMDTMO) {
++		cmd_err = (unsigned int)-ETIMEDOUT;
++		dev_err(host->dev, "%s: CMD TIMEOUT ERR", __func__);
++	}
++
++	if (intsts & MSDC_INT_DATCRCERR) {
++		dat_err = (unsigned int)-EILSEQ;
++		dev_err(host->dev, "%s: DATA CRC ERR", __func__);
++	} else if (intsts & MSDC_INT_DATTMO) {
++		dat_err = (unsigned int)-ETIMEDOUT;
++		dev_err(host->dev, "%s: DATA TIMEOUT ERR", __func__);
++	}
++
++	if (cmd_err || dat_err) {
++		dev_err(host->dev, "cmd_err = %d, dat_err =%d, intsts = 0x%x",
++			cmd_err, dat_err, intsts);
++	}
++
++	return cqhci_irq(host->mmc, 0, cmd_err, dat_err);
++}
++#endif
++
+ static irqreturn_t msdc_irq(int irq, void *dev_id)
+ {
+ 	struct msdc_host *host = (struct msdc_host *) dev_id;
+@@ -1454,6 +1582,16 @@ static irqreturn_t msdc_irq(int irq, voi
+ 		if (!(events & (event_mask & ~MSDC_INT_SDIOIRQ)))
+ 			break;
+ 
++#if IS_ENABLED(CONFIG_MMC_CQHCI)
++		if ((host->mmc->caps2 & MMC_CAP2_CQE) &&
++		    (events & MSDC_INT_CMDQ)) {
++			msdc_cmdq_irq(host, events);
++			/* clear interrupts */
++			writel(events, host->base + MSDC_INT);
++			return IRQ_HANDLED;
++		}
++#endif
++
+ 		if (!mrq) {
+ 			dev_err(host->dev,
+ 				"%s: MRQ=NULL; events=%08X; event_mask=%08X\n",
+@@ -1609,6 +1747,12 @@ static void msdc_init_hw(struct msdc_hos
+ 		host->def_tune_para.pad_tune = readl(host->base + tune_reg);
+ 		host->saved_tune_para.pad_tune = readl(host->base + tune_reg);
+ 	}
++#ifdef MSDC_AUTOK
++	/* reset tuning parameter */
++	msdc_init_tune_setting(host);
++	host->need_tune = TUNE_NONE;
++#endif
++
+ 	dev_dbg(host->dev, "init hardware done!");
+ }
+ 
+@@ -1662,10 +1806,17 @@ static void msdc_init_gpd_bd(struct msdc
+ 	}
+ }
+ 
++int msdc_regulator_set_and_enable(struct regulator *reg, int powerVolt)
++{
++	regulator_set_voltage(reg, powerVolt, powerVolt);
++	return regulator_enable(reg);
++}
++
+ static void msdc_ops_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
+ {
+ 	struct msdc_host *host = mmc_priv(mmc);
+ 	int ret;
++	int voltage_uv = VOL_3000 * 1000;
+ 
+ 	msdc_set_buswidth(host, ios->bus_width);
+ 
+@@ -1681,10 +1832,14 @@ static void msdc_ops_set_ios(struct mmc_
+ 				return;
+ 			}
+ 		}
++		if (host->mmc_power_gpio) {
++			msdc_init_hw(host);
++			gpiod_set_value_cansleep(host->mmc_power_gpio, 1);
++		}
+ 		break;
+ 	case MMC_POWER_ON:
+ 		if (!IS_ERR(mmc->supply.vqmmc) && !host->vqmmc_enabled) {
+-			ret = regulator_enable(mmc->supply.vqmmc);
++			ret = msdc_regulator_set_and_enable(mmc->supply.vqmmc,voltage_uv);
+ 			if (ret)
+ 				dev_err(host->dev, "Failed to set vqmmc power!\n");
+ 			else
+@@ -1699,13 +1854,38 @@ static void msdc_ops_set_ios(struct mmc_
+ 			regulator_disable(mmc->supply.vqmmc);
+ 			host->vqmmc_enabled = false;
+ 		}
++
++		if (host->mmc_power_gpio) 
++			gpiod_set_value_cansleep(host->mmc_power_gpio, 0);
++
+ 		break;
+ 	default:
+ 		break;
+ 	}
+-
+-	if (host->mclk != ios->clock || host->timing != ios->timing)
++	if (host->timing != ios->timing) {
++		/* msdc setting TX parameter */
++		msdc_ios_tune_setting(host, ios);
++		if (ios->timing == MMC_TIMING_MMC_DDR52)
++			msdc_init_tune_setting(host);
++	}
++
++	if (host->mclk != ios->clock) {
++		if ((host->mclk > ios->clock)
++			&& (ios->clock <= 52000000)
++			&& (ios->clock > 0))
++			msdc_init_tune_setting(host);
++	}
++
++	if (host->mclk != ios->clock || host->timing != ios->timing) {
++		dev_err(host->dev, "host->mclk:%d, ios->clock:%d, host->timing:%d,ios->timing:%d\n",
++			host->mclk, ios->clock, host->timing, ios->timing);
+ 		msdc_set_mclk(host, ios->timing, ios->clock);
++	}
++	if (ios->timing == MMC_TIMING_MMC_HS400 &&
++			ios->clock > 52000000) {
++			msdc_execute_tuning(host->mmc,
++				MMC_SEND_TUNING_BLOCK_HS200);
++	}
+ }
+ 
+ static u32 test_delay_bit(u32 delay, u32 bit)
+@@ -1872,12 +2052,12 @@ skip_fall:
+ 		if (!cmd_err)
+ 			internal_delay |= (1 << i);
+ 	}
+-	dev_dbg(host->dev, "Final internal delay: 0x%x\n", internal_delay);
++	dev_err(host->dev, "Final internal delay: 0x%x\n", internal_delay);
+ 	internal_delay_phase = get_best_delay(host, internal_delay);
+ 	sdr_set_field(host->base + tune_reg, MSDC_PAD_TUNE_CMDRRDLY,
+ 		      internal_delay_phase.final_phase);
+ skip_internal:
+-	dev_dbg(host->dev, "Final cmd pad delay: %x\n", final_delay);
++	dev_err(host->dev, "Final cmd pad delay: %x\n", final_delay);
+ 	return final_delay == 0xff ? -EIO : 0;
+ }
+ 
+@@ -2050,6 +2230,21 @@ static int msdc_execute_tuning(struct mm
+ {
+ 	struct msdc_host *host = mmc_priv(mmc);
+ 	int ret;
++
++#ifdef MSDC_AUTOK
++	msdc_init_tune_path(host, mmc->ios.timing);
++	autok_msdc_tx_setting(host, &mmc->ios);
++	host->tuning_in_progress = true;
++
++	if (host->id == MSDC_EMMC) {
++		ret = emmc_runtime_autok_merge(host, opcode);
++	} else if (host->id == MSDC_SD)
++		ret = sd_runtime_autok_merge(host, opcode);
++
++	host->tuning_in_progress = false;
++
++	/* return error to reset emmc when timeout occurs during autok */
++#else
+ 	u32 tune_reg = host->dev_comp->pad_tune_reg;
+ 
+ 	if (host->dev_comp->data_tune && host->dev_comp->async_fifo) {
+@@ -2086,6 +2281,7 @@ tune_done:
+ 		host->saved_tune_para.emmc_top_cmd = readl(host->top_base +
+ 				EMMC_TOP_CMD);
+ 	}
++#endif
+ 	return ret;
+ }
+ 
+@@ -2094,6 +2290,7 @@ static int msdc_prepare_hs400_tuning(str
+ 	struct msdc_host *host = mmc_priv(mmc);
+ 	host->hs400_mode = true;
+ 
++#ifndef MSDC_AUTOK
+ 	if (host->top_base)
+ 		writel(host->hs400_ds_delay,
+ 		       host->top_base + EMMC50_PAD_DS_TUNE);
+@@ -2103,6 +2300,7 @@ static int msdc_prepare_hs400_tuning(str
+ 	sdr_clr_bits(host->base + MSDC_PATCH_BIT2, MSDC_PATCH_BIT2_CFGCRCSTS);
+ 	/* to improve read performance, set outstanding to 2 */
+ 	sdr_set_field(host->base + EMMC50_CFG3, EMMC50_CFG3_OUTS_WR, 2);
++#endif
+ 
+ 	return 0;
+ }
+@@ -2144,6 +2342,36 @@ static int msdc_get_cd(struct mmc_host *
+ 		return !val;
+ }
+ 
++static void msdc_cqe_enable(struct mmc_host *mmc)
++{
++	struct msdc_host *host = mmc_priv(mmc);
++
++	/* enable cmdq irq */
++	writel(MSDC_INT_CMDQ, host->base + MSDC_INTEN);
++	/* enable busy check */
++	sdr_set_bits(host->base + MSDC_PATCH_BIT1, MSDC_PB1_BUSY_CHECK_SEL);
++	/* default write data / busy timeout 20s */
++	msdc_set_busy_timeout(host, 20 * 1000000000ULL, 0);
++	/* default read data timeout 1s */
++	msdc_set_timeout(host, 1000000000ULL, 0);
++}
++
++void msdc_cqe_disable(struct mmc_host *mmc, bool recovery)
++{
++	struct msdc_host *host = mmc_priv(mmc);
++
++	/* disable cmdq irq */
++	sdr_clr_bits(host->base + MSDC_INTEN, MSDC_INT_CMDQ);
++	/* disable busy check */
++	sdr_clr_bits(host->base + MSDC_PATCH_BIT1, MSDC_PB1_BUSY_CHECK_SEL);
++
++	if (recovery) {
++		sdr_set_field(host->base + MSDC_DMA_CTRL,
++			      MSDC_DMA_CTRL_STOP, 1);
++		msdc_reset_hw(host);
++	}
++}
++
+ static const struct mmc_host_ops mt_msdc_ops = {
+ 	.post_req = msdc_post_req,
+ 	.pre_req = msdc_pre_req,
+@@ -2160,6 +2388,11 @@ static const struct mmc_host_ops mt_msdc
+ 	.hw_reset = msdc_hw_reset,
+ };
+ 
++static const struct cqhci_host_ops msdc_cmdq_ops = {
++	.enable         = msdc_cqe_enable,
++	.disable        = msdc_cqe_disable,
++};
++
+ static void msdc_of_property_parse(struct platform_device *pdev,
+ 				   struct msdc_host *host)
+ {
+@@ -2180,6 +2413,12 @@ static void msdc_of_property_parse(struc
+ 		host->hs400_cmd_resp_sel_rising = true;
+ 	else
+ 		host->hs400_cmd_resp_sel_rising = false;
++
++	if (of_property_read_bool(pdev->dev.of_node,
++				  "supports-cqe"))
++		host->cqhci = true;
++	else
++		host->cqhci = false;
+ }
+ 
+ static int msdc_drv_probe(struct platform_device *pdev)
+@@ -2187,7 +2426,8 @@ static int msdc_drv_probe(struct platfor
+ 	struct mmc_host *mmc;
+ 	struct msdc_host *host;
+ 	struct resource *res;
+-	int ret;
++	int power_gpio, ret;
++	enum of_gpio_flags flags;
+ 
+ 	if (!pdev->dev.of_node) {
+ 		dev_err(&pdev->dev, "No DT found\n");
+@@ -2200,10 +2440,19 @@ static int msdc_drv_probe(struct platfor
+ 		return -ENOMEM;
+ 
+ 	host = mmc_priv(mmc);
++	host->hw = kzalloc(sizeof(struct msdc_hw), GFP_KERNEL);
+ 	ret = mmc_of_parse(mmc);
+ 	if (ret)
+ 		goto host_free;
+ 
++	if (device_property_read_u32(&pdev->dev, "index", &host->id) < 0) {
++		dev_err(&pdev->dev,
++			"\"index\" property is missing, assuming 1 bit.\n");
++	}
++
++#if MTK_MMC_DEBUG
++	mtk_msdc_host[host->id] = host;
++#endif
+ 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+ 	host->base = devm_ioremap_resource(&pdev->dev, res);
+ 	if (IS_ERR(host->base)) {
+@@ -2217,19 +2466,20 @@ static int msdc_drv_probe(struct platfor
+ 		if (IS_ERR(host->top_base))
+ 			host->top_base = NULL;
+ 	}
+-
+ 	ret = mmc_regulator_get_supply(mmc);
+ 	if (ret)
+ 		goto host_free;
+ 
+ 	host->src_clk = devm_clk_get(&pdev->dev, "source");
+ 	if (IS_ERR(host->src_clk)) {
++		dev_dbg(&pdev->dev, "can't find source clk");
+ 		ret = PTR_ERR(host->src_clk);
+ 		goto host_free;
+ 	}
+ 
+ 	host->h_clk = devm_clk_get(&pdev->dev, "hclk");
+ 	if (IS_ERR(host->h_clk)) {
++		dev_dbg(&pdev->dev, "can't find hclk");
+ 		ret = PTR_ERR(host->h_clk);
+ 		goto host_free;
+ 	}
+@@ -2237,11 +2487,42 @@ static int msdc_drv_probe(struct platfor
+ 	host->bus_clk = devm_clk_get(&pdev->dev, "bus_clk");
+ 	if (IS_ERR(host->bus_clk))
+ 		host->bus_clk = NULL;
++
+ 	/*source clock control gate is optional clock*/
+ 	host->src_clk_cg = devm_clk_get(&pdev->dev, "source_cg");
+ 	if (IS_ERR(host->src_clk_cg))
+ 		host->src_clk_cg = NULL;
+ 
++	power_gpio = of_get_named_gpio_flags(pdev->dev.of_node, "power-gpio", 0, &flags);
++	if (gpio_is_valid(power_gpio)) {
++		unsigned long gpio_flags;
++		if (flags & OF_GPIO_ACTIVE_LOW) {
++  			gpio_flags = GPIOF_ACTIVE_LOW |
++  				     GPIOF_OUT_INIT_LOW;
++  		} else {
++  			gpio_flags = GPIOF_OUT_INIT_HIGH;
++  		}
++		int ret = devm_gpio_request_one(&pdev->dev, power_gpio,
++  					    gpio_flags, "emmc_power");
++  		if (ret) {
++  			dev_err(&pdev->dev, "cannot get emmc_power gpio\n");
++  			goto host_free;
++  		}
++		host->mmc_power_gpio = gpio_to_desc(power_gpio);
++  	}
++
++	host->p_clk = devm_clk_get(&pdev->dev, "p_clk");
++	if (IS_ERR(host->p_clk))
++		host->p_clk = NULL;
++
++	host->axi_clk = devm_clk_get(&pdev->dev, "axi_clk");
++	if (IS_ERR(host->axi_clk))
++		host->axi_clk = NULL;
++
++	host->ahb_clk = devm_clk_get(&pdev->dev, "ahb_clk");
++	if (IS_ERR(host->ahb_clk))
++		host->ahb_clk = NULL;
++
+ 	host->reset = devm_reset_control_get_optional_exclusive(&pdev->dev,
+ 								"hrst");
+ 	if (IS_ERR(host->reset))
+@@ -2273,13 +2554,16 @@ static int msdc_drv_probe(struct platfor
+ 		dev_err(&pdev->dev, "Cannot find pinctrl uhs!\n");
+ 		goto host_free;
+ 	}
+-
+ 	msdc_of_property_parse(pdev, host);
+ 
+ 	host->dev = &pdev->dev;
+ 	host->dev_comp = of_device_get_match_data(&pdev->dev);
+ 	host->mmc = mmc;
++
+ 	host->src_clk_freq = clk_get_rate(host->src_clk);
++	/* Because colgin does not have VMCH,so force to assgin OCR */
++	mmc->ocr_avail  = MSDC_OCR_AVAIL;
++
+ 	/* Set host parameters to mmc */
+ 	mmc->ops = &mt_msdc_ops;
+ 	if (host->dev_comp->clk_div_bits == 8)
+@@ -2301,6 +2585,8 @@ static int msdc_drv_probe(struct platfor
+ 		mmc->caps2 |= MMC_CAP2_SDIO_IRQ_NOTHREAD;
+ 
+ 	mmc->caps |= MMC_CAP_ERASE | MMC_CAP_CMD23;
++	if (host->cqhci)
++		mmc->caps2 |= MMC_CAP2_CQE | MMC_CAP2_CQE_DCMD;
+ 	/* MMC core transfer sizes tunable parameters */
+ 	mmc->max_segs = MAX_BD_NUM;
+ 	if (host->dev_comp->support_64g)
+@@ -2316,6 +2602,27 @@ static int msdc_drv_probe(struct platfor
+ 		host->dma_mask = DMA_BIT_MASK(32);
+ 	mmc_dev(mmc)->dma_mask = &host->dma_mask;
+ 
++#if IS_ENABLED(CONFIG_MMC_CQHCI)
++	if (mmc->caps2 & MMC_CAP2_CQE) {
++		host->cq_host = devm_kzalloc(host->mmc->parent,
++					     sizeof(*host->cq_host),
++					     GFP_KERNEL);
++		if (!host->cq_host) {
++			ret = -ENOMEM;
++			goto host_free;
++		}
++		host->cq_host->caps |= CQHCI_TASK_DESC_SZ_128;
++		host->cq_host->mmio = host->base + 0x800;
++		host->cq_host->ops = &msdc_cmdq_ops;
++		ret = cqhci_init(host->cq_host, mmc, true);
++		if (ret)
++			goto host_free;
++		mmc->max_segs = 128;
++		/* cqhci 16bit length */
++		/* 0 size, means 65536 so we don't have to -1 here */
++		mmc->max_seg_size = 64 * 1024;
++	}
++#endif
+ 	host->timeout_clks = 3 * 1048576;
+ 	host->dma.gpd = dma_alloc_coherent(&pdev->dev,
+ 				2 * sizeof(struct mt_gpdma_desc),
+@@ -2330,6 +2637,9 @@ static int msdc_drv_probe(struct platfor
+ 	msdc_init_gpd_bd(host, &host->dma);
+ 	INIT_DELAYED_WORK(&host->req_timeout, msdc_request_timeout);
+ 	spin_lock_init(&host->lock);
++#if MTK_MMC_DEBUG
++	spin_lock_init(&host->log_lock);
++#endif
+ 
+ 	platform_set_drvdata(pdev, mmc);
+ 	msdc_ungate_clock(host);
+@@ -2366,11 +2676,26 @@ release_mem:
+ 			MAX_BD_NUM * sizeof(struct mt_bdma_desc),
+ 			host->dma.bd, host->dma.bd_addr);
+ host_free:
++	kfree(host->hw);
+ 	mmc_free_host(mmc);
+ 
+ 	return ret;
+ }
+ 
++static void msdc_drv_shutdown(struct platform_device *pdev)
++{
++	struct mmc_host *mmc;
++	struct msdc_host *host;
++
++	mmc = platform_get_drvdata(pdev);
++	host = mmc_priv(mmc);
++
++	if (host->mmc_power_gpio) {
++		dev_info(&pdev->dev, "msdc_drv_shutdown msdc power gpio\n");
++		gpiod_set_value_cansleep(host->mmc_power_gpio, 0);
++	}
++}
++
+ static int msdc_drv_remove(struct platform_device *pdev)
+ {
+ 	struct mmc_host *mmc;
+@@ -2379,6 +2704,8 @@ static int msdc_drv_remove(struct platfo
+ 	mmc = platform_get_drvdata(pdev);
+ 	host = mmc_priv(mmc);
+ 
++	msdc_drv_shutdown(pdev);
++
+ 	pm_runtime_get_sync(host->dev);
+ 
+ 	platform_set_drvdata(pdev, NULL);
+@@ -2462,8 +2789,19 @@ static int msdc_runtime_suspend(struct d
+ 	struct mmc_host *mmc = dev_get_drvdata(dev);
+ 	struct msdc_host *host = mmc_priv(mmc);
+ 
++#ifdef CONFIG_MMC_CQHCI
++	if (mmc->caps2 & MMC_CAP2_CQE)
++		cqhci_suspend(mmc);
++#endif
++
++#ifdef MSDC_AUTOK
++	msdc_save_timing_setting(host);
++#else
+ 	msdc_save_reg(host);
++#endif
++
+ 	msdc_gate_clock(host);
++
+ 	return 0;
+ }
+ 
+@@ -2473,7 +2811,17 @@ static int msdc_runtime_resume(struct de
+ 	struct msdc_host *host = mmc_priv(mmc);
+ 
+ 	msdc_ungate_clock(host);
++#ifdef MSDC_AUTOK
++	msdc_restore_timing_setting(host);
++#else
+ 	msdc_restore_reg(host);
++#endif
++
++#ifdef CONFIG_MMC_CQHCI
++	if (mmc->caps2 & MMC_CAP2_CQE)
++		cqhci_resume(mmc);
++#endif
++
+ 	return 0;
+ }
+ #endif
+@@ -2492,6 +2840,7 @@ static struct platform_driver mt_msdc_dr
+ 		.of_match_table = msdc_of_ids,
+ 		.pm = &msdc_dev_pm_ops,
+ 	},
++	.shutdown	= msdc_drv_shutdown,
+ };
+ 
+ module_platform_driver(mt_msdc_driver);
+Index: linux-5.4.179/drivers/mmc/host/sdhci.c
+===================================================================
+--- linux-5.4.179.orig/drivers/mmc/host/sdhci.c	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/drivers/mmc/host/sdhci.c	2022-08-29 17:56:45.584500058 +0800
+@@ -50,6 +50,8 @@ static void sdhci_finish_data(struct sdh
+ 
+ static void sdhci_enable_preset_value(struct sdhci_host *host, bool enable);
+ 
++static bool sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd);
++
+ void sdhci_dumpregs(struct sdhci_host *host)
+ {
+ 	SDHCI_DUMP("============ SDHCI REGISTER DUMP ===========\n");
+@@ -109,6 +111,9 @@ void sdhci_dumpregs(struct sdhci_host *h
+ 		}
+ 	}
+ 
++	if (host->ops->dump_vendor_regs)
++		host->ops->dump_vendor_regs(host);
++
+ 	SDHCI_DUMP("============================================\n");
+ }
+ EXPORT_SYMBOL_GPL(sdhci_dumpregs);
+@@ -1162,13 +1167,25 @@ static inline bool sdhci_auto_cmd12(stru
+ 	       !mrq->cap_cmd_during_tfr;
+ }
+ 
++static inline bool sdhci_auto_cmd23(struct sdhci_host *host,
++				    struct mmc_request *mrq)
++{
++	return mrq->sbc && (host->flags & SDHCI_AUTO_CMD23);
++}
++
++static inline bool sdhci_manual_cmd23(struct sdhci_host *host,
++				      struct mmc_request *mrq)
++{
++	return mrq->sbc && !(host->flags & SDHCI_AUTO_CMD23);
++}
++
+ static inline void sdhci_auto_cmd_select(struct sdhci_host *host,
+ 					 struct mmc_command *cmd,
+ 					 u16 *mode)
+ {
+ 	bool use_cmd12 = sdhci_auto_cmd12(host, cmd->mrq) &&
+ 			 (cmd->opcode != SD_IO_RW_EXTENDED);
+-	bool use_cmd23 = cmd->mrq->sbc && (host->flags & SDHCI_AUTO_CMD23);
++	bool use_cmd23 = sdhci_auto_cmd23(host, cmd->mrq);
+ 	u16 ctrl2;
+ 
+ 	/*
+@@ -1230,7 +1247,7 @@ static void sdhci_set_transfer_mode(stru
+ 	if (mmc_op_multi(cmd->opcode) || data->blocks > 1) {
+ 		mode = SDHCI_TRNS_BLK_CNT_EN | SDHCI_TRNS_MULTI;
+ 		sdhci_auto_cmd_select(host, cmd, &mode);
+-		if (cmd->mrq->sbc && (host->flags & SDHCI_AUTO_CMD23))
++		if (sdhci_auto_cmd23(host, cmd->mrq))
+ 			sdhci_writel(host, cmd->mrq->sbc->arg, SDHCI_ARGUMENT2);
+ 	}
+ 
+@@ -1261,6 +1278,9 @@ static void __sdhci_finish_mrq(struct sd
+ 	if (host->data_cmd && host->data_cmd->mrq == mrq)
+ 		host->data_cmd = NULL;
+ 
++	if (host->deferred_cmd && host->deferred_cmd->mrq == mrq)
++		host->deferred_cmd = NULL;
++
+ 	if (host->data && host->data->mrq == mrq)
+ 		host->data = NULL;
+ 
+@@ -1296,7 +1316,7 @@ static void sdhci_finish_mrq(struct sdhc
+ 	queue_work(host->complete_wq, &host->complete_work);
+ }
+ 
+-static void sdhci_finish_data(struct sdhci_host *host)
++static void __sdhci_finish_data(struct sdhci_host *host, bool sw_data_timeout)
+ {
+ 	struct mmc_command *data_cmd = host->data_cmd;
+ 	struct mmc_data *data = host->data;
+@@ -1348,14 +1368,31 @@ static void sdhci_finish_data(struct sdh
+ 		} else {
+ 			/* Avoid triggering warning in sdhci_send_command() */
+ 			host->cmd = NULL;
+-			sdhci_send_command(host, data->stop);
++			if (!sdhci_send_command(host, data->stop)) {
++				if (sw_data_timeout) {
++					/*
++					 * This is anyway a sw data timeout, so
++					 * give up now.
++					 */
++					data->stop->error = -EIO;
++					__sdhci_finish_mrq(host, data->mrq);
++				} else {
++					WARN_ON(host->deferred_cmd);
++					host->deferred_cmd = data->stop;
++				}
++			}
+ 		}
+ 	} else {
+ 		__sdhci_finish_mrq(host, data->mrq);
+ 	}
+ }
+ 
+-void sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
++static void sdhci_finish_data(struct sdhci_host *host)
++{
++	__sdhci_finish_data(host, false);
++}
++
++static bool sdhci_send_command(struct sdhci_host *host, struct mmc_command *cmd)
+ {
+ 	int flags;
+ 	u32 mask;
+@@ -1370,9 +1407,6 @@ void sdhci_send_command(struct sdhci_hos
+ 	    cmd->opcode == MMC_STOP_TRANSMISSION)
+ 		cmd->flags |= MMC_RSP_BUSY;
+ 
+-	/* Wait max 10 ms */
+-	timeout = 10;
+-
+ 	mask = SDHCI_CMD_INHIBIT;
+ 	if (sdhci_data_line_cmd(cmd))
+ 		mask |= SDHCI_DATA_INHIBIT;
+@@ -1382,18 +1416,8 @@ void sdhci_send_command(struct sdhci_hos
+ 	if (cmd->mrq->data && (cmd == cmd->mrq->data->stop))
+ 		mask &= ~SDHCI_DATA_INHIBIT;
+ 
+-	while (sdhci_readl(host, SDHCI_PRESENT_STATE) & mask) {
+-		if (timeout == 0) {
+-			pr_err("%s: Controller never released inhibit bit(s).\n",
+-			       mmc_hostname(host->mmc));
+-			sdhci_dumpregs(host);
+-			cmd->error = -EIO;
+-			sdhci_finish_mrq(host, cmd->mrq);
+-			return;
+-		}
+-		timeout--;
+-		mdelay(1);
+-	}
++	if (sdhci_readl(host, SDHCI_PRESENT_STATE) & mask)
++		return false;
+ 
+ 	host->cmd = cmd;
+ 	if (sdhci_data_line_cmd(cmd)) {
+@@ -1408,11 +1432,13 @@ void sdhci_send_command(struct sdhci_hos
+ 	sdhci_set_transfer_mode(host, cmd);
+ 
+ 	if ((cmd->flags & MMC_RSP_136) && (cmd->flags & MMC_RSP_BUSY)) {
+-		pr_err("%s: Unsupported response type!\n",
+-			mmc_hostname(host->mmc));
+-		cmd->error = -EINVAL;
+-		sdhci_finish_mrq(host, cmd->mrq);
+-		return;
++		WARN_ONCE(1, "Unsupported response type!\n");
++		/*
++		 * This does not happen in practice because 136-bit response
++		 * commands never have busy waiting, so rather than complicate
++		 * the error path, just remove busy waiting and continue.
++		 */
++		cmd->flags &= ~MMC_RSP_BUSY;
+ 	}
+ 
+ 	if (!(cmd->flags & MMC_RSP_PRESENT))
+@@ -1444,8 +1470,61 @@ void sdhci_send_command(struct sdhci_hos
+ 	sdhci_mod_timer(host, cmd->mrq, timeout);
+ 
+ 	sdhci_writew(host, SDHCI_MAKE_CMD(cmd->opcode, flags), SDHCI_COMMAND);
++
++	return true;
++}
++
++static bool sdhci_present_error(struct sdhci_host *host,
++				struct mmc_command *cmd, bool present)
++{
++	if (!present || host->flags & SDHCI_DEVICE_DEAD) {
++		cmd->error = -ENOMEDIUM;
++		return true;
++	}
++
++	return false;
++}
++
++static bool sdhci_send_command_retry(struct sdhci_host *host,
++				     struct mmc_command *cmd,
++				     unsigned long flags)
++	__releases(host->lock)
++	__acquires(host->lock)
++{
++	struct mmc_command *deferred_cmd = host->deferred_cmd;
++	int timeout = 10; /* Approx. 10 ms */
++	bool present;
++
++	while (!sdhci_send_command(host, cmd)) {
++		if (!timeout--) {
++			pr_err("%s: Controller never released inhibit bit(s).\n",
++			       mmc_hostname(host->mmc));
++			sdhci_dumpregs(host);
++			cmd->error = -EIO;
++			return false;
++		}
++
++		spin_unlock_irqrestore(&host->lock, flags);
++
++		usleep_range(1000, 1250);
++
++		present = host->mmc->ops->get_cd(host->mmc);
++
++		spin_lock_irqsave(&host->lock, flags);
++
++		/* A deferred command might disappear, handle that */
++		if (cmd == deferred_cmd && cmd != host->deferred_cmd)
++			return true;
++
++		if (sdhci_present_error(host, cmd, present))
++			return false;
++	}
++
++	if (cmd == host->deferred_cmd)
++		host->deferred_cmd = NULL;
++
++	return true;
+ }
+-EXPORT_SYMBOL_GPL(sdhci_send_command);
+ 
+ static void sdhci_read_rsp_136(struct sdhci_host *host, struct mmc_command *cmd)
+ {
+@@ -1506,7 +1585,10 @@ static void sdhci_finish_command(struct
+ 
+ 	/* Finished CMD23, now send actual command. */
+ 	if (cmd == cmd->mrq->sbc) {
+-		sdhci_send_command(host, cmd->mrq->cmd);
++		if (!sdhci_send_command(host, cmd->mrq->cmd)) {
++			WARN_ON(host->deferred_cmd);
++			host->deferred_cmd = cmd->mrq->cmd;
++		}
+ 	} else {
+ 
+ 		/* Processed actual command. */
+@@ -1828,11 +1910,10 @@ EXPORT_SYMBOL_GPL(sdhci_set_power);
+ 
+ void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
+ {
+-	struct sdhci_host *host;
+-	int present;
++	struct sdhci_host *host = mmc_priv(mmc);
++	struct mmc_command *cmd;
+ 	unsigned long flags;
+-
+-	host = mmc_priv(mmc);
++	bool present;
+ 
+ 	/* Firstly check card presence */
+ 	present = mmc->ops->get_cd(mmc);
+@@ -1852,19 +1933,58 @@ void sdhci_request(struct mmc_host *mmc,
+ 		}
+ 	}
+ 
+-	if (!present || host->flags & SDHCI_DEVICE_DEAD) {
+-		mrq->cmd->error = -ENOMEDIUM;
++
++	if (sdhci_present_error(host, mrq->cmd, present))
++		goto out_finish;
++
++	cmd = sdhci_manual_cmd23(host, mrq) ? mrq->sbc : mrq->cmd;
++
++	if (!sdhci_send_command_retry(host, cmd, flags))
++		goto out_finish;
++
++	spin_unlock_irqrestore(&host->lock, flags);
++
++	return;
++
++out_finish:
++	sdhci_finish_mrq(host, mrq);
++	spin_unlock_irqrestore(&host->lock, flags);
++}
++EXPORT_SYMBOL_GPL(sdhci_request);
++
++int sdhci_request_atomic(struct mmc_host *mmc, struct mmc_request *mrq)
++{
++	struct sdhci_host *host = mmc_priv(mmc);
++	struct mmc_command *cmd;
++	unsigned long flags;
++	int ret = 0;
++
++	spin_lock_irqsave(&host->lock, flags);
++
++	if (sdhci_present_error(host, mrq->cmd, true)) {
+ 		sdhci_finish_mrq(host, mrq);
+-	} else {
+-		if (mrq->sbc && !(host->flags & SDHCI_AUTO_CMD23))
+-			sdhci_send_command(host, mrq->sbc);
+-		else
+-			sdhci_send_command(host, mrq->cmd);
++		goto out_finish;
+ 	}
+ 
++	cmd = sdhci_manual_cmd23(host, mrq) ? mrq->sbc : mrq->cmd;
++
++	/*
++	 * The HSQ may send a command in interrupt context without polling
++	 * the busy signaling, which means we should return BUSY if controller
++	 * has not released inhibit bits to allow HSQ trying to send request
++	 * again in non-atomic context. So we should not finish this request
++	 * here.
++	 */
++	if (!sdhci_send_command(host, cmd))
++		ret = -EBUSY;
++	else
++		sdhci_led_activate(host);
++
++out_finish:
+ 	spin_unlock_irqrestore(&host->lock, flags);
++	return ret;
+ }
+-EXPORT_SYMBOL_GPL(sdhci_request);
++EXPORT_SYMBOL_GPL(sdhci_request_atomic);
+ 
+ void sdhci_set_bus_width(struct sdhci_host *host, int width)
+ {
+@@ -2402,7 +2522,11 @@ void sdhci_send_tuning(struct sdhci_host
+ 	 */
+ 	sdhci_writew(host, SDHCI_TRNS_READ, SDHCI_TRANSFER_MODE);
+ 
+-	sdhci_send_command(host, &cmd);
++	if (!sdhci_send_command_retry(host, &cmd, flags)) {
++		spin_unlock_irqrestore(&host->lock, flags);
++		host->tuning_done = 0;
++		return;
++	}
+ 
+ 	host->cmd = NULL;
+ 
+@@ -2756,7 +2880,10 @@ static bool sdhci_request_done(struct sd
+ 
+ 	spin_unlock_irqrestore(&host->lock, flags);
+ 
+-	mmc_request_done(host->mmc, mrq);
++	if (host->ops->request_done)
++		host->ops->request_done(host, mrq);
++	else
++		mmc_request_done(host->mmc, mrq);
+ 
+ 	return false;
+ }
+@@ -2808,7 +2935,7 @@ static void sdhci_timeout_data_timer(str
+ 
+ 		if (host->data) {
+ 			host->data->error = -ETIMEDOUT;
+-			sdhci_finish_data(host);
++			__sdhci_finish_data(host, true);
+ 			queue_work(host->complete_wq, &host->complete_work);
+ 		} else if (host->data_cmd) {
+ 			host->data_cmd->error = -ETIMEDOUT;
+@@ -3059,7 +3186,7 @@ static inline bool sdhci_defer_done(stru
+ {
+ 	struct mmc_data *data = mrq->data;
+ 
+-	return host->pending_reset ||
++	return host->pending_reset || host->always_defer_done ||
+ 	       ((host->flags & SDHCI_REQ_USE_DMA) && data &&
+ 		data->host_cookie == COOKIE_MAPPED);
+ }
+@@ -3180,11 +3307,19 @@ cont:
+ 		}
+ 	}
+ out:
++	if (host->deferred_cmd)
++		result = IRQ_WAKE_THREAD;
++
+ 	spin_unlock(&host->lock);
+ 
+ 	/* Process mrqs ready for immediate completion */
+ 	for (i = 0; i < SDHCI_MAX_MRQS; i++) {
+-		if (mrqs_done[i])
++		if (!mrqs_done[i])
++			continue;
++
++		if (host->ops->request_done)
++			host->ops->request_done(host, mrqs_done[i]);
++		else
+ 			mmc_request_done(host->mmc, mrqs_done[i]);
+ 	}
+ 
+@@ -3200,6 +3335,7 @@ out:
+ static irqreturn_t sdhci_thread_irq(int irq, void *dev_id)
+ {
+ 	struct sdhci_host *host = dev_id;
++	struct mmc_command *cmd;
+ 	unsigned long flags;
+ 	u32 isr;
+ 
+@@ -3207,8 +3343,14 @@ static irqreturn_t sdhci_thread_irq(int
+ 		;
+ 
+ 	spin_lock_irqsave(&host->lock, flags);
++
+ 	isr = host->thread_isr;
+ 	host->thread_isr = 0;
++
++	cmd = host->deferred_cmd;
++	if (cmd && !sdhci_send_command_retry(host, cmd, flags))
++		sdhci_finish_mrq(host, cmd->mrq);
++
+ 	spin_unlock_irqrestore(&host->lock, flags);
+ 
+ 	if (isr & (SDHCI_INT_CARD_INSERT | SDHCI_INT_CARD_REMOVE)) {
+@@ -3786,9 +3928,6 @@ int sdhci_setup_host(struct sdhci_host *
+ 		       mmc_hostname(mmc), host->version);
+ 	}
+ 
+-	if (host->quirks & SDHCI_QUIRK_BROKEN_CQE)
+-		mmc->caps2 &= ~MMC_CAP2_CQE;
+-
+ 	if (host->quirks & SDHCI_QUIRK_FORCE_DMA)
+ 		host->flags |= SDHCI_USE_SDMA;
+ 	else if (!(host->caps & SDHCI_CAN_DO_SDMA))
+@@ -4310,6 +4449,12 @@ int __sdhci_add_host(struct sdhci_host *
+ 	struct mmc_host *mmc = host->mmc;
+ 	int ret;
+ 
++	if ((mmc->caps2 & MMC_CAP2_CQE) &&
++	    (host->quirks & SDHCI_QUIRK_BROKEN_CQE)) {
++		mmc->caps2 &= ~MMC_CAP2_CQE;
++		mmc->cqe_ops = NULL;
++	}
++
+ 	host->complete_wq = alloc_workqueue("sdhci", flags, 0);
+ 	if (!host->complete_wq)
+ 		return -ENOMEM;
+Index: linux-5.4.179/include/linux/mmc/core.h
+===================================================================
+--- linux-5.4.179.orig/include/linux/mmc/core.h	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/include/linux/mmc/core.h	2022-08-29 17:56:45.584500058 +0800
+@@ -165,6 +165,11 @@ struct mmc_request {
+ 	bool			cap_cmd_during_tfr;
+ 
+ 	int			tag;
++#ifdef CONFIG_MMC_CRYPTO
++	int crypto_key_slot;
++	u64 data_unit_num;
++	const struct blk_crypto_key *crypto_key;
++#endif
+ };
+ 
+ struct mmc_card;
+Index: linux-5.4.179/include/linux/mmc/host.h
+===================================================================
+--- linux-5.4.179.orig/include/linux/mmc/host.h	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/include/linux/mmc/host.h	2022-08-29 17:56:45.588500164 +0800
+@@ -92,6 +92,9 @@ struct mmc_host_ops {
+ 			    int err);
+ 	void	(*pre_req)(struct mmc_host *host, struct mmc_request *req);
+ 	void	(*request)(struct mmc_host *host, struct mmc_request *req);
++	/* Submit one request to host in atomic context. */
++	int	(*request_atomic)(struct mmc_host *host,
++				  struct mmc_request *req);
+ 
+ 	/*
+ 	 * Avoid calling the next three functions too often or in a "fast
+@@ -281,6 +284,12 @@ struct mmc_host {
+ 	u32			ocr_avail_sdio;	/* SDIO-specific OCR */
+ 	u32			ocr_avail_sd;	/* SD-specific OCR */
+ 	u32			ocr_avail_mmc;	/* MMC-specific OCR */
++
++#ifdef CONFIG_PM_SLEEP
++	/* DO NOT USE, is not used, for abi preservation only */
++	struct notifier_block	pm_notify;
++#endif
++
+ 	u32			max_current_330;
+ 	u32			max_current_300;
+ 	u32			max_current_180;
+@@ -367,6 +376,7 @@ struct mmc_host {
+ #define MMC_CAP2_CQE_DCMD	(1 << 24)	/* CQE can issue a direct command */
+ #define MMC_CAP2_AVOID_3_3V	(1 << 25)	/* Host must negotiate down from 3.3V */
+ #define MMC_CAP2_MERGE_CAPABLE	(1 << 26)	/* Host can merge a segment over the segment size */
++#define MMC_CAP2_CRYPTO		(1 << 27)	/* Host supports inline encryption */
+ 
+ 	int			fixed_drv_type;	/* fixed driver type for non-removable media */
+ 
+@@ -459,6 +469,13 @@ struct mmc_host {
+ 	int			cqe_qdepth;
+ 	bool			cqe_enabled;
+ 	bool			cqe_on;
++#ifdef CONFIG_MMC_CRYPTO
++	struct keyslot_manager	*ksm;
++	void *crypto_DO_NOT_USE[7];
++#endif /* CONFIG_MMC_CRYPTO */
++
++	/* Host Software Queue support */
++	bool			hsq_enabled;
+ 
+ 	unsigned long		private[0] ____cacheline_aligned;
+ };
+Index: linux-5.4.179/include/linux/mmc/mmc.h
+===================================================================
+--- linux-5.4.179.orig/include/linux/mmc/mmc.h	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/include/linux/mmc/mmc.h	2022-08-29 17:56:45.588500164 +0800
+@@ -315,6 +315,7 @@ static inline bool mmc_op_multi(u32 opco
+  */
+ 
+ #define EXT_CSD_WR_REL_PARAM_EN		(1<<2)
++#define EXT_CSD_WR_REL_PARAM_EN_RPMB_REL_WR	(1<<4)
+ 
+ #define EXT_CSD_BOOT_WP_B_PWR_WP_DIS	(0x40)
+ #define EXT_CSD_BOOT_WP_B_PERM_WP_DIS	(0x10)
+Index: linux-5.4.179/include/linux/mmc/card.h
+===================================================================
+--- linux-5.4.179.orig/include/linux/mmc/card.h	2022-02-11 16:07:52.000000000 +0800
++++ linux-5.4.179/include/linux/mmc/card.h	2022-08-29 17:56:45.588500164 +0800
+@@ -48,6 +48,7 @@ struct mmc_ext_csd {
+ 	u8			sec_feature_support;
+ 	u8			rel_sectors;
+ 	u8			rel_param;
++	bool			enhanced_rpmb_supported;
+ 	u8			part_config;
+ 	u8			cache_ctrl;
+ 	u8			rst_n_function;

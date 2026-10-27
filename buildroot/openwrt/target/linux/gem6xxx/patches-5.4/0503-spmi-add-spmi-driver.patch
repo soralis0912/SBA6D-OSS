@@ -1,0 +1,46 @@
+--- a/drivers/spmi/Kconfig
++++ b/drivers/spmi/Kconfig
+@@ -25,4 +25,31 @@ config SPMI_MSM_PMIC_ARB
+ 	  This is required for communicating with Qualcomm PMICs and
+ 	  other devices that have the SPMI interface.
+ 
++choice
++	prompt "Mediatek SPMI Controller (PMIC Arbiter)"
++	default SPMI_MTK_PMIF
++	help
++	  Select the version of Mediatek SPMI Controller.
++
++config SPMI_MTK_PMIF
++	tristate "Mediatek SPMI Controller (PMIC Arbiter)"
++	help
++	  If you say yes to this option, support will be included for the
++	  built-in SPMI PMIC Arbiter interface on Mediatek family
++	  processors.
++
++	  This is required for communicating with Mediatek PMICs and
++	  other devices that have the SPMI interface.
++
++config SPMI_MTK_PMIF_V2
++	tristate "Mediatek SPMI Controller V2 (PMIC Arbiter)"
++	help
++	  If you say yes to this option, support will be included for the
++	  built-in SPMI PMIC Arbiter interface on Mediatek family
++	  processors.
++
++	  This is required for communicating with Mediatek PMICs and
++	  other devices that have the SPMI interface.
++endchoice
++
+ endif
+--- a/drivers/spmi/Makefile
++++ b/drivers/spmi/Makefile
+@@ -2,6 +2,9 @@
+ #
+ # Makefile for kernel SPMI framework.
+ #
++ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
+ obj-$(CONFIG_SPMI)	+= spmi.o
+ 
+ obj-$(CONFIG_SPMI_MSM_PMIC_ARB)	+= spmi-pmic-arb.o
++obj-$(CONFIG_SPMI_MTK_PMIF)	+= spmi-mtk-pmif.o spmi-mtk-dbg.o
++obj-$(CONFIG_SPMI_MTK_PMIF_V2)	+= spmi-mtk-pmif_v2.o spmi-mtk-dbg_v2.o

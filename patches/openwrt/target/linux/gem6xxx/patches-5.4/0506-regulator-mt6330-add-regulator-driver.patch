@@ -1,0 +1,28 @@
+--- a/drivers/regulator/Kconfig
++++ b/drivers/regulator/Kconfig
+@@ -619,6 +619,15 @@ config REGULATOR_MT6323
+ 	  This driver supports the control of different power rails of device
+ 	  through regulator interface.
+ 
++config REGULATOR_MT6330
++	tristate "MediaTek MT6330 PMIC"
++	depends on MFD_MT6330
++	help
++	  Say y here to select this option to enable the power regulator of
++	  MediaTek MT6330 PMIC.
++	  This driver supports the control of different power rails of device
++	  through regulator interface.
++
+ config REGULATOR_MT6358
+ 	tristate "MediaTek MT6358 PMIC"
+ 	depends on MFD_MT6397 && BROKEN
+--- a/drivers/regulator/Makefile
++++ b/drivers/regulator/Makefile
+@@ -79,6 +79,7 @@ obj-$(CONFIG_REGULATOR_MC13XXX_CORE) +=
+ obj-$(CONFIG_REGULATOR_MCP16502) += mcp16502.o
+ obj-$(CONFIG_REGULATOR_MT6311) += mt6311-regulator.o
+ obj-$(CONFIG_REGULATOR_MT6323)	+= mt6323-regulator.o
++obj-$(CONFIG_REGULATOR_MT6330)	+= mt6330-regulator.o
+ obj-$(CONFIG_REGULATOR_MT6358)	+= mt6358-regulator.o
+ obj-$(CONFIG_REGULATOR_MT6380)	+= mt6380-regulator.o
+ obj-$(CONFIG_REGULATOR_MT6397)	+= mt6397-regulator.o

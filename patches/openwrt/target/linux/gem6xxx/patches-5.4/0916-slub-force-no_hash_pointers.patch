@@ -1,0 +1,87 @@
+From 792702911f581f7793962fbeb99d5c3a1b28f4c3 Mon Sep 17 00:00:00 2001
+From: Stephen Boyd <swboyd@chromium.org>
+Date: Mon, 28 Jun 2021 19:34:52 -0700
+Subject: [PATCH] slub: force on no_hash_pointers when slub_debug is enabled
+
+Obscuring the pointers that slub shows when debugging makes for some
+confusing slub debug messages:
+
+ Padding overwritten. 0x0000000079f0674a-0x000000000d4dce17
+
+Those addresses are hashed for kernel security reasons.  If we're trying
+to be secure with slub_debug on the commandline we have some big problems
+given that we dump whole chunks of kernel memory to the kernel logs.
+Let's force on the no_hash_pointers commandline flag when slub_debug is on
+the commandline.  This makes slub debug messages more meaningful and if by
+chance a kernel address is in some slub debug object dump we will have a
+better chance of figuring out what went wrong.
+
+Note that we don't use %px in the slub code because we want to reduce the
+number of places that %px is used in the kernel.  This also nicely prints
+a big fat warning at kernel boot if slub_debug is on the commandline so
+that we know that this kernel shouldn't be used on production systems.
+
+[akpm@linux-foundation.org: fix build with CONFIG_SLUB_DEBUG=n]
+
+Link: https://lkml.kernel.org/r/20210601182202.3011020-5-swboyd@chromium.org
+Signed-off-by: Stephen Boyd <swboyd@chromium.org>
+Acked-by: Vlastimil Babka <vbabka@suse.cz>
+Acked-by: Petr Mladek <pmladek@suse.com>
+Cc: Joe Perches <joe@perches.com>
+Cc: Christoph Lameter <cl@linux.com>
+Cc: Pekka Enberg <penberg@kernel.org>
+Cc: David Rientjes <rientjes@google.com>
+Cc: Joonsoo Kim <iamjoonsoo.kim@lge.com>
+Cc: Muchun Song <songmuchun@bytedance.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+---
+ include/linux/kernel.h |  2 ++
+ lib/vsprintf.c         |  2 +-
+ mm/slub.c              | 20 +++++++++++++++++++-
+ 3 files changed, 22 insertions(+), 2 deletions(-)
+
+diff --git a/include/linux/kernel.h b/include/linux/kernel.h
+index 15d8bad3d2f2..bf950621febf 100644
+--- a/include/linux/kernel.h
++++ b/include/linux/kernel.h
+@@ -495,6 +495,8 @@ int sscanf(const char *, const char *, ...);
+ extern __scanf(2, 0)
+ int vsscanf(const char *, const char *, va_list);
+ 
++extern int no_hash_pointers_enable(char *str);
++
+ extern int get_option(char **str, int *pint);
+ extern char *get_options(const char *str, int nints, int *ints);
+ extern unsigned long long memparse(const char *ptr, char **retptr);
+diff --git a/lib/vsprintf.c b/lib/vsprintf.c
+index f0c35d9b65bf..cc281f5895f9 100644
+--- a/lib/vsprintf.c
++++ b/lib/vsprintf.c
+@@ -2038,7 +2038,7 @@ char *device_node_string(char *buf, char *end, struct device_node *dn,
+ bool no_hash_pointers __ro_after_init;
+ EXPORT_SYMBOL_GPL(no_hash_pointers);
+ 
+-static int __init no_hash_pointers_enable(char *str)
++int __init no_hash_pointers_enable(char *str)
+ {
+ 	if (no_hash_pointers)
+ 		return 0;
+
+ 	no_hash_pointers = true;
+diff --git a/mm/slub.c b/mm/slub.c
+index f8e4d37c4641..4b2ba9c099c9 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -4299,6 +4299,11 @@ void __init kmem_cache_init(void)
+ 	if (debug_guardpage_minorder())
+ 		slub_max_order = 0;
+ 
++#ifdef CONFIG_SLUB_DEBUG
++	/* Print slub debugging pointers without hashing */
++	no_hash_pointers_enable(NULL);
++#endif
++
+ 	kmem_cache_node = &boot_kmem_cache_node;
+ 	kmem_cache = &boot_kmem_cache;
+ 

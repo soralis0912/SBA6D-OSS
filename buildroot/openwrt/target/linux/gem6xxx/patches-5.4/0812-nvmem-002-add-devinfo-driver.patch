@@ -1,0 +1,35 @@
+Index: linux-5.4.143/drivers/nvmem/Kconfig
+===================================================================
+--- linux-5.4.143.orig/drivers/nvmem/Kconfig	2021-09-14 20:29:30.874234365 +0800
++++ linux-5.4.143/drivers/nvmem/Kconfig	2021-09-14 20:33:16.383000646 +0800
+@@ -97,6 +97,17 @@ config MTK_EFUSE
+ 	  This driver can also be built as a module. If so, the module
+ 	  will be called efuse-mtk.
+ 
++config MTK_DEVINFO
++	tristate "Mediatek SoCs device information support"
++	depends on ARCH_MEDIATEK || COMPILE_TEST
++	depends on HAS_IOMEM
++	help
++	  This is a driver to access SOC related non-volatile data like
++	  calibration data, FAB information etc.
++
++	  This driver can also be built as a module. If so, the module
++	  will be called devinfo-mtk.
++
+ config MT635X_EFUSE
+ 	tristate "Mediatek MT635x PMIC EFUSE Support"
+ 	depends on MFD_MT6397 || MFD_MT6330 || COMPILE_TEST
+Index: linux-5.4.143/drivers/nvmem/Makefile
+===================================================================
+--- linux-5.4.143.orig/drivers/nvmem/Makefile	2021-09-14 20:29:30.874234365 +0800
++++ linux-5.4.143/drivers/nvmem/Makefile	2021-09-14 20:33:22.611353612 +0800
+@@ -26,6 +26,8 @@ obj-$(CONFIG_NVMEM_MXS_OCOTP)	+= nvmem-m
+ nvmem-mxs-ocotp-y		:= mxs-ocotp.o
+ obj-$(CONFIG_MTK_EFUSE)		+= nvmem_mtk-efuse.o
+ nvmem_mtk-efuse-y		:= mtk-efuse.o
++obj-$(CONFIG_MTK_DEVINFO)	+= nvmem_mtk-devinfo.o
++nvmem_mtk-devinfo-y		:= mtk-devinfo.o
+ obj-$(CONFIG_MT635X_EFUSE)	+= nvmem-mt635x-efuse.o
+ nvmem-mt635x-efuse-y		:= mt635x-efuse.o
+ obj-$(CONFIG_QCOM_QFPROM)	+= nvmem_qfprom.o

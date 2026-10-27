@@ -1,0 +1,124 @@
+# SPDX-License-Identifier: GPL-2.0
+config MTK_CORE_NUM
+        int "MTK CPU Core Num"
+        default 4
+        help
+          Set the total cpu of the platform.
+          Possible value are 2, 4.
+          Default configuration is 4.
+
+menu "Config File"
+config BUILD_CONFIG_FILE
+	string "build config file"
+	help
+	  Specify the build.config file which record toolchain environment
+	  Such as "build.config.mtk.aarch64"
+endmenu # Config
+
+menu "Power, PMIC, Battery & Low Power"
+source "drivers/misc/mediatek/clkbuf/Kconfig"
+source "drivers/misc/mediatek/cpufreq_v1/Kconfig"
+source "drivers/misc/mediatek/dvfsrc/Kconfig"
+source "drivers/misc/mediatek/leakage_table/Kconfig"
+source "drivers/misc/mediatek/lpm/Kconfig"
+source "drivers/misc/mediatek/mcupm/Kconfig"
+source "drivers/misc/mediatek/subpmic/Kconfig"
+source "drivers/misc/mediatek/pmsr/Kconfig"
+endmenu # Power
+
+menu "MultiMedia, Display, Camera"
+source "drivers/misc/mediatek/iommu/Kconfig"
+source "drivers/misc/mediatek/cmdq/Kconfig"
+source "drivers/misc/mediatek/leds/Kconfig"
+endmenu # MultiMedia, Display, Camera
+
+menu "Security"
+source "drivers/misc/mediatek/security/Kconfig"
+endmenu # Security
+
+
+menu "Modem & Connectivity"
+source "drivers/misc/mediatek/ccci_util/Kconfig"
+source "drivers/misc/mediatek/ccmni/Kconfig"
+source "drivers/misc/mediatek/eccci/Kconfig"
+source "drivers/misc/mediatek/hsapif/Kconfig"
+source "drivers/misc/mediatek/memory-amms/Kconfig"
+source "drivers/misc/mediatek/connectivity/Kconfig"
+endmenu # Modem
+
+menu "Debug, log, trace"
+
+config MTK_MET
+	tristate "MET FEATURE ENABLE"
+	help
+	  This selects the MET profile function for MET device.
+	  If you want MET feature, say m here.
+	  This is needed if support for MET devices is required.
+	  If unsure, say N.
+
+config MTK_MET_PLF
+	string "MET PLATFORM"
+	help
+	  This config is set as platform name which met driver
+	  used for.
+
+source "drivers/misc/mediatek/atf/Kconfig"
+source "drivers/misc/mediatek/mtprof/Kconfig"
+source "drivers/misc/mediatek/locking/Kconfig"
+source "drivers/misc/mediatek/dbgtop/Kconfig"
+source "drivers/misc/mediatek/aee/Kconfig"
+source "drivers/misc/mediatek/hangdet/Kconfig"
+source "drivers/misc/mediatek/mmstat/Kconfig"
+source "drivers/misc/mediatek/sda/Kconfig"
+source "drivers/misc/mediatek/monitor_hang/Kconfig"
+source "drivers/misc/mediatek/pidmap/Kconfig"
+source "drivers/misc/mediatek/log_store/Kconfig"
+source "drivers/misc/mediatek/mtprintk/Kconfig"
+source "drivers/misc/mediatek/scdk/Kconfig"
+source "drivers/misc/mediatek/selinux_warning/Kconfig"
+source "drivers/misc/mediatek/slt/Kconfig"
+endmenu # Debug
+
+menu "Frame Engine"
+source "drivers/misc/mediatek/frame_engine/Kconfig"
+endmenu # Frame Engine
+
+menu "ETHERNET"
+source "drivers/misc/mediatek/ethernet/Kconfig"
+endmenu # MEDMCU
+
+menu "MEDMCU"
+source "drivers/misc/mediatek/medmcu/Kconfig"
+endmenu # MEDMCU
+
+menu "Other Peripherals"
+source "drivers/misc/mediatek/typec/Kconfig"
+source "drivers/misc/mediatek/extcon/Kconfig"
+source "drivers/misc/mediatek/mhccif/Kconfig"
+source "drivers/misc/mediatek/sensor/Kconfig"
+endmenu # Other Peripheral
+
+menu "SSPM"
+source "drivers/misc/mediatek/sspm/Kconfig"
+endmenu # SSPM
+
+menu "PCIe"
+source "drivers/misc/mediatek/pcie/Kconfig"
+endmenu # PCIe
+
+menu "HSM"
+source "drivers/misc/mediatek/hsm/Kconfig"
+endmenu # HSM
+
+menu "CPU_BUCK"
+source "drivers/misc/mediatek/cpu_buck/Kconfig"
+endmenu # CPU_BUCK
+
+menu "PPE"
+source "drivers/misc/mediatek/ppe/Kconfig"
+endmenu # PPE
+
+menu "WED"
+source "drivers/misc/mediatek/wed/Kconfig"
+endmenu # WED
+

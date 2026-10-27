@@ -1,0 +1,4 @@
+config NET_MEDIATEK_SOC_WED
+	tristate "MediaTek SoC WED support"
+	---help---
+	  This supports mt6990 upstream Warp driver

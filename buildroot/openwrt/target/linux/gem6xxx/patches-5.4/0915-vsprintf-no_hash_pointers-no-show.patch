@@ -1,0 +1,31 @@
+From 9f961c2e08741579aa53095d0dbffbcb25a9ae66 Mon Sep 17 00:00:00 2001
+From: Marco Elver <elver@google.com>
+Date: Fri, 5 Mar 2021 20:42:05 +0100
+Subject: [PATCH] lib/vsprintf: do not show no_hash_pointers message multiple
+ times
+
+Do not show no_hash_pointers message multiple times if the option was
+passed more than once (e.g. via generated command line).
+
+Signed-off-by: Marco Elver <elver@google.com>
+Reviewed-by: Petr Mladek <pmladek@suse.com>
+Signed-off-by: Petr Mladek <pmladek@suse.com>
+Link: https://lore.kernel.org/r/20210305194206.3165917-1-elver@google.com
+---
+ lib/vsprintf.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/lib/vsprintf.c b/lib/vsprintf.c
+index 41ddc353ebb82..4a14889ccb35d 100644
+--- a/lib/vsprintf.c
++++ b/lib/vsprintf.c
+@@ -2096,6 +2096,9 @@ EXPORT_SYMBOL_GPL(no_hash_pointers);
+ 
+ static int __init no_hash_pointers_enable(char *str)
+ {
++	if (no_hash_pointers)
++		return 0;
++
+ 	no_hash_pointers = true;
+ 
+ 	pr_warn("**********************************************************\n");

@@ -1,0 +1,34 @@
+config MTK_LEDS
+	tristate "MediaTek LED Support"
+	depends on LEDS_CLASS
+	help
+	  This selects the MediaTek(R) LEDs connected to MediaTek chips.
+	  If you want to use MediaTek(R) LEDs support, say Y or M here.
+	  If unsure, say N.
+	  Mediatek LED module includes backlight, indicate LED, keypad LED, button LED etc.
+
+config LEDS_MT6330
+	tristate "LED Support for Mediatek MT6330 PMIC"
+	depends on LEDS_CLASS
+	help
+	  This option enables support for on-chip LED drivers found on
+	  Mediatek MT6330 PMIC.
+	  If you want to use MediaTek(R) LEDs support, say Y or M here.
+	  If unsure, say N.
+
+config LEDS_MT6361
+	tristate "LED Support for Mediatek MT6361 PMIC"
+	depends on LEDS_CLASS
+	help
+	  This option enables support for on-chip LED drivers found on
+	  Mediatek MT6361 PMIC.
+	  If you want to use MediaTek(R) LEDs support, say Y or M here.
+	  If unsure, say N.
+
+config LEDS_MTK_PWM
+    tristate "Mediatek pwm LED support"
+    depends on LEDS_CLASS
+    depends on PWM_MTK_DISP
+    help
+      This option enables support for Mediatek pwm LEDs.
+      say 'y' to enable this

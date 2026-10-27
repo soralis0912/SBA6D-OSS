@@ -1,0 +1,7 @@
+config MTK_AEE_HANGDET
+	tristate "Enable AEE Kernel Hang Detector"
+	help
+	  MTK_AEE_HANGDET is the kernel config of hang detector feature
+	  designed by MTK, which is the mechanism to check if each cpu
+	  is alived. When cpu hang is detected, raise excetpion.
+

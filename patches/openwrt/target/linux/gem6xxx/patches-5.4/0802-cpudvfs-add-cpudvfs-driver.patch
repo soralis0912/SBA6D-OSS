@@ -1,0 +1,64 @@
+--- a/drivers/cpufreq/Kconfig.arm
++++ b/drivers/cpufreq/Kconfig.arm
+@@ -128,6 +128,38 @@ config ARM_MEDIATEK_CPUFREQ
+ 	help
+ 	  This adds the CPUFreq driver support for MediaTek SoCs.
+ 
++config ARM_MEDIATEK_CPUFREQ_HW
++	tristate "MediaTek CPUFreq HW driver"
++	depends on ARCH_MEDIATEK || COMPILE_TEST
++	default y
++	help
++	  Support for the CPUFreq HW driver.
++	  Some MediaTek chipsets have a HW engine to offload the steps
++	  necessary for changing the frequency of the CPUs. Firmware loaded
++	  in this engine exposes a programming interface to the OS.
++	  The driver implements the cpufreq interface for this HW engine.
++	  Say Y if you want to support CPUFreq HW.
++
++config ARM_MEDIATEK_MT6880_CPUFREQ
++	tristate "Mediatek MT6880 CPUFreq support"
++	depends on ARCH_MEDIATEK && REGULATOR
++	select PM_OPP
++	help
++	  This adds the CPUFreq driver support for Mediatek MT6880 Series SoC.
++	  This driver require dt-based operating-points-v2 tables with
++	  voltage and frequency.
++	  If in doubt, say N.
++
++config ARM_MEDIATEK_MT6980_CPUFREQ
++	tristate "Mediatek MT6980 CPUFreq support"
++	depends on ARCH_MEDIATEK && REGULATOR
++	select PM_OPP
++	help
++	  This adds the CPUFreq driver support for Mediatek MT6980 Series SoC.
++	  This driver require dt-based operating-points-v2 tables with
++	  voltage and frequency.
++	  If in doubt, say N.
++
+ config ARM_OMAP2PLUS_CPUFREQ
+ 	bool "TI OMAP2+"
+ 	depends on ARCH_OMAP2PLUS
+--- a/drivers/cpufreq/Makefile
++++ b/drivers/cpufreq/Makefile
+@@ -1,4 +1,10 @@
+ # SPDX-License-Identifier: GPL-2.0
++
++ifneq (, $(filter y, $(CONFIG_ARM_MEDIATEK_MT6880_CPUFREQ) $(CONFIG_ARM_MEDIATEK_MT6980_CPUFREQ)))
++ccflags-y += -I$(srctree)/include/dt-bindings/clock/
++ccflags-y += -I$(srctree)/drivers/clk/mediatek/
++endif
++
+ # CPUfreq core
+ obj-$(CONFIG_CPU_FREQ)			+= cpufreq.o freq_table.o
+ 
+@@ -59,6 +65,9 @@ obj-$(CONFIG_ARM_IMX6Q_CPUFREQ)		+= imx6
+ obj-$(CONFIG_ARM_IMX_CPUFREQ_DT)	+= imx-cpufreq-dt.o
+ obj-$(CONFIG_ARM_KIRKWOOD_CPUFREQ)	+= kirkwood-cpufreq.o
+ obj-$(CONFIG_ARM_MEDIATEK_CPUFREQ)	+= mediatek-cpufreq.o
++obj-$(CONFIG_ARM_MEDIATEK_CPUFREQ_HW)	+= mediatek-cpufreq-hw.o
++obj-$(CONFIG_ARM_MEDIATEK_MT6880_CPUFREQ) += mediatek-mt6880-cpufreq.o
++obj-$(CONFIG_ARM_MEDIATEK_MT6980_CPUFREQ) += mediatek-mt6980-cpufreq.o
+ obj-$(CONFIG_MACH_MVEBU_V7)		+= mvebu-cpufreq.o
+ obj-$(CONFIG_ARM_OMAP2PLUS_CPUFREQ)	+= omap-cpufreq.o
+ obj-$(CONFIG_ARM_PXA2xx_CPUFREQ)	+= pxa2xx-cpufreq.o

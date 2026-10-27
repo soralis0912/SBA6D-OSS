@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2019 MediaTek Inc.
+ */
+&clkao {
+	status = "okay";
+	bring-up {
+		compatible = "mediatek,clk-bring-up";
+		clocks =
+			<&infracfg_ao_clk CLK_IFRAO_CLDMA_BCLK>,
+			<&infracfg_ao_clk CLK_IFRAO_RG_133M_CLDMA_TOP>,
+			<&infracfg_ao_clk CLK_IFRAO_133M_MCLK_CK>,
+			<&infracfg_ao_clk CLK_IFRAO_66M_MCLK_CK>,
+			<&infracfg_ao_clk CLK_IFRAO_66M_PERI_BUS_MCLK_CK>,
+			<&infracfg_ao_clk CLK_IFRAO_RG_MMW_DPMAIF_TOP_CK>,
+			<&infracfg_ao_clk CLK_IFRAO_DPMAIF_MAIN>,
+			<&infracfg_ao_clk CLK_IFRAO_DEBUGSYS>,		/*for CVD*/
+			<&infracfg_ao_clk CLK_IFRAO_AES>,		/*MD issue here*/
+			<&topckgen_clk CLK_TOP_TL_SEL>,			/* wifi use*/
+			<&infracfg_ao_clk CLK_IFRAO_PCIE_TL_96M>;	/*issue here*/
+	};
+};

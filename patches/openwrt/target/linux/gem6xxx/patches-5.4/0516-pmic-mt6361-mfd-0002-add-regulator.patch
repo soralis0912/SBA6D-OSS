@@ -1,0 +1,28 @@
+--- a/drivers/regulator/Kconfig
++++ b/drivers/regulator/Kconfig
+@@ -647,6 +647,15 @@ config REGULATOR_MT6358
+ 	  This driver supports the control of different power rails of device
+ 	  through regulator interface.
+ 
++config REGULATOR_MT6361
++	tristate "MediaTek MT6361 PMIC"
++	depends on MFD_MT6361
++	help
++	  Say y here to select this option to enable the power regulator of
++	  MediaTek MT6361 PMIC.
++	  This driver supports the control of different power rails of device
++	  through regulator interface.
++
+ config REGULATOR_MT6380
+ 	tristate "MediaTek MT6380 PMIC"
+ 	depends on MTK_PMIC_WRAP
+--- a/drivers/regulator/Makefile
++++ b/drivers/regulator/Makefile
+@@ -83,6 +83,7 @@ obj-$(CONFIG_REGULATOR_MT6315) += mtk-ex
+ obj-$(CONFIG_REGULATOR_MT6323)	+= mt6323-regulator.o
+ obj-$(CONFIG_REGULATOR_MT6330)	+= mt6330-regulator.o
+ obj-$(CONFIG_REGULATOR_MT6358)	+= mt6358-regulator.o
++obj-$(CONFIG_REGULATOR_MT6361)	+= mt6361-regulator.o
+ obj-$(CONFIG_REGULATOR_MT6380)	+= mt6380-regulator.o
+ obj-$(CONFIG_REGULATOR_MT6397)	+= mt6397-regulator.o
+ obj-$(CONFIG_REGULATOR_MTK_DVFSRC) += mtk-dvfsrc-regulator.o

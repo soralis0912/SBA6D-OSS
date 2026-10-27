@@ -1,0 +1,8 @@
+	#!/bin/sh
+	# check if we are on real system
+	if [ -z "${IPKG_INSTROOT}" ]; then
+		echo "Stopping service and removing rc.d symlink for vpnbypass"
+		/etc/init.d/vpnbypass stop || true
+		/etc/init.d/vpnbypass disable || true
+	fi
+	exit 0

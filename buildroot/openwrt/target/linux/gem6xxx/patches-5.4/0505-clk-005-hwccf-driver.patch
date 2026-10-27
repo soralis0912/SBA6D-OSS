@@ -1,0 +1,1321 @@
+Index: linux-5.4.179/drivers/clk/mediatek/clk-gate.c
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/clk-gate.c	2022-05-28 18:04:18.407787072 +0800
++++ linux-5.4.179/drivers/clk/mediatek/clk-gate.c	2022-05-28 18:04:18.375787073 +0800
+@@ -12,15 +12,22 @@
+ #include <linux/delay.h>
+ #include <linux/clkdev.h>
+ #include <linux/module.h>
++#include <linux/sched/clock.h>
+ 
+ #include "clk-mtk.h"
+ #include "clk-gate.h"
+ 
++static unsigned long long profile_time[4];
++static bool is_registered;
++
+ static int mtk_cg_bit_is_cleared(struct clk_hw *hw)
+ {
+ 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
+ 	u32 val;
+ 
++	if (!is_registered)
++		return 0;
++
+ 	regmap_read(cg->regmap, cg->sta_ofs, &val);
+ 
+ 	val &= BIT(cg->bit);
+@@ -33,6 +40,9 @@
+ 	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
+ 	u32 val;
+ 
++	if (!is_registered)
++		return 0;
++
+ 	regmap_read(cg->regmap, cg->sta_ofs, &val);
+ 
+ 	val &= BIT(cg->bit);
+@@ -110,6 +120,180 @@
+ 	mtk_cg_clr_bit(hw);
+ }
+ 
++static int mtk_cg_is_set_hwv(struct clk_hw *hw)
++{
++	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
++	u32 val = 0;
++
++	if (!is_registered)
++		return 0;
++
++	regmap_read(cg->hwv_regmap, cg->hwv_set_ofs, &val);
++
++	val &= BIT(cg->bit);
++
++	return val != 0;
++}
++
++static int mtk_cg_is_done_hwv(struct clk_hw *hw)
++{
++	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
++	u32 val = 0;
++
++	regmap_read(cg->hwv_regmap, cg->hwv_sta_ofs, &val);
++
++	val &= BIT(cg->bit);
++
++	return val != 0;
++}
++
++static int __cg_enable_hwv(struct clk_hw *hw, bool inv)
++{
++	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
++	u32 val = 0, val2 = 0;
++	int i = 0, j = 0;
++
++	profile_time[2] = 0;
++	profile_time[3] = 0;
++
++	/* dummy read to clr idle signal of hw voter bus */
++	regmap_read(cg->hwv_regmap, cg->hwv_set_ofs, &val);
++
++	regmap_write(cg->hwv_regmap, cg->hwv_set_ofs,
++			BIT(cg->bit));
++	profile_time[0] = sched_clock();
++
++	while (!mtk_cg_is_set_hwv(hw)) {
++		if (i < MTK_WAIT_HWV_PREPARE_CNT)
++			udelay(MTK_WAIT_HWV_PREPARE_US);
++		else
++			goto hwv_prepare_fail;
++		i++;
++	}
++
++	profile_time[1] = sched_clock();
++	i = 0;
++
++	while (1) {
++		regmap_read(cg->hwv_regmap, cg->hwv_sta_ofs, &val);
++
++		if ((profile_time[2] == 0) && (val & BIT(cg->bit)) != 0)
++			profile_time[2] = sched_clock();
++		else {
++			regmap_read(cg->regmap, cg->sta_ofs, &val);
++			if ((inv && (val & BIT(cg->bit)) != 0) ||
++					(!inv && (val & BIT(cg->bit)) == 0)) {
++				profile_time[3] = sched_clock();
++				break;
++			} else if (j  > MTK_WAIT_HWV_STA_CNT)
++				goto hwv_sta_fail;
++			else
++				j++;
++		}
++
++		if (i < MTK_WAIT_HWV_DONE_CNT && j < MTK_WAIT_HWV_STA_CNT)
++			udelay(MTK_WAIT_HWV_DONE_US);
++		else
++			goto hwv_done_fail;
++
++		i++;
++	}
++
++	mtk_clk_notify(cg->regmap, cg->hwv_regmap, clk_hw_get_name(hw),
++			cg->sta_ofs, (cg->hwv_set_ofs / MTK_HWV_ID_OFS),
++			cg->bit, CLK_EVT_HWV_CG_CHK_PWR);
++
++	return 0;
++
++hwv_sta_fail:
++	mtk_clk_notify(cg->regmap, cg->hwv_regmap, NULL,
++			cg->sta_ofs, (cg->hwv_set_ofs / MTK_HWV_ID_OFS),
++			cg->bit, CLK_EVT_LONG_BUS_LATENCY);
++hwv_done_fail:
++	regmap_read(cg->regmap, cg->sta_ofs, &val);
++	regmap_read(cg->hwv_regmap, cg->hwv_sta_ofs, &val2);
++	pr_err("%s cg enable timeout(%x %x)\n", clk_hw_get_name(hw), val, val2);
++hwv_prepare_fail:
++	regmap_read(cg->regmap, cg->hwv_sta_ofs, &val);
++	pr_err("%s cg prepare timeout(%x)\n", clk_hw_get_name(hw), val);
++
++	for (i = 0; i < 4; i++)
++		pr_err("[%d]%lld us", i, profile_time[i]);
++
++	mtk_clk_notify(cg->regmap, cg->hwv_regmap, clk_hw_get_name(hw),
++			cg->sta_ofs, (cg->hwv_set_ofs / MTK_HWV_ID_OFS),
++			cg->bit, CLK_EVT_HWV_CG_TIMEOUT);
++
++	return -EBUSY;
++}
++
++static int mtk_cg_enable_hwv(struct clk_hw *hw)
++{
++	return __cg_enable_hwv(hw, false);
++}
++
++static int mtk_cg_enable_hwv_inv(struct clk_hw *hw)
++{
++	return __cg_enable_hwv(hw, true);
++}
++
++static void mtk_cg_disable_hwv(struct clk_hw *hw)
++{
++	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
++	u32 val = 0;
++	int i = 0;
++
++	/* dummy read to clr idle signal of hw voter bus */
++	regmap_read(cg->hwv_regmap, cg->hwv_clr_ofs, &val);
++
++	regmap_write(cg->hwv_regmap, cg->hwv_clr_ofs, BIT(cg->bit));
++
++	while (mtk_cg_is_set_hwv(hw)) {
++		if (i < MTK_WAIT_HWV_PREPARE_CNT)
++			udelay(MTK_WAIT_HWV_PREPARE_US);
++		else
++			goto hwv_prepare_fail;
++		i++;
++	}
++
++	i = 0;
++
++	while (!mtk_cg_is_done_hwv(hw)) {
++		if (i < MTK_WAIT_HWV_DONE_CNT)
++			udelay(MTK_WAIT_HWV_DONE_US);
++		else
++			goto hwv_done_fail;
++		i++;
++	}
++
++	mtk_clk_notify(cg->regmap, cg->hwv_regmap, clk_hw_get_name(hw),
++			cg->sta_ofs, (cg->hwv_set_ofs / MTK_HWV_ID_OFS),
++			cg->bit, CLK_EVT_HWV_CG_CHK_PWR);
++
++	return;
++
++hwv_done_fail:
++	pr_err("%s cg disable timeout(%dus)\n", clk_hw_get_name(hw),
++			i * MTK_WAIT_HWV_DONE_US);
++hwv_prepare_fail:
++	regmap_read(cg->regmap, cg->sta_ofs, &val);
++	pr_err("%s cg unprepare timeout(%dus)(0x%x 0x%x)\n", clk_hw_get_name(hw),
++			i * MTK_WAIT_HWV_PREPARE_US, val);
++
++	mtk_clk_notify(cg->regmap, cg->hwv_regmap, clk_hw_get_name(hw),
++			cg->sta_ofs, (cg->hwv_set_ofs / MTK_HWV_ID_OFS),
++			cg->bit, CLK_EVT_HWV_CG_TIMEOUT);
++}
++
++static void mtk_cg_disable_unused_hwv(struct clk_hw *hw)
++{
++	struct mtk_clk_gate *cg = to_mtk_clk_gate(hw);
++	const char *c_n = clk_hw_get_name(hw);
++
++	pr_notice("disable_unused - %s\n", c_n);
++	regmap_write(cg->hwv_regmap, cg->hwv_clr_ofs, BIT(cg->bit));
++}
++
+ static int mtk_cg_enable_no_setclr(struct clk_hw *hw)
+ {
+ 	mtk_cg_clr_bit_no_setclr(hw);
+@@ -151,6 +335,32 @@
+ 	mtk_cg_clr_bit_no_setclr(hw);
+ }
+ 
++const struct clk_ops mtk_clk_gate_ops_setclr_dummy = {
++	.is_enabled	= mtk_cg_bit_is_cleared,
++	.enable		= mtk_cg_enable,
++	.disable_unused = mtk_cg_disable_unused,
++};
++EXPORT_SYMBOL(mtk_clk_gate_ops_setclr_dummy);
++
++const struct clk_ops mtk_clk_gate_ops_setclr_dummys = {
++	.is_enabled	= mtk_cg_bit_is_cleared,
++	.disable_unused = mtk_cg_disable_unused,
++};
++EXPORT_SYMBOL(mtk_clk_gate_ops_setclr_dummys);
++const struct clk_ops mtk_clk_gate_ops_hwv_dummy = {
++	.is_enabled	= mtk_cg_is_set_hwv,
++	.enable		= mtk_cg_enable_hwv,
++	.disable_unused = mtk_cg_disable_unused_hwv,
++};
++EXPORT_SYMBOL(mtk_clk_gate_ops_hwv_dummy);
++
++const struct clk_ops mtk_clk_gate_ops_setclr_inv_dummy = {
++	.is_enabled	= mtk_cg_bit_is_set,
++	.enable		= mtk_cg_enable_inv,
++	.disable_unused = mtk_cg_disable_unused_inv,
++};
++EXPORT_SYMBOL(mtk_clk_gate_ops_setclr_inv_dummy);
++
+ const struct clk_ops mtk_clk_gate_ops_setclr = {
+ 	.is_enabled	= mtk_cg_bit_is_cleared,
+ 	.enable		= mtk_cg_enable,
+@@ -167,6 +377,22 @@
+ };
+ EXPORT_SYMBOL(mtk_clk_gate_ops_setclr_inv);
+ 
++const struct clk_ops mtk_clk_gate_ops_hwv = {
++	.is_enabled	= mtk_cg_is_set_hwv,
++	.enable		= mtk_cg_enable_hwv,
++	.disable	= mtk_cg_disable_hwv,
++	.disable_unused = mtk_cg_disable_unused_hwv,
++};
++EXPORT_SYMBOL(mtk_clk_gate_ops_hwv);
++
++const struct clk_ops mtk_clk_gate_ops_hwv_inv = {
++	.is_enabled	= mtk_cg_is_set_hwv,
++	.enable		= mtk_cg_enable_hwv_inv,
++	.disable	= mtk_cg_disable_hwv,
++	.disable_unused = mtk_cg_disable_unused_hwv,
++};
++EXPORT_SYMBOL(mtk_clk_gate_ops_hwv_inv);
++
+ const struct clk_ops mtk_clk_gate_ops_no_setclr = {
+ 	.is_enabled	= mtk_cg_bit_is_cleared,
+ 	.enable		= mtk_cg_enable_no_setclr,
+@@ -183,6 +409,60 @@
+ };
+ EXPORT_SYMBOL(mtk_clk_gate_ops_no_setclr_inv);
+ 
++struct clk *mtk_clk_register_gate_hwv(
++		const char *name,
++		const char *parent_name,
++		struct regmap *regmap,
++		struct regmap *hwv_regmap,
++		int set_ofs,
++		int clr_ofs,
++		int sta_ofs,
++		int hwv_set_ofs,
++		int hwv_clr_ofs,
++		int hwv_sta_ofs,
++		u8 bit,
++		const struct clk_ops *ops,
++		unsigned long flags,
++		struct device *dev)
++{
++	struct mtk_clk_gate *cg;
++	struct clk *clk;
++	struct clk_init_data init = {};
++
++	is_registered = false;
++
++	cg = kzalloc(sizeof(*cg), GFP_KERNEL);
++	if (!cg)
++		return ERR_PTR(-ENOMEM);
++
++	init.name = name;
++	init.flags = flags | CLK_SET_RATE_PARENT | CLK_OPS_PARENT_ENABLE;
++	init.parent_names = parent_name ? &parent_name : NULL;
++	init.num_parents = parent_name ? 1 : 0;
++	init.ops = ops;
++
++	cg->regmap = regmap;
++	cg->hwv_regmap = hwv_regmap;
++	cg->set_ofs = set_ofs;
++	cg->clr_ofs = clr_ofs;
++	cg->sta_ofs = sta_ofs;
++	cg->hwv_set_ofs = hwv_set_ofs;
++	cg->hwv_clr_ofs = hwv_clr_ofs;
++	cg->hwv_sta_ofs = hwv_sta_ofs;
++	cg->bit = bit;
++
++	cg->hw.init = &init;
++
++	clk = clk_register(dev, &cg->hw);
++	if (IS_ERR(clk))
++		kfree(cg);
++
++	is_registered = true;
++
++	return clk;
++}
++EXPORT_SYMBOL(mtk_clk_register_gate_hwv);
++
+ struct clk *mtk_clk_register_gate(
+ 		const char *name,
+ 		const char *parent_name,
+@@ -199,6 +479,8 @@
+ 	struct clk *clk;
+ 	struct clk_init_data init = {};
+ 
++	is_registered = false;
++
+ 	cg = kzalloc(sizeof(*cg), GFP_KERNEL);
+ 	if (!cg)
+ 		return ERR_PTR(-ENOMEM);
+@@ -221,10 +503,12 @@
+ 	if (IS_ERR(clk))
+ 		kfree(cg);
+ 
++	is_registered = true;
++
+ 	return clk;
+ }
+ EXPORT_SYMBOL(mtk_clk_register_gate);
+ 
+ MODULE_LICENSE("GPL");
+ MODULE_DESCRIPTION("MediaTek GATE");
+-MODULE_AUTHOR("MediaTek Inc.");
++MODULE_AUTHOR("MediaTek Inc.");
+\ No newline at end of file
+Index: linux-5.4.179/drivers/clk/mediatek/clk-gate.h
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/clk-gate.h	2022-05-28 18:04:18.407787072 +0800
++++ linux-5.4.179/drivers/clk/mediatek/clk-gate.h	2022-05-28 18:04:18.383787072 +0800
+@@ -15,9 +15,13 @@
+ struct mtk_clk_gate {
+ 	struct clk_hw	hw;
+ 	struct regmap	*regmap;
++	struct regmap	*hwv_regmap;
+ 	int		set_ofs;
+ 	int		clr_ofs;
+ 	int		sta_ofs;
++	int		hwv_set_ofs;
++	int		hwv_clr_ofs;
++	int		hwv_sta_ofs;
+ 	u8		bit;
+ };
+ 
+@@ -26,11 +30,32 @@
+ 	return container_of(hw, struct mtk_clk_gate, hw);
+ }
+ 
++extern const struct clk_ops mtk_clk_gate_ops_setclr_dummys;
++extern const struct clk_ops mtk_clk_gate_ops_setclr_dummy;
++extern const struct clk_ops mtk_clk_gate_ops_hwv;
++extern const struct clk_ops mtk_clk_gate_ops_hwv_dummy;
+ extern const struct clk_ops mtk_clk_gate_ops_setclr;
+ extern const struct clk_ops mtk_clk_gate_ops_setclr_inv;
++extern const struct clk_ops mtk_clk_gate_ops_setclr_inv_dummy;
+ extern const struct clk_ops mtk_clk_gate_ops_no_setclr;
+ extern const struct clk_ops mtk_clk_gate_ops_no_setclr_inv;
+ 
++struct clk *mtk_clk_register_gate_hwv(
++		const char *name,
++		const char *parent_name,
++		struct regmap *regmap,
++		struct regmap *hwv_regmap,
++		int set_ofs,
++		int clr_ofs,
++		int sta_ofs,
++		int hwv_set_ofs,
++		int hwv_clr_ofs,
++		int hwv_sta_ofs,
++		u8 bit,
++		const struct clk_ops *ops,
++		unsigned long flags,
++		struct device *dev);
++
+ struct clk *mtk_clk_register_gate(
+ 		const char *name,
+ 		const char *parent_name,
+Index: linux-5.4.179/drivers/clk/mediatek/clk-mtk.c
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/clk-mtk.c	2022-05-28 18:04:18.407787072 +0800
++++ linux-5.4.179/drivers/clk/mediatek/clk-mtk.c	2022-05-28 18:04:18.387787072 +0800
+@@ -4,6 +4,7 @@
+  * Author: James Liao <jamesjj.liao@mediatek.com>
+  */
+ 
++#include <linux/notifier.h>
+ #include <linux/of.h>
+ #include <linux/of_address.h>
+ #include <linux/err.h>
+@@ -14,10 +15,44 @@
+ #include <linux/mfd/syscon.h>
+ #include <linux/device.h>
+ #include <linux/module.h>
++#include <linux/of_device.h>
+ 
+ #include "clk-mtk.h"
+ #include "clk-gate.h"
+ 
++static ATOMIC_NOTIFIER_HEAD(mtk_clk_notifier_list);
++
++int register_mtk_clk_notifier(struct notifier_block *nb)
++{
++	return atomic_notifier_chain_register(&mtk_clk_notifier_list, nb);
++}
++EXPORT_SYMBOL_GPL(register_mtk_clk_notifier);
++
++int unregister_mtk_clk_notifier(struct notifier_block *nb)
++{
++	return atomic_notifier_chain_unregister(&mtk_clk_notifier_list, nb);
++}
++EXPORT_SYMBOL_GPL(unregister_mtk_clk_notifier);
++
++int mtk_clk_notify(struct regmap *regmap, struct regmap *hwv_regmap,
++		const char *name, u32 ofs, u32 id, u32 shift, int event_type)
++{
++	struct clk_event_data clke;
++
++	clke.event_type = event_type;
++	clke.regmap = regmap;
++	clke.hwv_regmap = hwv_regmap;
++	clke.name = name;
++	clke.ofs = ofs;
++	clke.id = id;
++	clke.shift = shift;
++
++	atomic_notifier_call_chain(&mtk_clk_notifier_list, 0, &clke);
++
++	return 0;
++}
++EXPORT_SYMBOL_GPL(mtk_clk_notify);
++
+ struct clk_onecell_data *mtk_alloc_clk_data(unsigned int clk_num)
+ {
+ 	int i;
+@@ -105,7 +140,7 @@
+ {
+ 	int i;
+ 	struct clk *clk;
+-	struct regmap *regmap;
++	struct regmap *regmap, *hw_voter_regmap;
+ 
+ 	if (!clk_data)
+ 		return -ENOMEM;
+@@ -117,12 +152,28 @@
+ 		return PTR_ERR(regmap);
+ 	}
+ 
++	hw_voter_regmap = syscon_regmap_lookup_by_phandle(node, "hw-voter-regmap");
++	if (IS_ERR(hw_voter_regmap))
++		hw_voter_regmap = NULL;
++
+ 	for (i = 0; i < num; i++) {
+ 		const struct mtk_gate *gate = &clks[i];
+ 
+ 		if (!IS_ERR_OR_NULL(clk_data->clks[gate->id]))
+ 			continue;
+ 
++		if (hw_voter_regmap && gate->flags & CLK_USE_HW_VOTER)
++			clk = mtk_clk_register_gate_hwv(gate->name, gate->parent_name,
++					regmap,
++					hw_voter_regmap,
++					gate->regs->set_ofs,
++					gate->regs->clr_ofs,
++					gate->regs->sta_ofs,
++					gate->hwv_regs->set_ofs,
++					gate->hwv_regs->clr_ofs,
++					gate->hwv_regs->sta_ofs,
++					gate->shift, gate->ops, gate->flags, dev);
++		else
+ 		clk = mtk_clk_register_gate(gate->name, gate->parent_name,
+ 				regmap,
+ 				gate->regs->set_ofs,
+@@ -296,6 +347,30 @@
+ }
+ EXPORT_SYMBOL(mtk_clk_register_dividers);
+ 
++
++/*int mtk_clk_simple_probe(struct platform_device *pdev)
++{
++	const struct mtk_clk_desc *mcd;
++	struct clk_onecell_data *clk_data;
++	struct device_node *node = pdev->dev.of_node;
++	int r;
++
++	mcd = of_device_get_match_data(&pdev->dev);
++	if (!mcd)
++		return -EINVAL;
++
++	clk_data = mtk_alloc_clk_data(mcd->num_clks);
++	if (!clk_data)
++		return -ENOMEM;
++
++	r = mtk_clk_register_gates(node, mcd->clks, mcd->num_clks, clk_data);
++	if (r)
++		return r;
++
++	return of_clk_add_provider(node, of_clk_src_onecell_get, clk_data);
++}
++EXPORT_SYMBOL(mtk_clk_simple_probe);*/
++
+ MODULE_LICENSE("GPL");
+ MODULE_DESCRIPTION("MediaTek MTK");
+ MODULE_AUTHOR("MediaTek Inc.");
+Index: linux-5.4.179/drivers/clk/mediatek/clk-mtk.h
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/clk-mtk.h	2022-05-28 18:04:18.407787072 +0800
++++ linux-5.4.179/drivers/clk/mediatek/clk-mtk.h	2022-05-28 18:09:18.616217650 +0800
+@@ -10,6 +10,18 @@
+ #include <linux/regmap.h>
+ #include <linux/bitops.h>
+ #include <linux/clk-provider.h>
++#include <linux/platform_device.h>
++
++/* hw voter timeout configures */
++#define MTK_WAIT_HWV_PREPARE_CNT	100
++#define MTK_WAIT_HWV_PREPARE_US		2
++#define MTK_WAIT_HWV_DONE_CNT		100
++#define MTK_WAIT_HWV_DONE_US		5
++#define MTK_WAIT_HWV_STA_CNT		20
++#define MTK_HWV_ID_OFS			(0x8)
++#define MTK_HWV_PREPARE_TMROUT		(200000)
++#define MTK_HWV_DONE_TMROUT		(500000)
++#define MTK_HWV_STA_TMROUT		(100000)
+ 
+ struct clk;
+ struct clk_onecell_data;
+@@ -19,6 +31,25 @@
+ 
+ #define MHZ (1000 * 1000)
+ 
++enum clk_evt_type {
++	CLK_EVT_HWV_CG_TIMEOUT = 0,
++	CLK_EVT_HWV_CG_CHK_PWR = 1,
++	CLK_EVT_LONG_BUS_LATENCY = 2,
++	CLK_EVT_HWV_PLL_TIMEOUT = 3,
++	CLK_EVT_SUSPEND_CG_DUMP = 4,
++	CLK_EVT_NUM,
++};
++
++struct clk_event_data {
++	struct regmap *regmap;
++	struct regmap *hwv_regmap;
++	int event_type;
++	const char *name;
++	u32 ofs;
++	u32 id;
++	u32 shift;
++};
++
+ struct mtk_fixed_clk {
+ 	int id;
+ 	const char *name;
+@@ -160,6 +191,7 @@
+ 	const char *name;
+ 	const char *parent_name;
+ 	const struct mtk_gate_regs *regs;
++	const struct mtk_gate_regs *hwv_regs;
+ 	int shift;
+ 	const struct clk_ops *ops;
+ 	unsigned long flags;
+@@ -204,6 +236,8 @@
+ 
+ #define HAVE_RST_BAR	BIT(0)
+ #define PLL_AO		BIT(1)
++#define CLK_USE_HW_VOTER	BIT(2)
++#define HWV_CHK_FULL_STA	BIT(3)
+ 
+ struct mtk_pll_div_table {
+ 	u32 div;
+@@ -217,6 +251,13 @@
+ 	uint32_t pwr_reg;
+ 	uint32_t en_reg;
+ 	uint32_t en_mask;
++	uint32_t hwv_set_ofs;
++	uint32_t hwv_clr_ofs;
++	uint32_t hwv_sta_ofs;
++	uint32_t hwv_done_ofs;
++	uint32_t hwv_set_sta_ofs;
++	uint32_t hwv_clr_sta_ofs;
++	int hwv_shift;
+ 	uint32_t pd_reg;
+ 	uint32_t tuner_reg;
+ 	uint32_t tuner_en_reg;
+@@ -250,4 +291,15 @@
+ void mtk_register_reset_controller_set_clr(struct device_node *np,
+ 	unsigned int num_regs, int regofs);
+ 
++struct mtk_clk_desc {
++	const struct mtk_gate *clks;
++	size_t num_clks;
++};
++
++//int mtk_clk_simple_probe(struct platform_device *pdev);
++extern int register_mtk_clk_notifier(struct notifier_block *nb);
++extern int unregister_mtk_clk_notifier(struct notifier_block *nb);
++extern int mtk_clk_notify(struct regmap *regmap, struct regmap *hwv_regmap,
++		const char *name, u32 ofs, u32 id, u32 shift, int event_type);
++
+ #endif /* __DRV_CLK_MTK_H */
+Index: linux-5.4.179/drivers/clk/mediatek/clk-mux.c
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/clk-mux.c	2022-05-28 18:04:18.407787072 +0800
++++ linux-5.4.179/drivers/clk/mediatek/clk-mux.c	2022-05-28 18:04:18.391787072 +0800
+@@ -9,10 +9,16 @@
+ #include <linux/slab.h>
+ #include <linux/mfd/syscon.h>
+ #include <linux/module.h>
++#include <linux/time64.h>
++#include <linux/timekeeping.h>
++#include <linux/sched/clock.h>
+ 
+ #include "clk-mtk.h"
+ #include "clk-mux.h"
+ 
++static unsigned long long profile_time[4];
++static bool is_registered;
++
+ static inline struct mtk_clk_mux *to_mtk_clk_mux(struct clk_hw *hw)
+ {
+ 	return container_of(hw, struct mtk_clk_mux, hw);
+@@ -38,9 +44,30 @@
+ static int mtk_clk_mux_enable_setclr(struct clk_hw *hw)
+ {
+ 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
++	unsigned long flags = 0;
++
++	if (mux->lock)
++		spin_lock_irqsave(mux->lock, flags);
++	else
++		__acquire(mux->lock);
+ 
+-	return regmap_write(mux->regmap, mux->data->clr_ofs,
++	regmap_write(mux->regmap, mux->data->clr_ofs,
+ 			BIT(mux->data->gate_shift));
++
++	/*
++	 * If mux setting restore after vcore resume, it will
++	 * not be effective yet. Set the update bit to ensure the mux gets
++	 * updated.
++	 */
++	regmap_write(mux->regmap, mux->data->upd_ofs,
++		BIT(mux->data->upd_shift));
++
++	if (mux->lock)
++		spin_unlock_irqrestore(mux->lock, flags);
++	else
++		__release(mux->lock);
++
++	return 0;
+ }
+ 
+ static void mtk_clk_mux_disable_setclr(struct clk_hw *hw)
+@@ -54,18 +81,165 @@
+ static int mtk_clk_mux_is_enabled(struct clk_hw *hw)
+ {
+ 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
+-	u32 val;
++	u32 val = 0;
++
++	if (!is_registered)
++		return 0;
+ 
+ 	regmap_read(mux->regmap, mux->data->mux_ofs, &val);
+ 
+ 	return (val & BIT(mux->data->gate_shift)) == 0;
+ }
+ 
++static int mtk_clk_hwv_mux_is_enabled(struct clk_hw *hw)
++{
++	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
++	u32 val = 0;
++
++	if (!is_registered)
++		return 0;
++
++	regmap_read(mux->hwv_regmap, mux->data->hwv_set_ofs, &val);
++
++	return (val & BIT(mux->data->gate_shift)) != 0;
++}
++
++static int mtk_clk_hwv_mux_is_done(struct clk_hw *hw)
++{
++	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
++	u32 val = 0;
++
++	regmap_read(mux->hwv_regmap, mux->data->hwv_sta_ofs, &val);
++
++	return (val & BIT(mux->data->gate_shift)) != 0;
++}
++
++static int mtk_clk_hwv_mux_enable(struct clk_hw *hw)
++{
++	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
++	u32 val = 0, val2 = 0;
++	int i = 0, j = 0;
++
++	profile_time[2] = 0;
++	profile_time[3] = 0;
++
++	/* dummy read to clr idle signal of hw voter bus */
++	regmap_read(mux->hwv_regmap, mux->data->hwv_set_ofs, &val);
++
++	regmap_write(mux->hwv_regmap, mux->data->hwv_set_ofs,
++			BIT(mux->data->gate_shift));
++	profile_time[0] = sched_clock();
++
++	while (!mtk_clk_hwv_mux_is_enabled(hw)) {
++		if (i < MTK_WAIT_HWV_PREPARE_CNT)
++			udelay(MTK_WAIT_HWV_PREPARE_US);
++		else
++			goto hwv_prepare_fail;
++		i++;
++	}
++
++	profile_time[1] = sched_clock();
++	i = 0;
++
++	while (1) {
++		regmap_read(mux->hwv_regmap, mux->data->hwv_sta_ofs, &val);
++
++		if ((profile_time[2] == 0) && (val & BIT(mux->data->gate_shift)) != 0)
++			profile_time[2] = sched_clock();
++		else {
++			regmap_read(mux->regmap, mux->data->mux_ofs, &val2);
++			if ((val2 & BIT(mux->data->gate_shift)) == 0) {
++				profile_time[3] = sched_clock();
++				break;
++			} else if (j  > MTK_WAIT_HWV_STA_CNT)
++				goto hwv_sta_fail;
++			else
++				j++;
++		}
++
++		if (i < MTK_WAIT_HWV_DONE_CNT && j < MTK_WAIT_HWV_STA_CNT)
++			udelay(MTK_WAIT_HWV_DONE_US);
++		else
++			goto hwv_done_fail;
++
++		i++;
++	}
++
++	return 0;
++
++hwv_sta_fail:
++	mtk_clk_notify(mux->regmap, mux->hwv_regmap, NULL,
++			mux->data->mux_ofs, (mux->data->hwv_set_ofs / MTK_HWV_ID_OFS),
++			mux->data->gate_shift, CLK_EVT_LONG_BUS_LATENCY);
++hwv_done_fail:
++	regmap_read(mux->regmap, mux->data->mux_ofs, &val);
++	regmap_read(mux->hwv_regmap, mux->data->hwv_sta_ofs, &val2);
++	pr_err("%s mux enable timeout(%x %x)\n", clk_hw_get_name(hw), val, val2);
++hwv_prepare_fail:
++	regmap_read(mux->regmap, mux->data->hwv_sta_ofs, &val);
++	pr_err("%s mux prepare timeout(%x)\n", clk_hw_get_name(hw), val);
++
++	for (i = 0; i < 4; i++)
++		pr_err("[%d]%lld us", i, profile_time[i]);
++
++	mtk_clk_notify(mux->regmap, mux->hwv_regmap, NULL,
++			mux->data->mux_ofs, (mux->data->hwv_set_ofs / MTK_HWV_ID_OFS),
++			mux->data->gate_shift, CLK_EVT_HWV_CG_TIMEOUT);
++
++	return -EBUSY;
++}
++
++static void mtk_clk_hwv_mux_disable(struct clk_hw *hw)
++{
++	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
++	u32 val = 0;
++	int i = 0;
++
++	/* dummy read to clr idle signal of hw voter bus */
++	regmap_read(mux->hwv_regmap, mux->data->hwv_clr_ofs, &val);
++
++	regmap_write(mux->hwv_regmap, mux->data->hwv_clr_ofs,
++			BIT(mux->data->gate_shift));
++
++	while (mtk_clk_hwv_mux_is_enabled(hw)) {
++		if (i < MTK_WAIT_HWV_PREPARE_CNT)
++			udelay(MTK_WAIT_HWV_PREPARE_US);
++		else
++			goto hwv_prepare_fail;
++		i++;
++	}
++
++	i = 0;
++
++	while (!mtk_clk_hwv_mux_is_done(hw)) {
++		if (i < MTK_WAIT_HWV_DONE_CNT)
++			udelay(MTK_WAIT_HWV_DONE_US);
++		else
++			goto hwv_done_fail;
++		i++;
++	}
++
++	return;
++
++hwv_done_fail:
++	regmap_read(mux->regmap, mux->data->mux_ofs, &val);
++	pr_err("%s mux disable timeout(%dus)(%x)\n", clk_hw_get_name(hw),
++			i * MTK_WAIT_HWV_DONE_US, val);
++hwv_prepare_fail:
++	pr_err("%s mux unprepare timeout(%dus)\n", clk_hw_get_name(hw),
++			i * MTK_WAIT_HWV_PREPARE_US);
++
++	mtk_clk_notify(mux->regmap, mux->hwv_regmap, clk_hw_get_name(hw),
++			mux->data->mux_ofs, (mux->data->hwv_set_ofs / MTK_HWV_ID_OFS),
++			mux->data->gate_shift, CLK_EVT_HWV_CG_TIMEOUT);
++	return;
++}
++
+ static u8 mtk_clk_mux_get_parent(struct clk_hw *hw)
+ {
+ 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
+ 	u32 mask = GENMASK(mux->data->mux_width - 1, 0);
+-	u32 val;
++	u32 val = 0;
+ 
+ 	regmap_read(mux->regmap, mux->data->mux_ofs, &val);
+ 	val = (val >> mux->data->mux_shift) & mask;
+@@ -99,7 +273,7 @@
+ {
+ 	struct mtk_clk_mux *mux = to_mtk_clk_mux(hw);
+ 	u32 mask = GENMASK(mux->data->mux_width - 1, 0);
+-	u32 val, orig;
++	u32 val = 0, orig = 0;
+ 	unsigned long flags = 0;
+ 
+ 	if (mux->lock)
+@@ -160,8 +334,18 @@
+ };
+ EXPORT_SYMBOL(mtk_mux_gate_clr_set_upd_ops);
+ 
+-struct clk *mtk_clk_register_mux(const struct mtk_mux *mux,
++const struct clk_ops mtk_hwv_mux_ops = {
++	.enable = mtk_clk_hwv_mux_enable,
++	.disable = mtk_clk_hwv_mux_disable,
++	.is_enabled = mtk_clk_hwv_mux_is_enabled,
++	.get_parent = mtk_clk_mux_get_parent,
++	.set_parent = mtk_clk_mux_set_parent_setclr_lock,
++};
++EXPORT_SYMBOL(mtk_hwv_mux_ops);
++
++static struct clk *mtk_clk_register_mux(const struct mtk_mux *mux,
+ 				 struct regmap *regmap,
++				 struct regmap *hw_voter_regmap,
+ 				 spinlock_t *lock)
+ {
+ 	struct mtk_clk_mux *clk_mux;
+@@ -179,6 +363,7 @@
+ 	init.ops = mux->ops;
+ 
+ 	clk_mux->regmap = regmap;
++	clk_mux->hwv_regmap = hw_voter_regmap;
+ 	clk_mux->data = mux;
+ 	clk_mux->lock = lock;
+ 	clk_mux->hw.init = &init;
+@@ -198,10 +383,12 @@
+ 			   spinlock_t *lock,
+ 			   struct clk_onecell_data *clk_data)
+ {
+-	struct regmap *regmap;
++	struct regmap *regmap, *hw_voter_regmap;
+ 	struct clk *clk;
+ 	int i;
+ 
++	is_registered = false;
++
+ 	regmap = syscon_node_to_regmap(node);
+ 	if (IS_ERR(regmap)) {
+ 		pr_err("Cannot find regmap for %pOF: %ld\n", node,
+@@ -209,11 +396,15 @@
+ 		return PTR_ERR(regmap);
+ 	}
+ 
++	hw_voter_regmap = syscon_regmap_lookup_by_phandle(node, "hw-voter-regmap");
++	if (IS_ERR(hw_voter_regmap))
++		hw_voter_regmap = NULL;
++
+ 	for (i = 0; i < num; i++) {
+ 		const struct mtk_mux *mux = &muxes[i];
+ 
+ 		if (IS_ERR_OR_NULL(clk_data->clks[mux->id])) {
+-			clk = mtk_clk_register_mux(mux, regmap, lock);
++			clk = mtk_clk_register_mux(mux, regmap, hw_voter_regmap, lock);
+ 
+ 			if (IS_ERR(clk)) {
+ 				pr_err("Failed to register clk %s: %ld\n",
+@@ -225,6 +416,8 @@
+ 		}
+ 	}
+ 
++	is_registered = true;
++
+ 	return 0;
+ }
+ EXPORT_SYMBOL(mtk_clk_register_muxes);
+Index: linux-5.4.179/drivers/clk/mediatek/clk-mux.h
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/clk-mux.h	2022-05-28 18:04:18.407787072 +0800
++++ linux-5.4.179/drivers/clk/mediatek/clk-mux.h	2022-05-28 18:04:18.395787072 +0800
+@@ -12,6 +12,7 @@
+ struct mtk_clk_mux {
+ 	struct clk_hw hw;
+ 	struct regmap *regmap;
++	struct regmap *hwv_regmap;
+ 	const struct mtk_mux *data;
+ 	spinlock_t *lock;
+ };
+@@ -26,6 +27,9 @@
+ 	u32 set_ofs;
+ 	u32 clr_ofs;
+ 	u32 upd_ofs;
++	u32 hwv_set_ofs;
++	u32 hwv_clr_ofs;
++	u32 hwv_sta_ofs;
+ 
+ 	u8 mux_shift;
+ 	u8 mux_width;
+@@ -41,6 +45,7 @@
+ extern const struct clk_ops mtk_mux_clr_set_upd_ops;
+ extern const struct clk_ops mtk_mux_gate_ops;
+ extern const struct clk_ops mtk_mux_gate_clr_set_upd_ops;
++extern const struct clk_ops mtk_hwv_mux_ops;
+ 
+ #define GATE_CLR_SET_UPD_FLAGS(_id, _name, _parents, _mux_ofs,		\
+ 			_mux_set_ofs, _mux_clr_ofs, _shift, _width,	\
+@@ -92,9 +97,29 @@
+ 			_mux_ofs, _mux_set_ofs, _mux_clr_ofs, _shift,	\
+ 			_width, _upd_ofs, _upd,	CLK_SET_RATE_PARENT)
+ 
+-struct clk *mtk_clk_register_mux(const struct mtk_mux *mux,
+-				 struct regmap *regmap,
+-				 spinlock_t *lock);
++
++#define MUX_HWV(_id, _name, _parents, _mux_ofs,		\
++			_mux_set_ofs, _mux_clr_ofs, _hwv_sta_ofs,	\
++			_hwv_set_ofs, _hwv_clr_ofs, _shift, _width,	\
++			_gate, _upd_ofs, _upd) {		\
++		.id = _id,						\
++		.name = _name,						\
++		.mux_ofs = _mux_ofs,					\
++		.set_ofs = _mux_set_ofs,				\
++		.clr_ofs = _mux_clr_ofs,				\
++		.hwv_sta_ofs = _hwv_sta_ofs,				\
++		.hwv_set_ofs = _hwv_set_ofs,				\
++		.hwv_clr_ofs = _hwv_clr_ofs,				\
++		.upd_ofs = _upd_ofs,					\
++		.mux_shift = _shift,					\
++		.mux_width = _width,					\
++		.gate_shift = _gate,					\
++		.upd_shift = _upd,					\
++		.parent_names = _parents,				\
++		.num_parents = ARRAY_SIZE(_parents),			\
++		.flags = CLK_SET_RATE_PARENT | CLK_USE_HW_VOTER,	\
++		.ops = &mtk_hwv_mux_ops,				\
++	}
+ 
+ int mtk_clk_register_muxes(const struct mtk_mux *muxes,
+ 			   int num, struct device_node *node,
+Index: linux-5.4.179/drivers/clk/mediatek/clk-pll.c
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/clk-pll.c	2022-05-28 18:04:18.407787072 +0800
++++ linux-5.4.179/drivers/clk/mediatek/clk-pll.c	2022-05-28 18:08:52.792753759 +0800
+@@ -7,6 +7,7 @@
+ #include <linux/of.h>
+ #include <linux/of_address.h>
+ #include <linux/io.h>
++#include <linux/mfd/syscon.h>
+ #include <linux/slab.h>
+ #include <linux/clkdev.h>
+ #include <linux/delay.h>
+@@ -28,6 +29,16 @@
+ /* default 7 bits integer, can be overridden with pcwibits. */
+ #define INTEGER_BITS		7
+ 
++#define MTK_WAIT_HWV_PLL_PREPARE_CNT	10
++#define MTK_WAIT_HWV_PLL_PREPARE_US		10
++#define MTK_WAIT_HWV_PLL_VOTE_CNT		100
++#define MTK_WAIT_HWV_PLL_VOTE_US		2
++#define MTK_WAIT_HWV_PLL_DONE_CNT		10000
++#define MTK_WAIT_HWV_PLL_DONE_US		10
++
++static bool hwv_pll_prepared = true;
++static bool is_registered;
++
+ /*
+  * MediaTek PLLs are configured through their pcw value. The pcw value describes
+  * a divider in the PLL feedback loop which consists of 7 bits for the integer
+@@ -46,6 +57,7 @@
+ 	void __iomem	*pcw_chg_addr;
+ 	void __iomem	*en_addr;
+ 	const struct mtk_pll_data *data;
++	struct regmap	*hwv_regmap;
+ };
+ 
+ static inline struct mtk_clk_pll *to_mtk_clk_pll(struct clk_hw *hw)
+@@ -57,6 +69,9 @@
+ {
+ 	struct mtk_clk_pll *pll = to_mtk_clk_pll(hw);
+ 
++	if (!is_registered)
++		return 0;
++
+ 	return (readl(pll->en_addr) & BIT(pll->data->pll_en_bit)) != 0;
+ }
+ 
+@@ -297,6 +312,199 @@
+ 	writel(r, pll->pwr_addr);
+ }
+ 
++static int mtk_hwv_pll_is_prepared_done(struct mtk_clk_pll *pll)
++{
++	u32 val = 0, pll_sta = 0;
++
++	regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
++
++	if ((val & BIT(pll->data->hwv_shift))) {
++		if (pll->data->flags & HWV_CHK_FULL_STA) {
++			regmap_read(pll->hwv_regmap, pll->data->hwv_set_sta_ofs, &val);
++			pll_sta = readl(pll->en_addr) & BIT(pll->data->pll_en_bit);
++			if (((val & BIT(pll->data->hwv_shift)) == 0x0)
++					&& ((pll_sta & BIT(pll->data->pll_en_bit)))) {
++				hwv_pll_prepared = true;
++				return 1;
++			}
++		} else {
++			hwv_pll_prepared = true;
++			return 1;
++		}
++	}
++
++	return 0;
++}
++
++static int mtk_hwv_pll_is_unprepared_done(struct mtk_clk_pll *pll)
++{
++	u32 val = 0;
++
++	regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
++
++	if ((val & BIT(pll->data->hwv_shift))) {
++		if (pll->data->flags & HWV_CHK_FULL_STA) {
++			regmap_read(pll->hwv_regmap, pll->data->hwv_clr_sta_ofs, &val);
++			if ((val & BIT(pll->data->hwv_shift)) == 0x0) {
++				hwv_pll_prepared = false;
++				return 1;
++			}
++		} else {
++			hwv_pll_prepared = false;
++			return 1;
++		}
++	}
++
++	return 0;
++}
++
++static int mtk_hwv_pll_is_prepared(struct clk_hw *hw)
++{
++	return hwv_pll_prepared;
++}
++
++static int mtk_hwv_pll_prepare(struct clk_hw *hw)
++{
++	struct mtk_clk_pll *pll = to_mtk_clk_pll(hw);
++	u32 val = 0, val2 = 0;
++	int i = 0;
++
++	/* wait for irq idle */
++	do {
++		regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
++		if ((val & BIT(pll->data->hwv_shift)) != 0)
++			break;
++
++		if (i < MTK_WAIT_HWV_PLL_PREPARE_CNT)
++			udelay(MTK_WAIT_HWV_PLL_PREPARE_US);
++		else
++			goto err_hwv_prepare;
++		i++;
++	} while (1);
++
++	i = 0;
++
++	/* dummy read to clr idle signal of hw voter bus */
++	regmap_read(pll->hwv_regmap, pll->data->hwv_set_ofs, &val);
++	regmap_write(pll->hwv_regmap, pll->data->hwv_set_ofs, BIT(pll->data->hwv_shift));
++
++	do {
++		regmap_read(pll->hwv_regmap, pll->data->hwv_set_ofs, &val);
++		if ((val & BIT(pll->data->hwv_shift)) != 0)
++			break;
++
++		udelay(MTK_WAIT_HWV_PLL_VOTE_US);
++		if (i > MTK_WAIT_HWV_PLL_VOTE_CNT)
++			goto err_hwv_vote;
++		i++;
++	} while (1);
++
++	i = 0;
++
++	do {
++		if (mtk_hwv_pll_is_prepared_done(pll))
++			break;
++
++		if (i < MTK_WAIT_HWV_PLL_DONE_CNT)
++			udelay(MTK_WAIT_HWV_PLL_DONE_US);
++		else
++			goto err_hwv_done;
++
++		i++;
++	} while (1);
++
++	return 0;
++
++err_hwv_done:
++	regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
++	regmap_read(pll->hwv_regmap, pll->data->hwv_clr_sta_ofs, &val2);
++	pr_err("%s pll enable timeout(%dus)(%x %x)\n", pll->data->name,
++			i * MTK_WAIT_HWV_PLL_DONE_US, val, val2);
++err_hwv_vote:
++	pr_err("%s pll vote timeout(%dus)(0x%x)\n", pll->data->name,
++			i * MTK_WAIT_HWV_PLL_VOTE_US, val);
++err_hwv_prepare:
++	pr_err("%s pll prepare timeout(%dus)(0x%x)\n", pll->data->name,
++			i * MTK_WAIT_HWV_PLL_PREPARE_US, val);
++	mtk_clk_notify(NULL, pll->hwv_regmap, NULL,
++			pll->data->hwv_set_ofs, 0,
++			pll->data->hwv_shift, CLK_EVT_HWV_PLL_TIMEOUT);
++
++	return -EBUSY;
++}
++
++static void mtk_hwv_pll_unprepare(struct clk_hw *hw)
++{
++	struct mtk_clk_pll *pll = to_mtk_clk_pll(hw);
++	u32 val = 0, val2 = 0;
++	int i = 0;
++
++	/* wait for irq idle */
++	do {
++		regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
++		if ((val & BIT(pll->data->hwv_shift)) != 0)
++			break;
++
++		if (i < MTK_WAIT_HWV_PLL_PREPARE_CNT)
++			udelay(MTK_WAIT_HWV_PLL_PREPARE_US);
++		else
++			goto err_hwv_prepare;
++		i++;
++	} while (1);
++
++	i = 0;
++
++	/* dummy read to clr idle signal of hw voter bus */
++	regmap_read(pll->hwv_regmap, pll->data->hwv_clr_ofs, &val);
++	regmap_write(pll->hwv_regmap, pll->data->hwv_clr_ofs, BIT(pll->data->hwv_shift));
++
++	do {
++		regmap_read(pll->hwv_regmap, pll->data->hwv_clr_ofs, &val);
++		if ((val & BIT(pll->data->hwv_shift)) == 0)
++			break;
++
++		udelay(MTK_WAIT_HWV_PLL_VOTE_US);
++		if (i > MTK_WAIT_HWV_PLL_VOTE_CNT)
++			goto err_hwv_vote;
++		i++;
++	} while (1);
++
++	i = 0;
++
++	/* delay 100us to prevent false ack check */
++	udelay(100);
++	do {
++		if (mtk_hwv_pll_is_unprepared_done(pll))
++			break;
++
++		if (i < MTK_WAIT_HWV_PLL_DONE_CNT)
++			udelay(MTK_WAIT_HWV_PLL_DONE_US);
++		else
++			goto err_hwv_done;
++
++		i++;
++	} while (1);
++
++	return;
++
++err_hwv_done:
++	regmap_read(pll->hwv_regmap, pll->data->hwv_done_ofs, &val);
++	regmap_read(pll->hwv_regmap, pll->data->hwv_clr_sta_ofs, &val2);
++	pr_err("%s pll disable timeout(%dus)(%x %x)\n", pll->data->name,
++			i * MTK_WAIT_HWV_PLL_DONE_US, val, val2);
++err_hwv_vote:
++	pr_err("%s pll unvote timeout(%dus)(0x%x)\n", pll->data->name,
++			i * MTK_WAIT_HWV_PLL_PREPARE_US, val);
++err_hwv_prepare:
++	pr_err("%s pll unprepare timeout(%dus)(0x%x)\n", pll->data->name,
++			i * MTK_WAIT_HWV_PLL_PREPARE_US, val);
++	mtk_clk_notify(NULL, pll->hwv_regmap, NULL,
++			pll->data->hwv_set_ofs, 0,
++			pll->data->hwv_shift, CLK_EVT_HWV_PLL_TIMEOUT);
++
++	return;
++}
++
+ static const struct clk_ops mtk_pll_ops = {
+ 	.is_prepared	= mtk_pll_is_prepared,
+ 	.prepare	= mtk_pll_prepare,
+@@ -306,8 +514,18 @@
+ 	.set_rate	= mtk_pll_set_rate,
+ };
+ 
++static const struct clk_ops mtk_hwv_pll_ops = {
++	.is_prepared	= mtk_hwv_pll_is_prepared,
++	.prepare	= mtk_hwv_pll_prepare,
++	.unprepare	= mtk_hwv_pll_unprepare,
++	.recalc_rate	= mtk_pll_recalc_rate,
++	.round_rate	= mtk_pll_round_rate,
++	.set_rate	= mtk_pll_set_rate,
++};
++
+ static struct clk *mtk_clk_register_pll(const struct mtk_pll_data *data,
+-		void __iomem *base)
++		void __iomem *base,
++		struct regmap *hw_voter_regmap)
+ {
+ 	struct mtk_clk_pll *pll;
+ 	struct clk_init_data init = {};
+@@ -334,12 +552,20 @@
+ 		pll->en_addr = base + data->en_reg;
+ 	else
+ 		pll->en_addr = pll->base_addr + REG_CON0;
++
++	if (hw_voter_regmap && (data->flags & CLK_USE_HW_VOTER))
++		pll->hwv_regmap = hw_voter_regmap;
++
+ 	pll->hw.init = &init;
+ 	pll->data = data;
+ 
+ 	init.name = data->name;
+ 	init.flags = (data->flags & PLL_AO) ? CLK_IS_CRITICAL : 0;
++	if (hw_voter_regmap && (data->flags & CLK_USE_HW_VOTER))
++		init.ops = &mtk_hwv_pll_ops;
++	else
+ 	init.ops = &mtk_pll_ops;
++
+ 	if (data->parent_name)
+ 		init.parent_names = &data->parent_name;
+ 	else
+@@ -360,6 +586,9 @@
+ 	void __iomem *base;
+ 	int i;
+ 	struct clk *clk;
++	struct regmap *hw_voter_regmap;
++
++	is_registered = false;
+ 
+ 	base = of_iomap(node, 0);
+ 	if (!base) {
+@@ -367,12 +596,17 @@
+ 		return;
+ 	}
+ 
++	hw_voter_regmap = syscon_regmap_lookup_by_phandle(node, "hw-voter-regmap");
++	if (IS_ERR_OR_NULL(hw_voter_regmap))
++		hw_voter_regmap = NULL;
++
+ 	for (i = 0; i < num_plls; i++) {
+ 		const struct mtk_pll_data *pll = &plls[i];
+ 
+-		clk = mtk_clk_register_pll(pll, base);
++		if (IS_ERR_OR_NULL(clk_data->clks[pll->id])) {
++			clk = mtk_clk_register_pll(pll, base, hw_voter_regmap);
+ 
+-		if (IS_ERR(clk)) {
++			if (IS_ERR_OR_NULL(clk)) {
+ 			pr_err("Failed to register clk %s: %ld\n",
+ 					pll->name, PTR_ERR(clk));
+ 			continue;
+@@ -380,6 +614,9 @@
+ 
+ 		clk_data->clks[pll->id] = clk;
+ 	}
++	}
++
++	is_registered = true;
+ }
+ EXPORT_SYMBOL(mtk_clk_register_plls);
+ 

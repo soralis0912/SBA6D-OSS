@@ -1,0 +1,363 @@
+--- a/drivers/dma/mediatek/mtk-uart-apdma.c
++++ b/drivers/dma/mediatek/mtk-uart-apdma.c
+@@ -31,7 +31,6 @@
+ #define VFF_EN_B		BIT(0)
+ #define VFF_STOP_B		BIT(0)
+ #define VFF_FLUSH_B		BIT(0)
+-#define VFF_4G_EN_B		BIT(0)
+ /* rx valid size >=  vff thre */
+ #define VFF_RX_INT_EN_B		(BIT(0) | BIT(1))
+ /* tx left size >= vff thre */
+@@ -43,7 +42,7 @@
+ #define VFF_EN_CLR_B		0
+ #define VFF_INT_EN_CLR_B	0
+ #define VFF_4G_SUPPORT_CLR_B	0
+-
++#define VFF_ORI_ADDR_BITS_NUM    32
+ /*
+  * interrupt trigger level for tx
+  * if threshold is n, no polling is required to start tx.
+@@ -68,6 +67,7 @@
+ #define VFF_THRE		0x28
+ #define VFF_WPT			0x2c
+ #define VFF_RPT			0x30
++#define VFF_INT_BUF_SIZE	0x38
+ /* TX: the buffer size HW can read. RX: the buffer size SW can read. */
+ #define VFF_VALID_SIZE		0x3c
+ /* TX: the buffer size SW can write. RX: the buffer size HW can write. */
+@@ -75,10 +75,13 @@
+ #define VFF_DEBUG_STATUS	0x50
+ #define VFF_4G_SUPPORT		0x54
+ 
++struct mtk_uart_apdmacomp {
++	unsigned int addr_bits;
++};
+ struct mtk_uart_apdmadev {
+ 	struct dma_device ddev;
+ 	struct clk *clk;
+-	bool support_33bits;
++	unsigned int support_bits;
+ 	unsigned int dma_requests;
+ };
+ 
+@@ -131,7 +134,10 @@ static unsigned int mtk_uart_apdma_read(
+ 
+ static void mtk_uart_apdma_desc_free(struct virt_dma_desc *vd)
+ {
+-	kfree(container_of(vd, struct mtk_uart_apdma_desc, vd));
++	struct dma_chan *chan = vd->tx.chan;
++	struct mtk_chan *c = to_mtk_uart_apdma_chan(chan);
++
++	dev_info(c->vc.chan.device->dev, "skip free for NULL PTR issue\n");
+ }
+ 
+ static void mtk_uart_apdma_start_tx(struct mtk_chan *c)
+@@ -149,8 +155,9 @@ static void mtk_uart_apdma_start_tx(stru
+ 		mtk_uart_apdma_write(c, VFF_WPT, 0);
+ 		mtk_uart_apdma_write(c, VFF_INT_FLAG, VFF_TX_INT_CLR_B);
+ 
+-		if (mtkd->support_33bits)
+-			mtk_uart_apdma_write(c, VFF_4G_SUPPORT, VFF_4G_EN_B);
++		if (mtkd->support_bits > VFF_ORI_ADDR_BITS_NUM)
++			mtk_uart_apdma_write(c, VFF_4G_SUPPORT,
++					upper_32_bits(d->addr));
+ 	}
+ 
+ 	mtk_uart_apdma_write(c, VFF_EN, VFF_EN_B);
+@@ -184,6 +191,10 @@ static void mtk_uart_apdma_start_rx(stru
+ 	struct mtk_uart_apdma_desc *d = c->desc;
+ 	unsigned int vff_sz;
+ 
++	if (d == NULL) {
++		dev_info(c->vc.chan.device->dev, "%s:[%d] FIX ME1!", __func__, c->irq);
++		return;
++	}
+ 	vff_sz = c->cfg.src_port_window_size;
+ 	if (!mtk_uart_apdma_read(c, VFF_LEN)) {
+ 		mtk_uart_apdma_write(c, VFF_ADDR, d->addr);
+@@ -192,8 +203,9 @@ static void mtk_uart_apdma_start_rx(stru
+ 		mtk_uart_apdma_write(c, VFF_RPT, 0);
+ 		mtk_uart_apdma_write(c, VFF_INT_FLAG, VFF_RX_INT_CLR_B);
+ 
+-		if (mtkd->support_33bits)
+-			mtk_uart_apdma_write(c, VFF_4G_SUPPORT, VFF_4G_EN_B);
++		if (mtkd->support_bits > VFF_ORI_ADDR_BITS_NUM)
++			mtk_uart_apdma_write(c, VFF_4G_SUPPORT,
++					upper_32_bits(d->addr));
+ 	}
+ 
+ 	mtk_uart_apdma_write(c, VFF_INT_EN, VFF_RX_INT_EN_B);
+@@ -204,9 +216,18 @@ static void mtk_uart_apdma_start_rx(stru
+ 
+ static void mtk_uart_apdma_tx_handler(struct mtk_chan *c)
+ {
++	struct mtk_uart_apdma_desc *d = c->desc;
++
+ 	mtk_uart_apdma_write(c, VFF_INT_FLAG, VFF_TX_INT_CLR_B);
++	if (unlikely(d == NULL)) {
++		dev_info(c->vc.chan.device->dev, "TX[%d] FIX ME!", c->irq);
++		return;
++	}
+ 	mtk_uart_apdma_write(c, VFF_INT_EN, VFF_INT_EN_CLR_B);
+ 	mtk_uart_apdma_write(c, VFF_EN, VFF_EN_CLR_B);
++
++	list_del(&d->vd.node);
++	vchan_cookie_complete(&d->vd);
+ }
+ 
+ static void mtk_uart_apdma_rx_handler(struct mtk_chan *c)
+@@ -237,33 +258,25 @@ static void mtk_uart_apdma_rx_handler(st
+ 
+ 	c->rx_status = d->avail_len - cnt;
+ 	mtk_uart_apdma_write(c, VFF_RPT, wg);
+-}
+-
+-static void mtk_uart_apdma_chan_complete_handler(struct mtk_chan *c)
+-{
+-	struct mtk_uart_apdma_desc *d = c->desc;
+ 
+-	if (d) {
+-		list_del(&d->vd.node);
+-		vchan_cookie_complete(&d->vd);
+-		c->desc = NULL;
+-	}
++	list_del(&d->vd.node);
++	vchan_cookie_complete(&d->vd);
+ }
+ 
+ static irqreturn_t mtk_uart_apdma_irq_handler(int irq, void *dev_id)
+ {
+ 	struct dma_chan *chan = (struct dma_chan *)dev_id;
+ 	struct mtk_chan *c = to_mtk_uart_apdma_chan(chan);
+-	unsigned long flags;
++	//unsigned long flags;
+ 
+-	spin_lock_irqsave(&c->vc.lock, flags);
++	//spin_lock_irqsave(&c->vc.lock, flags);
++	spin_lock(&c->vc.lock);
+ 	if (c->dir == DMA_DEV_TO_MEM)
+ 		mtk_uart_apdma_rx_handler(c);
+ 	else if (c->dir == DMA_MEM_TO_DEV)
+ 		mtk_uart_apdma_tx_handler(c);
+-	mtk_uart_apdma_chan_complete_handler(c);
+-	spin_unlock_irqrestore(&c->vc.lock, flags);
+-
++	//spin_unlock_irqrestore(&c->vc.lock, flags);
++	spin_unlock(&c->vc.lock);
+ 	return IRQ_HANDLED;
+ }
+ 
+@@ -297,7 +310,7 @@ static int mtk_uart_apdma_alloc_chan_res
+ 		return -EINVAL;
+ 	}
+ 
+-	if (mtkd->support_33bits)
++	if (mtkd->support_bits > VFF_ORI_ADDR_BITS_NUM)
+ 		mtk_uart_apdma_write(c, VFF_4G_SUPPORT, VFF_4G_SUPPORT_CLR_B);
+ 
+ 	return ret;
+@@ -349,7 +362,7 @@ static struct dma_async_tx_descriptor *m
+ 		return NULL;
+ 
+ 	/* Now allocate and setup the descriptor */
+-	d = kzalloc(sizeof(*d), GFP_NOWAIT);
++	d = kzalloc(sizeof(*d), GFP_ATOMIC);
+ 	if (!d)
+ 		return NULL;
+ 
+@@ -367,7 +380,7 @@ static void mtk_uart_apdma_issue_pending
+ 	unsigned long flags;
+ 
+ 	spin_lock_irqsave(&c->vc.lock, flags);
+-	if (vchan_issue_pending(&c->vc) && !c->desc) {
++	if (vchan_issue_pending(&c->vc)) {
+ 		vd = vchan_next_desc(&c->vc);
+ 		c->desc = to_mtk_uart_apdma_desc(&vd->tx);
+ 
+@@ -397,14 +410,28 @@ static int mtk_uart_apdma_terminate_all(
+ 	unsigned int status;
+ 	LIST_HEAD(head);
+ 	int ret;
++	bool state;
+ 
+-	mtk_uart_apdma_write(c, VFF_FLUSH, VFF_FLUSH_B);
+-
+-	ret = readx_poll_timeout(readl, c->base + VFF_FLUSH,
+-			  status, status != VFF_FLUSH_B, 10, 100);
+-	if (ret)
+-		dev_err(c->vc.chan.device->dev, "flush: fail, status=0x%x\n",
+-			mtk_uart_apdma_read(c, VFF_DEBUG_STATUS));
++	if (mtk_uart_apdma_read(c, VFF_INT_BUF_SIZE)) {
++		mtk_uart_apdma_write(c, VFF_FLUSH, VFF_FLUSH_B);
++		ret = readx_poll_timeout(readl, c->base + VFF_FLUSH,
++				  status, status != VFF_FLUSH_B, 10, 100);
++		dev_info(c->vc.chan.device->dev, "flush %s[%d]: %d\n",
++			c->dir == DMA_DEV_TO_MEM ? "RX":"TX", c->irq, ret);
++		/*
++		 * DMA hardware will generate a interrupt immediately
++		 * once flush done, so we need to wait the interrupt to be
++		 * handled before free resources.
++		 */
++		state = true;
++		while (state)
++			irq_get_irqchip_state(c->irq,
++				IRQCHIP_STATE_PENDING, &state);
++		state = true;
++		while (state)
++			irq_get_irqchip_state(c->irq,
++				IRQCHIP_STATE_ACTIVE, &state);
++	}
+ 
+ 	/*
+ 	 * Stop need 3 steps.
+@@ -465,8 +492,13 @@ static void mtk_uart_apdma_free(struct m
+ 	}
+ }
+ 
++static const struct mtk_uart_apdmacomp mt6779_comp = {
++	.addr_bits = 34
++};
+ static const struct of_device_id mtk_uart_apdma_match[] = {
+-	{ .compatible = "mediatek,mt6577-uart-dma", },
++	{ .compatible = "mediatek,mt6577-uart-dma", .data = NULL},
++	{ .compatible = "mediatek,mt2712-uart-dma", .data = NULL},
++	{ .compatible = "mediatek,mt6779-uart-dma", .data = &mt6779_comp},
+ 	{ /* sentinel */ },
+ };
+ MODULE_DEVICE_TABLE(of, mtk_uart_apdma_match);
+@@ -475,10 +507,11 @@ static int mtk_uart_apdma_probe(struct p
+ {
+ 	struct device_node *np = pdev->dev.of_node;
+ 	struct mtk_uart_apdmadev *mtkd;
+-	int bit_mask = 32, rc;
++	int rc;
+ 	struct resource *res;
+ 	struct mtk_chan *c;
+ 	unsigned int i;
++	const struct mtk_uart_apdmacomp *comp;
+ 
+ 	mtkd = devm_kzalloc(&pdev->dev, sizeof(*mtkd), GFP_KERNEL);
+ 	if (!mtkd)
+@@ -491,13 +524,25 @@ static int mtk_uart_apdma_probe(struct p
+ 		return rc;
+ 	}
+ 
+-	if (of_property_read_bool(np, "mediatek,dma-33bits"))
+-		mtkd->support_33bits = true;
++	comp = of_device_get_match_data(&pdev->dev);
++	if (comp == NULL) {
++		/*In order to compatiable with legacy device tree file*/
++		dev_info(&pdev->dev,
++			"No compatiable, using DTS configration\n");
++
++		if (of_property_read_bool(pdev->dev.of_node,
++				"mediatek,dma-33bits"))
++			mtkd->support_bits = 33;
++		else
++			mtkd->support_bits = 32;
++	} else
++		mtkd->support_bits = comp->addr_bits;
+ 
+-	if (mtkd->support_33bits)
+-		bit_mask = 33;
++	dev_info(&pdev->dev,
++			"DMA address bits: %d\n",  mtkd->support_bits);
+ 
+-	rc = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(bit_mask));
++	rc = dma_set_mask_and_coherent(&pdev->dev,
++			DMA_BIT_MASK(mtkd->support_bits));
+ 	if (rc)
+ 		return rc;
+ 
+@@ -548,8 +593,10 @@ static int mtk_uart_apdma_probe(struct p
+ 		vchan_init(&c->vc, &mtkd->ddev);
+ 
+ 		rc = platform_get_irq(pdev, i);
+-		if (rc < 0)
++		if (rc < 0) {
++			dev_err(&pdev->dev, "failed to get IRQ[%d]\n", i);
+ 			goto err_no_dma;
++		}
+ 		c->irq = rc;
+ 	}
+ 
+--- a/drivers/tty/serial/8250/8250_mtk.c
++++ b/drivers/tty/serial/8250/8250_mtk.c
+@@ -71,6 +71,7 @@ struct mtk8250_data {
+ 	enum dma_rx_status	rx_status;
+ #endif
+ 	int			rx_wakeup_irq;
++	unsigned char __iomem   *uart_glue_membase;
+ };
+ 
+ /* flow control mode */
+@@ -441,10 +442,31 @@ static int __maybe_unused mtk8250_runtim
+ static void
+ mtk8250_do_pm(struct uart_port *port, unsigned int state, unsigned int old)
+ {
++	unsigned char lcr = 0, efr = 0;
++	struct uart_8250_port *up = up_to_u8250p(port);
++
+ 	if (!state)
+ 		pm_runtime_get_sync(port->dev);
+ 
+-	serial8250_do_pm(port, state, old);
++	serial8250_rpm_get(up);
++
++	if (up->capabilities & UART_CAP_SLEEP) {
++		if (up->capabilities & UART_CAP_EFR) {
++			lcr = serial_in(up, UART_LCR);
++			serial_out(up, UART_LCR, UART_LCR_CONF_MODE_B);
++			efr = serial_in(up, UART_EFR);
++			serial_out(up, UART_EFR, UART_EFR_ECB);
++			serial_out(up, UART_LCR, 0);
++		}
++		serial_out(up, UART_IER, (state != 0) ? UART_IERX_SLEEP : 0);
++		if (up->capabilities & UART_CAP_EFR) {
++			serial_out(up, UART_LCR, UART_LCR_CONF_MODE_B);
++			serial_out(up, UART_EFR, efr);
++			serial_out(up, UART_LCR, lcr);
++		}
++	}
++
++	serial8250_rpm_put(up);
+ 
+ 	if (state)
+ 		pm_runtime_put_sync_suspend(port->dev);
+@@ -506,6 +528,7 @@ static int mtk8250_probe(struct platform
+ {
+ 	struct uart_8250_port uart = {};
+ 	struct resource *regs = platform_get_resource(pdev, IORESOURCE_MEM, 0);
++	struct resource *regs_uart_glue = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+ 	struct resource *irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+ 	struct mtk8250_data *data;
+ 	int err;
+@@ -569,6 +592,16 @@ static int mtk8250_probe(struct platform
+ 
+ 	data->rx_wakeup_irq = platform_get_irq_optional(pdev, 1);
+ 
++	if (!regs_uart_glue) {
++		dev_info(&pdev->dev, "0x%x not support uart_glue\n", regs->start);
++		data->uart_glue_membase = NULL;
++	} else {
++		dev_info(&pdev->dev, "0x%x uart_glue base addr:0x%x\n",
++			regs->start, regs_uart_glue->start);
++		data->uart_glue_membase = devm_ioremap(&pdev->dev, regs_uart_glue->start,
++						resource_size(regs_uart_glue));
++	}
++
+ 	return 0;
+ }
+ 
+@@ -616,6 +649,11 @@ static int __maybe_unused mtk8250_resume
+ 	struct mtk8250_data *data = dev_get_drvdata(dev);
+ 	int irq = data->rx_wakeup_irq;
+ 
++	if (data->uart_glue_membase) {
++		writel((readl(data->uart_glue_membase) | 0x1), data->uart_glue_membase);
++		dev_info(dev, "uart_glue :0x%x\n", (int)readl(data->uart_glue_membase));
++	}
++
+ 	if (irq >= 0)
+ 		disable_irq_wake(irq);
+ 	pinctrl_pm_select_default_state(dev);

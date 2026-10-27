@@ -1,0 +1,100 @@
+--- a/drivers/clk/mediatek/Kconfig
++++ b/drivers/clk/mediatek/Kconfig
+@@ -425,4 +425,50 @@ config COMMON_CLK_MT8516_AUDSYS
+ 	help
+ 	  This driver supports MediaTek MT8516 audsys clocks.
+ 
++config COMMON_CLK_MTK_FREQ_HOPPING
++	tristate "Mediatek Frequency Hopping driver"
++	help
++	  FREQHOPPING driver support for MediaTek SOC
++	  If you want to use MediaTek FREQHOPPING driver,
++	  say Y or M here.
++	  If unsure, say N.
++
++config COMMON_CLK_MTK_FREQ_HOPPING_DEBUG
++	bool "Mediatek Frequency Hopping debug fs"
++	default y
++	depends on DEBUG_FS && COMMON_CLK_MTK_FREQ_HOPPING
++	help
++	  This option is for debugging purpose
++	  say Y to use debugfs interface to control
++	  Freqhopping.
++	  Otherwise, say N
++
++config COMMON_CLK_MTK_FREQ_HOPPING_SUBSYS
++	bool "Mediatek Frequency Hopping controlled by subsys"
++	help
++	  If FREQHOPPING HW is controlled by other processor,
++	  such as SSPM, this should be set.
++	  This option is selected when subsys configure is enabled.
++	  When this option is not enabled, FREQHOPPING HW is controlled
++	  by kernel driver directly.
++
++config COMMON_CLK_MTK_FREQ_HOPPING_SSPM
++	bool "Mediatek Frequency Hopping controlled by SSPM"
++	depends on COMMON_CLK_MTK_FREQ_HOPPING && MTK_TINYSYS_SSPM_SUPPORT
++	select COMMON_CLK_MTK_FREQ_HOPPING_SUBSYS
++	help
++	  If FREQHOPPING HW is controlled by SSPM,
++	  say Y here.
++	  Otherwise, say N.
++	  Enabling this config will auto set COMMON_CLK_MTK_FREQ_HOPPING_SUBSYS
++
++config COMMON_CLK_MTK_FREQ_HOPPING_MCUPM
++	bool "Mediatek Frequency Hopping controlled by MCUPM"
++	depends on COMMON_CLK_MTK_FREQ_HOPPING && MTK_TINYSYS_MCUPM_SUPPORT
++	select COMMON_CLK_MTK_FREQ_HOPPING_SUBSYS
++	help
++	  If FREQHOPPING HW is controlled by MCUPM,
++	  say Y here.
++	  Otherwise, say N.
++	  Enabling this config will auto set COMMON_CLK_MTK_FREQ_HOPPING_SUBSYS
+ endmenu
+--- a/drivers/clk/mediatek/clk-mtk.h
++++ b/drivers/clk/mediatek/clk-mtk.h
+@@ -250,4 +250,6 @@ void mtk_register_reset_controller(struc
+ void mtk_register_reset_controller_set_clr(struct device_node *np,
+ 	unsigned int num_regs, int regofs);
+ 
++extern bool (*mtk_fh_set_rate)(int pll_id, unsigned long dds, int postdiv);
++
+ #endif /* __DRV_CLK_MTK_H */
+--- a/drivers/clk/mediatek/clk-pll.c
++++ b/drivers/clk/mediatek/clk-pll.c
+@@ -48,6 +48,9 @@ struct mtk_clk_pll {
+ 	const struct mtk_pll_data *data;
+ };
+ 
++bool (*mtk_fh_set_rate)(int pll_id, unsigned long dds, int postdiv) = NULL;
++EXPORT_SYMBOL(mtk_fh_set_rate);
++
+ static inline struct mtk_clk_pll *to_mtk_clk_pll(struct clk_hw *hw)
+ {
+ 	return container_of(hw, struct mtk_clk_pll, hw);
+@@ -202,7 +205,8 @@ static int mtk_pll_set_rate(struct clk_h
+ 	u32 postdiv;
+ 
+ 	mtk_pll_calc_values(pll, &pcw, &postdiv, rate, parent_rate);
+-	mtk_pll_set_rate_regs(pll, pcw, postdiv);
++	if (!mtk_fh_set_rate || !mtk_fh_set_rate(pll->data->id, pcw, postdiv))
++		mtk_pll_set_rate_regs(pll, pcw, postdiv);
+ 
+ 	return 0;
+ }
+--- a/drivers/clk/mediatek/Makefile
++++ b/drivers/clk/mediatek/Makefile
+@@ -65,3 +65,13 @@ obj-$(CONFIG_COMMON_CLK_MT8516) += clk-m
+ obj-$(CONFIG_COMMON_CLK_MT8516_AUDSYS) += clk-mt8516-aud.o
+ ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm/
+ ccflags-y += -I$(srctree)/drivers/misc/mediatek/mcupm/
++
++obj-$(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING) += fhctl.o
++fhctl-y += clk-fhctl.o
++fhctl-$(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_DEBUG) += clk-fhctl-debug.o
++ifneq ($(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_SUBSYS),y)
++fhctl-y += clk-fhctl-ap.o
++else
++fhctl-$(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_SSPM) += clk-fhctl-sspm.o
++fhctl-$(CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_MCUPM) += clk-fhctl-mcupm.o
++endif

@@ -1,0 +1,28 @@
+--- a/drivers/input/keyboard/Kconfig
++++ b/drivers/input/keyboard/Kconfig
+@@ -763,6 +763,15 @@ config KEYBOARD_BCM
+ 	  To compile this driver as a module, choose M here: the
+ 	  module will be called bcm-keypad.
+ 
++config KEYBOARD_MT6361
++	tristate "MediaTek MT6361 Keypad support"
++	depends on MFD_MT6361
++	help
++	  Say Y here if you want to use the mt6361 keys (powerkey/resetkey).
++
++	  To compile this driver as a module, choose M here: the
++	  module will be called mtk-pmic-keys.
++
+ config KEYBOARD_MTK_KPD
+ 	tristate "MediaTek Keypad Support"
+ 	depends on OF && HAVE_CLK
+--- a/drivers/input/keyboard/Makefile
++++ b/drivers/input/keyboard/Makefile
+@@ -41,6 +41,7 @@ obj-$(CONFIG_KEYBOARD_MATRIX)		+= matrix
+ obj-$(CONFIG_KEYBOARD_MAX7359)		+= max7359_keypad.o
+ obj-$(CONFIG_KEYBOARD_MCS)		+= mcs_touchkey.o
+ obj-$(CONFIG_KEYBOARD_MPR121)		+= mpr121_touchkey.o
++obj-$(CONFIG_KEYBOARD_MT6361)		+= mt6361-keys.o
+ obj-$(CONFIG_KEYBOARD_MTK_KPD)		+= mtk-kpd.o
+ obj-$(CONFIG_KEYBOARD_MTK_PMIC) 	+= mtk-pmic-keys.o
+ obj-$(CONFIG_KEYBOARD_NEWTON)		+= newtonkbd.o

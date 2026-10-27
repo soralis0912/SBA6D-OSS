@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: GPL-2.0-only
+config MTK_ETHERNET
+	bool "CPE/mifi ethernet driver"
+	default n
+	depends on ARCH_MEDIATEK
+	---help---
+	  If you have a Mediatek SoC with ethernet, say Y.
+
+if MTK_ETHERNET
+
+config MTK_ETHERNET_SOC
+	tristate "MediaTek SoC Gigabit Ethernet support"
+	select PHYLINK
+	---help---
+	  This driver supports the gigabit ethernet MACs in the
+	  MediaTek SoC family.
+
+config MTK_ETHERNET_DBG
+	bool "Mediatek Ethernet debug interface"
+	depends on MTK_ETHERNET_SOC
+
+config MEDIATEK_NETSYS_V2
+	bool "Mediatek Netsys Version 2"
+	default n
+
+config MTK_ETHERNET_DYNAMIC_SGMII
+	bool "Dynamic Mediatek Ethernet SGMII support"
+	default n
+
+config MTK_ETHERNET_RSS
+	bool "Mediatek Ethernet Receive Side Scaling (RSS) support"
+	default n
+
+config QUECTEL_ETHERNET_PHY
+	bool "Quectel 3rd Ethernet Phy support"
+	default n
+
+config QUECTEL_ETHERNET_PHY_ADAPT_SUPPORT
+	bool "Quectel 3rd Ethernet Phy auto adapter support(mt7531 only support mac0<-->sgmii/usxgmii<-->phy)"
+	default n
+	depends on QUECTEL_ETHERNET_PHY
+
+source "drivers/misc/mediatek/ethernet/rtl8221/Kconfig"
+source "drivers/misc/mediatek/ethernet/aqr113/Kconfig"
+
+config QL_WAN_LAN_AUTO_ADAPT_SUPPORT
+	bool "Quectel WAN_LAN AUTO ADAPT SUPPORT"
+	default n
+
+endif #MTK_ETHERNET
+
+config MTK_SGMII_NETSYS
+	bool "sgmii for netsys"
+	default n
+	help
+	  Set the PHY sgmii for netsys
+
+	  This selects the sgmii as Netsys ethernet driver
+	  interface. SNPS ethernet driver can only use rgmii
+	  with this configuration.
+
+config MTK_SGMII_SNPS
+	bool "sgmii for snps"
+	default n
+	help
+	  Set the PHY sgmii for snps
+
+	  This selects the sgmii as SNPS ethernet driver
+	  interface. Netsys ethernet driver can only use
+	  another sgmii with this configuration.
+
+config MTK_USXGMII
+	bool "usxgmii for 10g"
+	default n
+	help
+	  Set the PHY usxgmii enabled

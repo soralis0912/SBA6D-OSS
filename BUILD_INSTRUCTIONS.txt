@@ -1,0 +1,77 @@
+Build Instructions
+==================
+
+Target: gem6xxx / evb6990_cpe_mt7990_emmc
+Profile: DEVICE_evb6990_cpe_mt7990_emmc_debug
+OpenWrt 21.02.7 (r16847-f8282da11e), Linux 5.4.238
+
+1. Build system
+---------------
+Use buildroot/openwrt/ as the build root.
+
+2. Configuration inputs
+-----------------------
+  configs/openwrt.config              OpenWrt configuration
+  configs/openwrt.target.config       target profile configuration
+  configs/kernel.config               kernel configuration
+  configs/kernel.config.target        target kernel configuration
+  configs/kernel.config-5.4.fragment  kernel configuration fragment
+
+Copy the OpenWrt configuration into place before building:
+    cp configs/openwrt.config buildroot/openwrt/.config
+
+3. Package feeds
+----------------
+The feeds are included at buildroot/feeds/ and are referenced by
+buildroot/openwrt/feeds.conf.default through 'src-link' entries.
+
+    cd buildroot/openwrt
+    ./scripts/feeds update -a
+    ./scripts/feeds install -a
+
+Feeds provided: packages, luci, routing (upstream OpenWrt), and mtk
+(MediaTek components covered by the MediaTek Open Source Software
+Statement).
+
+Note: feeds.conf.default also lists the upstream git revisions each
+OpenWrt feed corresponds to, as commented 'src-git-full' lines.
+
+4. Kernel source and patches
+----------------------------
+Kernel source tree:
+    kernel/src-scrubbed/            Linux 5.4.238
+
+Kernel patches, applied in numeric order:
+    patches/openwrt/target/linux/gem6xxx/patches-5.4/
+
+Target overlay files:
+    buildroot/openwrt/target/linux/gem6xxx/files-5.4/
+
+Device tree sources:
+    dts/
+
+Keyonet kernel modifications are supplied as patch 0990-knos-patch.patch
+in the same patches-5.4 directory. It applies last, after the vendor
+patches:
+    cd kernel/src-scrubbed
+    patch -p1 < ../../patches/openwrt/target/linux/gem6xxx/patches-5.4/0990-knos-patch.patch
+
+The patch modifies 38 files and adds the KNOS subsystem under
+net/knos/, drivers/knos-drivers/ and include/knos/, enabled by
+CONFIG_KNOS_KERNEL.
+
+5. Package sources
+------------------
+  sources/upstream-archives/       upstream source tarballs
+  sources/source-tree-candidates/  source trees
+  sources/package-recipes/         build recipes
+  package-info/gpl-lgpl-package-inventory.tsv
+                                   GPL/LGPL component inventory
+
+6. Notes
+--------
+This is a source disclosure package covering the open source software
+used in the product; it is not a replacement for the complete vendor
+SDK. Proprietary components are not included and some manifest entries
+therefore reference paths that are not present in this package.
+See EXCLUSIONS_JUSTIFICATION.tsv.

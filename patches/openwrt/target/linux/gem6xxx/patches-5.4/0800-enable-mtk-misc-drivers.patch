@@ -1,0 +1,19 @@
+Index: linux-5.4.124/drivers/misc/Kconfig
+===================================================================
+--- linux-5.4.124.orig/drivers/misc/Kconfig	2021-06-03 14:59:17.000000000 +0800
++++ linux-5.4.124/drivers/misc/Kconfig	2021-08-25 11:27:17.337508392 +0800
+@@ -481,4 +481,5 @@ source "drivers/misc/cxl/Kconfig"
+ source "drivers/misc/ocxl/Kconfig"
+ source "drivers/misc/cardreader/Kconfig"
+ source "drivers/misc/habanalabs/Kconfig"
++source "drivers/misc/mediatek/Kconfig"
+ endmenu
+Index: linux-5.4.124/drivers/misc/Makefile
+===================================================================
+--- linux-5.4.124.orig/drivers/misc/Makefile	2021-06-03 14:59:17.000000000 +0800
++++ linux-5.4.124/drivers/misc/Makefile	2021-08-25 11:28:25.357399500 +0800
+@@ -57,3 +57,4 @@ obj-y				+= cardreader/
+ obj-$(CONFIG_PVPANIC)   	+= pvpanic.o
+ obj-$(CONFIG_HABANA_AI)		+= habanalabs/
+ obj-$(CONFIG_XILINX_SDFEC)	+= xilinx_sdfec.o
++obj-y				+= mediatek/

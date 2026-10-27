@@ -1,0 +1,5 @@
+src-link packages ../../feeds/packages
+src-link luci ../../feeds/luci
+src-link routing ../../feeds/routing
+src-link mtk ../../feeds/mtk
+src-link quectel ../../feeds/quectel

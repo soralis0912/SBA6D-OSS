@@ -1,0 +1,25 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.c
+@@ -1162,7 +1162,7 @@ static int mediatek_dwmac_probe(struct p
+ 	struct mediatek_dwmac_plat_data *priv_plat;
+ 	struct plat_stmmacenet_data *plat_dat;
+ 	struct stmmac_resources stmmac_res;
+-	int ret;
++	int ret, i;
+ 
+ 	priv_plat = devm_kzalloc(&pdev->dev, sizeof(*priv_plat), GFP_KERNEL);
+ 	if (!priv_plat)
+@@ -1207,6 +1207,13 @@ static int mediatek_dwmac_probe(struct p
+ 		plat_dat->fix_mac_speed = priv_plat->variant->dwmac_fix_mac_speed;
+ 	mediatek_dwmac_init(pdev, priv_plat);
+ 
++
++	for (i = 0; i < plat_dat->tx_queues_to_use; i++) {
++		/* Default TX Q0 to use TSO and rest TXQ for TBS */
++		if (i > 0)
++			plat_dat->tx_queues_cfg[i].tbs_en = 1;
++	}
++
+ 	ret = stmmac_dvr_probe(&pdev->dev, plat_dat, &stmmac_res);
+ 	if (ret) {
+ 		stmmac_remove_config_dt(pdev, plat_dat);

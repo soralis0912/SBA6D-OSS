@@ -1,0 +1,30 @@
+--- a/drivers/nvmem/Kconfig
++++ b/drivers/nvmem/Kconfig
+@@ -118,6 +118,16 @@ config MT635X_EFUSE
+ 	  This driver can also be built as a module. If so, the module
+ 	  will be called nvmem-mt635x-efuse.
+ 
++config MT6361_EFUSE
++	tristate "Mediatek MT6361 SUBPMIC EFUSE Support"
++	depends on MFD_MT6361
++	help
++	  This is a simple driver to dump specified values of Mediatek
++	  MT6361 SUBPMIC from EFUSE.
++
++	  This driver can also be built as a module. If so, the module
++	  will be called nvmem-mt6361-efuse.
++
+ config QCOM_QFPROM
+ 	tristate "QCOM QFPROM Support"
+ 	depends on ARCH_QCOM || COMPILE_TEST
+--- a/drivers/nvmem/Makefile
++++ b/drivers/nvmem/Makefile
+@@ -30,6 +30,8 @@ obj-$(CONFIG_MTK_DEVINFO)	+= nvmem_mtk-d
+ nvmem_mtk-devinfo-y		:= mtk-devinfo.o
+ obj-$(CONFIG_MT635X_EFUSE)	+= nvmem-mt635x-efuse.o
+ nvmem-mt635x-efuse-y		:= mt635x-efuse.o
++obj-$(CONFIG_MT6361_EFUSE)	+= nvmem-mt6361-efuse.o
++nvmem-mt6361-efuse-y		:= mt6361-efuse.o
+ obj-$(CONFIG_QCOM_QFPROM)	+= nvmem_qfprom.o
+ nvmem_qfprom-y			:= qfprom.o
+ obj-$(CONFIG_ROCKCHIP_EFUSE)	+= nvmem_rockchip_efuse.o

@@ -1,0 +1,11 @@
+config FE_MEDIATEK_SOC
+	tristate "MediaTek SoC Netsys FrameEngine support"
+	help
+	  This driver supports Netsys FrameEngine in the
+	  MediaTek SoC family.
+
+config MTK_HNAT_FAST_SUPPORT
+	bool "edma offload"
+	default n
+	help
+	  This selects EDMA as the fast path offload.

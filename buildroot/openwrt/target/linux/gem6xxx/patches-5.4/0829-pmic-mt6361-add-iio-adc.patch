@@ -1,0 +1,29 @@
+--- a/drivers/iio/adc/Kconfig
++++ b/drivers/iio/adc/Kconfig
+@@ -607,6 +607,16 @@ config MEDIATEK_MT635X_AUXADC
+ 	  This driver can also be built as a module. If so, the module will be
+ 	  called mt635x-auxadc.
+ 
++
++config MEDIATEK_MT6361_ADC
++	tristate "MediaTek MT6361 SUBPMIC ADC Support"
++	depends on MFD_MT6361
++	help
++	  Say yes here to enable support for MediaTek MT6361 SUBPMIC ADC.
++	  The driver supports multiple channels read.
++	  This driver can also be built as a module. If so, the module will be
++	  called mt6361-adc.
++
+ config MEDIATEK_MT6577_AUXADC
+ 	tristate "MediaTek AUXADC driver"
+ 	depends on ARCH_MEDIATEK || COMPILE_TEST
+--- a/drivers/iio/adc/Makefile
++++ b/drivers/iio/adc/Makefile
+@@ -56,6 +56,7 @@ obj-$(CONFIG_MAX9611) += max9611.o
+ obj-$(CONFIG_MCP320X) += mcp320x.o
+ obj-$(CONFIG_MCP3422) += mcp3422.o
+ obj-$(CONFIG_MCP3911) += mcp3911.o
++obj-$(CONFIG_MEDIATEK_MT6361_ADC) += mt6361-adc.o
+ obj-$(CONFIG_MEDIATEK_MT635X_AUXADC) += mt635x-auxadc.o
+ obj-$(CONFIG_MEDIATEK_MT6577_AUXADC) += mt6577_auxadc.o
+ obj-$(CONFIG_MEN_Z188_ADC) += men_z188_adc.o

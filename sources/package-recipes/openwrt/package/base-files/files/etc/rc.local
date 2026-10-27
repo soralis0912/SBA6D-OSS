@@ -1,0 +1,9 @@
+# Put your custom commands here that should be executed once
+# the system init finished. By default this file does nothing.
+
+# update rawdata,important!!!
+if [ -f /etc/init.d/ql_update_rawdata.sh ];then
+    /etc/init.d/ql_update_rawdata.sh
+fi
+
+exit 0

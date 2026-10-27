@@ -1,0 +1,33 @@
+From 97cf23029a6e15b6e8f9ee6b490a1ddbb5c43045 Mon Sep 17 00:00:00 2001
+From: Kuan-Ying Lee <Kuan-Ying.Lee@mediatek.com>
+Date: Fri, 04 Dec 2020 15:35:23 +0800
+Subject: [PATCH] kasan: trigger KE to get KAsan information
+
+trigger KE when get corruption
+
+Change-Id: I30c8dc2c7ad720de55d222fe3656786b88f30eeb
+Signed-off-by: Kuan-Ying Lee <Kuan-Ying.Lee@mediatek.com>
+CR-Id: ALPS05452876
+Feature: Kernel Sanitizer
+---
+
+diff --git a/mm/kasan/report.c b/mm/kasan/report.c
+index 6217821..68cacaf 100644
+--- a/mm/kasan/report.c
++++ b/mm/kasan/report.c
+@@ -469,6 +469,8 @@
+ 	pr_err("\n");
+ 	print_shadow_for_address(object);
+ 	end_report(&flags);
++	/* trigger KE to get the KAsan corruption message */
++	BUG();
+ }
+ 
+ void __kasan_report(unsigned long addr, size_t size, bool is_write, unsigned long ip)
+@@ -511,4 +513,6 @@
+ 	}
+ 
+ 	end_report(&flags);
++	/* trigger KE to get the KAsan corruption message */
++	BUG();
+ }

@@ -1,0 +1,37 @@
+#!/bin/sh /etc/rc.common
+
+START=13
+
+boot() {
+	mem="$(awk '/^MemFree:/ {print $2}' /proc/meminfo)"
+	# base on kernel, set min_free_kbytes according to free mem
+	# (unsigned long) nr_free_buffer_pages() / 20) and align 4k page
+	# from 128 ~ 16384k
+	let min_free=mem/80*4
+	if [ $min_free -lt 128 ]
+	then
+		min_free=128
+	elif [ $min_free -gt 16384 ]
+	then
+		min_free=16384
+	fi
+	echo "$min_free" > /proc/sys/vm/min_free_kbytes
+	# zram size is 50% Free pages
+	let mem=mem/2048
+	zram=${mem}"M"
+	echo lz4 > /sys/block/zram0/comp_algorithm
+	echo "$zram" > /sys/block/zram0/disksize
+	mkswap /dev/zram0
+	swapon /dev/zram0
+	echo 100 > /proc/sys/vm/swappiness
+
+	# start mmstat tracer
+	if [ -d  "/sys/kernel/debug/tracing/events/mmstat" ]
+	then
+		mkdir /sys/kernel/debug/tracing/instances/mmstat 711
+		echo 0 > /sys/kernel/debug/tracing/instances/mmstat/tracing_on
+		echo 16 > /sys/kernel/debug/tracing/instances/mmstat/buffer_size_kb
+		echo 1 > /sys/kernel/debug/tracing/instances/mmstat/events/mmstat/enable
+		echo 1 > /sys/kernel/debug/tracing/instances/mmstat/tracing_on
+	fi
+}

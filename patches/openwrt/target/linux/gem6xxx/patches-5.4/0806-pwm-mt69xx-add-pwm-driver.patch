@@ -1,0 +1,104 @@
+--- a/drivers/pwm/pwm-mediatek.c
++++ b/drivers/pwm/pwm-mediatek.c
+@@ -35,6 +35,7 @@
+ 
+ struct pwm_mediatek_of_data {
+ 	unsigned int num_pwms;
++	unsigned int *pwm_mediatek_reg_offset;
+ 	bool pwm45_fixup;
+ };
+ 
+@@ -60,6 +61,10 @@ static const unsigned int pwm_mediatek_r
+ 	0x0010, 0x0050, 0x0090, 0x00d0, 0x0110, 0x0150, 0x0190, 0x0220
+ };
+ 
++static const unsigned int pwm_mediatek_reg_offset_2[] = {
++	0x0080, 0x00C0, 0x0100, 0x0140, 0x0180, 0x01C0, 0x0200
++};
++
+ static inline struct pwm_mediatek_chip *
+ to_pwm_mediatek_chip(struct pwm_chip *chip)
+ {
+@@ -105,16 +110,20 @@ static void pwm_mediatek_clk_disable(str
+ }
+ 
+ static inline u32 pwm_mediatek_readl(struct pwm_mediatek_chip *chip,
+-				     unsigned int num, unsigned int offset)
++				     unsigned int pwm_n, unsigned int offset)
+ {
+-	return readl(chip->regs + pwm_mediatek_reg_offset[num] + offset);
++	unsigned int pwm_n_offset;
++	pwm_n_offset = (chip->soc->pwm_mediatek_reg_offset)[pwm_n];
++	return readl(chip->regs + pwm_n_offset  + offset);
+ }
+ 
+ static inline void pwm_mediatek_writel(struct pwm_mediatek_chip *chip,
+-				       unsigned int num, unsigned int offset,
++				       unsigned int pwm_n, unsigned int offset,
+ 				       u32 value)
+ {
+-	writel(value, chip->regs + pwm_mediatek_reg_offset[num] + offset);
++	unsigned int pwm_n_offset;
++	pwm_n_offset = (chip->soc->pwm_mediatek_reg_offset)[pwm_n];
++	writel(value, chip->regs + pwm_n_offset + offset);
+ }
+ 
+ static int pwm_mediatek_config(struct pwm_chip *chip, struct pwm_device *pwm,
+@@ -277,42 +286,57 @@ static int pwm_mediatek_remove(struct pl
+ 	return pwmchip_remove(&pc->chip);
+ }
+ 
++static const struct pwm_mediatek_of_data mt69xx_pwm_data = {
++	.num_pwms = 7,
++	.pwm_mediatek_reg_offset = (unsigned int *)&pwm_mediatek_reg_offset_2,
++	.pwm45_fixup = false,
++};
++
++
+ static const struct pwm_mediatek_of_data mt68xx_pwm_data = {
+ 	.num_pwms = 7,
++	.pwm_mediatek_reg_offset = (unsigned int *)&pwm_mediatek_reg_offset,
+ 	.pwm45_fixup = false,
+ };
+ 
+ static const struct pwm_mediatek_of_data mt2712_pwm_data = {
+ 	.num_pwms = 8,
++	.pwm_mediatek_reg_offset = (unsigned int *)&pwm_mediatek_reg_offset,
+ 	.pwm45_fixup = false,
+ };
+ 
+ static const struct pwm_mediatek_of_data mt7622_pwm_data = {
+ 	.num_pwms = 6,
++	.pwm_mediatek_reg_offset = (unsigned int *)&pwm_mediatek_reg_offset,
+ 	.pwm45_fixup = false,
+ };
+ 
+ static const struct pwm_mediatek_of_data mt7623_pwm_data = {
+ 	.num_pwms = 5,
++	.pwm_mediatek_reg_offset = (unsigned int *)&pwm_mediatek_reg_offset,
+ 	.pwm45_fixup = true,
+ };
+ 
+ static const struct pwm_mediatek_of_data mt7628_pwm_data = {
+ 	.num_pwms = 4,
++	.pwm_mediatek_reg_offset = (unsigned int *)&pwm_mediatek_reg_offset,
+ 	.pwm45_fixup = true,
+ };
+ 
+ static const struct pwm_mediatek_of_data mt7629_pwm_data = {
+ 	.num_pwms = 1,
++	.pwm_mediatek_reg_offset = (unsigned int *)&pwm_mediatek_reg_offset,
+ 	.pwm45_fixup = false,
+ };
+ 
+ static const struct pwm_mediatek_of_data mt8516_pwm_data = {
+ 	.num_pwms = 5,
++	.pwm_mediatek_reg_offset = (unsigned int *)&pwm_mediatek_reg_offset,
+ 	.pwm45_fixup = false,
+ };
+ 
+ static const struct of_device_id pwm_mediatek_of_match[] = {
++	{ .compatible = "mediatek,mt69xx-pwm", .data = &mt69xx_pwm_data },
+ 	{ .compatible = "mediatek,mt68xx-pwm", .data = &mt68xx_pwm_data },
+ 	{ .compatible = "mediatek,mt2712-pwm", .data = &mt2712_pwm_data },
+ 	{ .compatible = "mediatek,mt7622-pwm", .data = &mt7622_pwm_data },

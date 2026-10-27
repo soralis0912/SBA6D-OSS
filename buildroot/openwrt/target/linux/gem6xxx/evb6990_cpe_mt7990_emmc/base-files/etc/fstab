@@ -1,0 +1,8 @@
+# <file system> <mount point> <type> <options> <dump> <pass>
+/dev/block/nvcfg /mnt/vendor/nvcfg ext4 defaults 0 0
+/dev/block/nvdata /mnt/vendor/nvdata ext4 defaults 0 0
+/dev/block/protect1 /mnt/vendor/protect_f ext4 defaults 0 0
+/dev/block/protect2 /mnt/vendor/protect_s ext4 defaults 0 0
+/dev/block/mcf1 /mnt/vendor/mdota ext4 defaults 0 0
+/dev/block/mcf2 /mnt/vendor/mdota2 ext4 defaults 0 0
+/dev/block/user_data /data ext4 defaults 0 0

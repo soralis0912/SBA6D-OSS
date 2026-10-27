@@ -1,0 +1,7 @@
+config MTK_MHCCIF
+	bool "MediaTek MHCCIF driver"
+	help
+	  The MHCCIF driver is an irq chip driver, which used to
+	  send/receive interrupts between PCIe RC and EP.
+	  Say Y to support MHCCIF interrupts.
+	  If unsure, say N.

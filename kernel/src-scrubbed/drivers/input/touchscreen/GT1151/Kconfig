@@ -1,0 +1,11 @@
+#
+# Touchscreen driver configuration
+#
+menu "GT1151 support"
+	depends on TOUCHSCREEN_MTK_GT1151
+
+config GT1151_CONFIG
+	string "GT1151 for Mediatek config"
+	help
+	  this string is used for cfg update
+endmenu

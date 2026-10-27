@@ -1,0 +1,35 @@
+--- a/drivers/soc/mediatek/Kconfig
++++ b/drivers/soc/mediatek/Kconfig
+@@ -44,4 +44,22 @@ config MTK_SCPSYS
+ 	  Say yes here to add support for the MediaTek SCPSYS power domain
+ 	  driver.
+ 
++config MTK_IPI
++	tristate "MediaTek IPI Support"
++	depends on RPMSG_MTK
++	help
++	  Say yes here to add support for the MediaTek IPI between tinysys.
++	  MTK IPI consists of APIs to do Linux to/from uP/DSP communication
++	  based on rpmsg. Synchronization among tasks is also handled by
++	  this layer. If uP/DSP drivers handle by themselves, they can use
++	  rpmsg directly.
++
++config MTK_MBOX
++	tristate "MediaTek Mbox Support"
++	help
++	  Say yes here to add support for the MediaTek Mbox driver.
++	  MTK MBOX is a physical H/W which consists of configurable 128
++	  or 256 bytes SRAM and 32 bit irq. The driver does read/write
++	  SRAM and IRQ handling.
++
+ endmenu
+--- a/drivers/soc/mediatek/Makefile
++++ b/drivers/soc/mediatek/Makefile
+@@ -1,5 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ obj-$(CONFIG_MTK_CMDQ) += mtk-cmdq-helper.o
+ obj-$(CONFIG_MTK_INFRACFG) += mtk-infracfg.o
++obj-$(CONFIG_MTK_IPI) += mtk_tinysys_ipi.o
++obj-$(CONFIG_MTK_MBOX) += mtk-mbox.o
+ obj-$(CONFIG_MTK_PMIC_WRAP) += mtk-pmic-wrap.o
+ obj-$(CONFIG_MTK_SCPSYS) += mtk-scpsys.o

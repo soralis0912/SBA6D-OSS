@@ -1,0 +1,40 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.c
+@@ -81,7 +81,7 @@
+ #define MT2737_DLY_TXC_COARSE_EN		BIT(5)
+ #define MT2737_DLY_TXC_COARSE_STG		GENMASK(4, 0)
+ 
+-#define MT2737_PERI_ETH_CTRL3		0xB10
++#define MT2737_PERI_ETH_CTRL3		0xB14
+ #define MT2737_DLY_RMII_RXC_INV		BIT(25)
+ #define MT2737_DLY_RMII_RXC_FINE_EN		BIT(24)
+ #define MT2737_DLY_RMII_RXC_FINE_STG		GENMASK(23, 19)
+@@ -1006,22 +1006,22 @@ static int mt2737_set_delay(struct media
+ 				 * to RXC pin, the reference clock will be adjusted
+ 				 * by RXC delay macro circuit.
+ 				 */
+-				delay_val |= FIELD_PREP(MT2737_DLY_RMII_RXC_COARSE_EN,
++				delay_val |= FIELD_PREP(MT2737_DLY_RXC_COARSE_EN,
+ 							!!mac_delay->rx_delay);
+-				delay_val |= FIELD_PREP(MT2737_DLY_RMII_RXC_COARSE_STG,
++				delay_val |= FIELD_PREP(MT2737_DLY_RXC_COARSE_STG,
+ 							mac_delay->rx_delay);
+-				delay_val |= FIELD_PREP(MT2737_DLY_RMII_RXC_INV,
++				delay_val |= FIELD_PREP(MT2737_DLY_RXC_INV,
+ 							mac_delay->rx_inv);
+ 			} else {
+ 				/* the rmii reference clock from outside is connected
+ 				 * to TXC pin, the reference clock will be adjusted
+ 				 * by TXC delay macro circuit.
+ 				 */
+-				delay_val |= FIELD_PREP(MT2737_DLY_RMII_TXC_COARSE_EN,
++				delay_val |= FIELD_PREP(MT2737_DLY_TXC_COARSE_EN,
+ 							!!mac_delay->rx_delay);
+-				delay_val |= FIELD_PREP(MT2737_DLY_RMII_TXC_COARSE_STG,
++				delay_val |= FIELD_PREP(MT2737_DLY_TXC_COARSE_STG,
+ 							mac_delay->rx_delay);
+-				delay_val |= FIELD_PREP(MT2737_DLY_RMII_TXC_INV,
++				delay_val |= FIELD_PREP(MT2737_DLY_TXC_INV,
+ 							mac_delay->rx_inv);
+ 			}
+ 		}

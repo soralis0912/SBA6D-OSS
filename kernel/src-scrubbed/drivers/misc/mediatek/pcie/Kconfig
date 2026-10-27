@@ -1,0 +1,37 @@
+config MTK_PCIE
+	bool "Mediatek PCIe misc setting"
+	help
+	  Set Y to add support for the misc settings of MediaTek PCIe.
+	  If unsure, Set N.
+
+config MTK_PCIE_EP
+	bool "Mediatek PCIe EP mode"
+	depends on MTK_PCIE
+	help
+	  Set Y to support PCIe EP mode.
+	  If unsure, Set N.
+
+config MTK_PCIE_DIPC
+	bool "Mediatek PCIe Dual IPC"
+	depends on MTK_PCIE_EP
+	select MTK_MHCCIF
+	help
+	  Set Y to add PCIe dual IPC support,
+	  If unsure, Set N.
+
+config MTK_PCIE_SMT_SUPPORT
+	bool "Mediatek PCIe SMT test"
+	depends on MTK_PCIE
+	help
+	  PCIe loopback test for SMT.
+	  Set Y to enable this feature.
+	  If unsure, Set N.
+
+config PCIE_MEDIATEK_COLGIN
+	tristate "MediaTek COLGIN PCIe MAC controller"
+	depends on ARCH_MEDIATEK || COMPILE_TEST
+	depends on OF
+	depends on PCI_MSI_IRQ_DOMAIN
+	help
+	  Say Y here if you want to enable PCIe GEN3 MAC controller
+	  support on MediaTek SoCs.

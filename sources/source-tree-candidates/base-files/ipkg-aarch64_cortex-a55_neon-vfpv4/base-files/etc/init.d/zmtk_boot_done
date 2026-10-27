@@ -1,0 +1,165 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2006 OpenWrt.org
+
+START=99
+
+include /lib/upgrade
+FLASH_TYPE=$(get_flash_type)
+
+retry_a=$(get_bootctrl $BOOTCTRL_OFFSET_TRY_A 1)
+retry_b=$(get_bootctrl $BOOTCTRL_OFFSET_TRY_B 1)
+
+check_bootctrl() {
+	local bootctrl=$(get_bootctrl $BOOTCTRL_OFFSET 32)
+	local is_ab_partition=$(is_ab_partition)
+	echo "FLASH_TYPE=$FLASH_TYPE, bootctrl=$bootctrl, is_ab_partition=$is_ab_partition" > /dev/kmsg
+	if [ "$is_ab_partition" -eq 0 ]; then
+		echo "not A/B partition" > /dev/kmsg
+		return 0
+	fi
+	local current_slot=$(get_current_slot)
+	echo "current_slot=$current_slot" > /dev/kmsg
+	if [ "$current_slot" = "_a" ]; then
+		local success_a=$(get_bootctrl $BOOTCTRL_OFFSET_SUCCESS_A 1)
+		if [ $((0x${success_a})) -ne $((0x01)) ]; then
+			if [ $((0x${retry_a})) -ne $((0x00)) ];then
+				echo "[QL_AB] update BOOTCTRL_OFFSET_TRY_A to 0" > /dev/kmsg
+				set_bootctrl $BOOTCTRL_OFFSET_TRY_A \\x00
+			fi
+			local up_a=$(get_bootctrl $BOOTCTRL_OFFSET_UP_A 1)
+			local uppl_a=$(( 0x01 & 0x$up_a ))
+			echo "uppl_a is $((0x${uppl_a}))" > /dev/kmsg
+			if [ $((0x${uppl_a})) -ne $((0x01)) ]; then
+				echo "No preloader in sysupgrade" > /dev/kmsg
+			else
+				if [ $FLASH_TYPE == "nand" ]; then
+					echo "Copying preloader to preloader_backup" > /dev/kmsg
+					# skip depends on block size of memory
+					nanddump -s 262144 --skip-bad-blocks-to-start -l 262144 /dev/mtd0 | mtd -p 262144 write - preloader_backup
+				elif [ $FLASH_TYPE == "emmc" ]; then
+					echo "Sync mmcblk0boot0 to mmcblk0boot1" > /dev/kmsg
+					# enable program mmcblk0boot1 partition
+					echo 0 > /sys/block/mmcblk0boot1/force_ro
+					dd if=$DEV_PRELOADER_A of=$DEV_PRELOADER_B
+					# disable program mmcblk0boot1 partition
+					echo 1 > /sys/block/mmcblk0boot1/force_ro
+				fi
+			fi
+
+			echo "[QL_AB] sync _b parttion" > /dev/kmsg
+			ab_image_sync "_b"
+			echo "[QL_AB] update BOOTCTRL_OFFSET_TRY_B to 0" > /dev/kmsg
+			set_bootctrl $BOOTCTRL_OFFSET_TRY_B \\x00
+
+			local up_b=$(get_bootctrl $BOOTCTRL_OFFSET_UP_B 1)
+			if [ $((0x${up_b})) -eq $((0x04)) ]; then
+				set_bootctrl_string 0 00 0 00 1 01 0 00 0 00 0 00 0 00 1 01
+				#set_bootctrl $BOOTCTRL_OFFSET_UP_B \\x01
+			elif [ $((0x${up_b})) -eq $((0x02)) ]; then
+				set_bootctrl_string 0 00 0 00 1 01 0 00 0 00 0 00 0 00 1 00
+				#set_bootctrl $BOOTCTRL_OFFSET_UP_B \\x00
+			else
+				set_bootctrl_string 0 00 0 00 1 01 0 00 0 00 0 00 0 00 0 00
+			fi
+			echo "updating success a 01" > /dev/kmsg
+			#set_bootctrl $BOOTCTRL_OFFSET_SUCCESS_A \\x01
+		fi
+	elif [ "$current_slot" = "_b" ]; then
+		local success_b=$(get_bootctrl $BOOTCTRL_OFFSET_SUCCESS_B 1)
+		if [ $((0x${success_b})) -ne $((0x01)) ]; then
+			if [ $((0x${retry_b})) -ne $((0x00)) ];then
+				echo "[QL_AB] update BOOTCTRL_OFFSET_TRY_B to 0" > /dev/kmsg
+				set_bootctrl $BOOTCTRL_OFFSET_TRY_B \\x00
+			fi
+
+			local up_b=$(get_bootctrl $BOOTCTRL_OFFSET_UP_B 1)
+			local uppl_b=$(( 0x01 & 0x$up_b ))
+			echo "uppl_b is $((0x${uppl_b}))" > /dev/kmsg
+			if [ $((0x${uppl_b})) -ne $((0x01)) ]; then
+				echo "No preloader in sysupgrade" > /dev/kmsg
+			else
+				if [ $FLASH_TYPE == "nand" ]; then
+					echo "Copying preloader to preloader_backup" > /dev/kmsg
+					# skip depends on block size of memory
+					nanddump -s 262144 --skip-bad-blocks-to-start -l 262144 /dev/mtd0 | mtd -p 262144 write - preloader_backup
+				elif [ $FLASH_TYPE == "emmc" ]; then
+					echo "Sync mmcblk0boot1 to mmcblk0boot0" > /dev/kmsg
+					# enable program mmcblk0boot0 partition
+					echo 0 > /sys/block/mmcblk0boot0/force_ro
+					dd if=$DEV_PRELOADER_B of=$DEV_PRELOADER_A
+					# disable program mmcblk0boot0 partition
+					echo 1 > /sys/block/mmcblk0boot0/force_ro
+				fi
+			fi
+
+			echo "[QL_AB] sync _a parttion" > /dev/kmsg
+			ab_image_sync "_a"
+			echo "[QL_AB] update BOOTCTRL_OFFSET_TRY_A to 0" > /dev/kmsg
+			set_bootctrl $BOOTCTRL_OFFSET_TRY_A \\x00
+
+
+			local up_a=$(get_bootctrl $BOOTCTRL_OFFSET_UP_A 1)
+			if [ $((0x${up_a})) -eq $((0x04)) ]; then
+				set_bootctrl_string 0 00 0 00 0 00 1 01 0 00 0 00 1 01 0 00
+				#set_bootctrl $BOOTCTRL_OFFSET_UP_A \\x01
+			elif [ $((0x${up_a})) -eq $((0x02)) ]; then
+				set_bootctrl_string 0 00 0 00 0 00 1 00 0 00 0 00 1 01 0 00
+				#set_bootctrl $BOOTCTRL_OFFSET_UP_A \\x00
+			else
+				set_bootctrl_string 0 00 0 00 0 00 0 00 0 00 0 00 1 01 0 00
+			fi
+			echo "updating success b 01" > /dev/kmsg
+			#set_bootctrl $BOOTCTRL_OFFSET_SUCCESS_B \\x01
+		fi
+	else
+		echo "current_slot error: $current_slot" > /dev/kmsg
+	fi
+	ql_ab_status_check
+}
+
+boot() {
+        echo -n "1" > /proc/cpudvfs/cpudvfs_enable
+        echo "zmtk_boot_done enable cpudvfs" > /dev/kmsg
+
+	[ -e /proc/cpudvfs/phy_cpu_freq ] && cat /proc/cpudvfs/phy_cpu_freq > /proc/bootprof
+	[ -e /proc/cpudvfs/cpudvfs_enable ] && echo "cpudvfs_enable node exist" > /dev/kmsg
+	cat /proc/cpudvfs/cpudvfs_enable > /dev/kmsg
+
+	echo -n "Daemons Done" > /proc/bootprof
+	check_bootctrl
+}
+
+ql_ab_status_check()
+{
+    echo " [QL_AB] retry_a:$retry_a,retry_b:$retry_b " > /dev/kmsg
+	echo " [QL_AB] current_slot=$current_slot" > /dev/kmsg
+
+	if [ "$current_slot" = "_a" ]; then
+        if [ $((0x${retry_a})) -ne $((0x00)) ];then
+		    echo "[QL_AB] update BOOTCTRL_OFFSET_TRY_A to 0" > /dev/kmsg
+		    set_bootctrl $BOOTCTRL_OFFSET_TRY_A \\x00
+		fi
+
+        if [ $((0x${retry_b})) -gt $((0x03)) ];then
+		    echo "[QL_AB] restore _b" > /dev/kmsg
+		    ab_image_sync "_b"
+			echo "[QL_AB] update BOOTCTRL_OFFSET_TRY_B to 0" > /dev/kmsg
+			set_bootctrl $BOOTCTRL_OFFSET_TRY_B \\x00
+		fi
+     
+	 elif [ "$current_slot" = "_b" ]; then
+        if [ $((0x${retry_b})) -ne $((0x00)) ];then
+		    echo "[QL_AB] update BOOTCTRL_OFFSET_TRY_B to 0" > /dev/kmsg
+		    set_bootctrl $BOOTCTRL_OFFSET_TRY_B \\x00
+        fi
+
+       if [ $((0x${retry_a})) -gt $((0x03)) ];then
+		    echo "[QL_AB] restore _a" > /dev/kmsg
+			ab_image_sync "_a"
+			echo "[QL_AB] update BOOTCTRL_OFFSET_TRY_A to 0" > /dev/kmsg
+			set_bootctrl $BOOTCTRL_OFFSET_TRY_A \\x00
+		fi
+     else
+	     echo "current_slot error: $current_slot" > /dev/kmsg
+     fi
+}

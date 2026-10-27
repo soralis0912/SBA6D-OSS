@@ -1,0 +1,31 @@
+--- a/drivers/mfd/Kconfig
++++ b/drivers/mfd/Kconfig
+@@ -878,6 +878,18 @@ config MFD_MT6397
+ 	  accessing the device; additional drivers must be enabled in order
+ 	  to use the functionality of the device.
+ 
++config MFD_MT6685
++	tristate "MT6685 SPMI PMIC"
++	depends on OF
++	depends on SPMI
++	select REGMAP_SPMI
++	select REGMAP_IRQ
++	help
++	  This enables support for the Mediatek SPMI PMICs.
++	  These PMICs are currently used with the Mediatek series of
++	  SoCs.  Note, that this will only be useful paired with descriptions
++	  of the independent functions as children nodes in the device tree.
++
+ config MFD_MENF21BMC
+ 	tristate "MEN 14F021P00 Board Management Controller Support"
+ 	depends on I2C
+--- a/drivers/mfd/Makefile
++++ b/drivers/mfd/Makefile
+@@ -243,6 +243,7 @@ obj-$(CONFIG_MFD_MT6330)	+= mt6330-core.
+ obj-$(CONFIG_MFD_MT6330)	+= mt63xx-debug.o
+ mt6397-objs	:= mt6397-core.o mt6397-irq.o
+ obj-$(CONFIG_MFD_MT6397)	+= mt6397.o
++obj-$(CONFIG_MFD_MT6685)	+= mt6685-core.o
+ obj-$(CONFIG_INTEL_SOC_PMIC_MRFLD)	+= intel_soc_pmic_mrfld.o
+ 
+ obj-$(CONFIG_MFD_ALTERA_A10SR)	+= altera-a10sr.o

@@ -1,0 +1,32 @@
+if PACKAGE_kmod-hw_nat
+
+choice
+        prompt "HW_NAT version"
+	default HNAT_V1
+	help
+	Select HNAT version.
+
+config  HNAT_V2
+        bool "HNAT_V2"
+	help
+	Select hnat version2
+
+config  HNAT_V1
+        bool "HNAT_V1"
+	help
+	Select hnat version1
+endchoice
+
+config HW_NAT_SW_DVFS
+        bool
+        default y
+        help
+        Say Y here if would like to enable SW Based DVFS feature
+
+config HW_NAT_SW_DVFS_DEFAULT_OPP
+        int "HWNAT S/W DVFS Default OPP"
+	depends on HW_NAT_SW_DVFS
+        range 0 3
+        default 3
+
+endif

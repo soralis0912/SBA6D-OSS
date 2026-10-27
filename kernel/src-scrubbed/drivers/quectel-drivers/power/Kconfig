@@ -1,0 +1,5 @@
+config QUECTEL_PWR_DRV
+	bool "Quectel power drivers Supports"
+    depends on QUECTEL_DRIVERS
+	---help---
+	  Supports quectel power drivers.

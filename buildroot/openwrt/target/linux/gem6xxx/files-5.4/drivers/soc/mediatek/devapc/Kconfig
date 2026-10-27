@@ -1,0 +1,42 @@
+config MTK_DEVAPC
+	tristate "Mediatek Device APC Support"
+	help
+	  Device APC is a kernel driver controlling internal device security.
+	  If someone tries to access a device, which is not allowed by the
+	  device, it cannot access the device and will get a violation
+	  interrupt. Device APC prevents malicious access to internal devices.
+
+config DEVAPC_ARCH_MULTI
+	tristate "Mediatek Device APC driver architecture multi"
+	help
+	  Say yes here to enable support Mediatek
+	  Device APC driver which is based on HW
+	  architecture version 2.
+	  This architecture supports multiple Infra AO.
+
+config DEVAPC_COMMON_V1
+	tristate "Mediatek Device APC driver common v1"
+	help
+	  Say yes here to enable support Mediatek
+	  Device APC driver which is based on common HW
+	  architecture version 1.
+	  This architecture supports multiple Infra AO.
+
+config DEVAPC_MT6880
+	bool "Mediatek MT6880 Device APC driver"
+	select MTK_DEVAPC
+	select DEVAPC_ARCH_MULTI
+	help
+	  Say yes here to enable support Mediatek MT6880
+	  Device APC driver.
+	  This driver is combined with DEVAPC_ARCH_MULTI for
+	  common handle flow.
+config DEVAPC_MT69XX
+	bool "Mediatek MT69XX Device APC driver"
+	select MTK_DEVAPC
+	select DEVAPC_COMMON_V1
+	help
+	  Say yes here to enable support Mediatek MT69XX
+	  Device APC driver.
+	  This driver is combined with DEVAPC_COMMON_V1 for
+	  common handle flow.

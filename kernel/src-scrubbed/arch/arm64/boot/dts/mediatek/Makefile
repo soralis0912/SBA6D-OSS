@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: GPL-2.0
+dtb-$(CONFIG_ARCH_MEDIATEK) += mt2712-evb.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += mt6755-evb.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += mt6795-evb.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += mt6797-evb.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += mt6797-x20-dev.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += mt7622-rfb1.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += mt7622-bananapi-bpi-r64.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += mt8173-evb.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += mt8183-evb.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6880v1_datacard.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6890v1_64_cpe.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6890v1_64_cpe_emmc.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6890v1_64_mifi.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6890v1_64_odu.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6890v1_datacard.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += fpga6990_64.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += k6880v1_mdot2_datacard.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6980_datacard.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6980d_refmodem.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6980d_refmodem_flash.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6990_cpe.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6990_cpe_emmc.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6990_cpe_emmc_origin.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6990_mifi.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += fpga6980_64.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += fpga6990_64_emmc.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6990_wifi_only.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6990_cpe_mt7990.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6990_cpe_mt7990_emmc.dtb
+dtb-$(CONFIG_ARCH_MEDIATEK) += evb6990_cpe_mt7990_md800_emmc.dtb
+
+#enable creation of __symbols__ node
+DTC_FLAGS_evb6990_cpe_mt7990_emmc += -@

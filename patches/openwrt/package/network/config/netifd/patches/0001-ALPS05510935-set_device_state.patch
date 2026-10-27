@@ -1,0 +1,62 @@
+From 13333bba157b944b873998825151a43fbc28d224 Mon Sep 17 00:00:00 2001
+From: Jungo Lin <jungo.lin@mediatek.com>
+Date: Thu, 14 Jan 2021 13:24:32 +0800
+Subject: [PATCH] [ALPS05510935] system-linux: add retry for interface up/down
+
+When netifd tries to up RNDIS interface when receiving RNDIS hot-plug
+event, the first try often may fails with EADDRNOTAVAIL, since it's
+racing against RNDIS mac address setup.
+
+Change-Id: Ibc4da42eeaf0867827b327d20c3f343f40386fc8
+CR-Id: ALPS05510935
+Feature: WAN Connection
+---
+ device.c | 27 ++++++++++++++++++++++++---
+ 1 file changed, 24 insertions(+), 3 deletions(-)
+
+diff --git a/device.c b/device.c
+index 4243c18beb..ada6473c5e 100644
+--- a/device.c
++++ b/device.c
+@@ -132,6 +132,9 @@ void device_vlan_update(bool done)
+ 
+ static int set_device_state(struct device *dev, bool state)
+ {
++	int ret;
++	int tries = 0;
++
+ 	if (state) {
+ 		/* Get ifindex for all devices being enabled so a valid  */
+ 		/* ifindex is in place avoiding possible race conditions */
+@@ -145,9 +148,29 @@ static int set_device_state(struct device *dev, bool state)
+ 		dev->orig_settings.flags &= dev->settings.flags;
+ 		system_if_apply_settings(dev, &dev->settings, dev->settings.flags);
+ 
+-		system_if_up(dev);
++retry_up:
++		ret = system_if_up(dev);
++		tries++;
++		if (ret) {
++			D(SYSTEM, "Failed to up device '%s' (tries=%d): %s\n",
++				dev->ifname, tries, strerror(errno));
++			if (tries <= 3) {
++				sleep(1);
++				goto retry_up;
++			}
++		}
+ 	} else {
+-		system_if_down(dev);
++retry_down:
++		ret = system_if_down(dev);
++		tries++;
++		if (ret) {
++			D(SYSTEM, "Failed to down device '%s' (tries=%d): %s\n",
++				dev->ifname, tries, strerror(errno));
++			if (tries <= 3) {
++				sleep(1);
++				goto retry_down;
++			}
++		}
+ 		system_if_apply_settings(dev, &dev->orig_settings, dev->orig_settings.flags);
+ 	}
+ 

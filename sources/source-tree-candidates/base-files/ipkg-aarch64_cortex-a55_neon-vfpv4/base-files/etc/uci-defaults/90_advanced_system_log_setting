@@ -1,0 +1,48 @@
+#!/bin/sh
+
+str=$(uci -q get system.@system[0].enable_sensitive_log)
+
+if [[ -z $str ]]; then
+    uci set system.@system[0].quectel_main_uart='1'
+    uci set system.@system[0].quectel_log_start='1'
+    uci set system.@system[0].quectel_log_level='4'
+    uci set system.@system[0].ql_wan_lan_auto_adapt='0'
+    uci set system.@system[0].ql_wan_lan_auto_adapt_port0_disable='0'
+    uci set system.@system[0].ql_wan_lan_auto_adapt_port1_disable='0'
+    uci set system.@system[0].ql_wan_lan_auto_adapt_port2_disable='0'
+    uci set system.@system[0].ql_wan_lan_auto_adapt_port3_disable='0'
+    uci set system.@system[0].ql_wan_lan_auto_adapt_8221_disable='0'
+    uci set system.@system[0].ql_ippt_auto_adapt='0'
+    uci set system.@system[0].ap_start='0'
+    uci set system.@system[0].gps_start='0'
+    uci set system.@system[0].net_start='0'
+    uci set system.@system[0].md_start='0'
+    uci set system.@system[0].ap_save_mode='1'
+    uci set system.@system[0].ap_max_files='10'
+    uci set system.@system[0].ap_max_bootlog_folders='5'
+    uci set system.@system[0].ap_auto_logging='0'
+    uci set system.@system[0].md_save_mode='1'
+    uci set system.@system[0].md_gps_location_log_enable='0'
+    uci set system.@system[0].md_level='-1'
+    uci set system.@system[0].md_dumpback_mode='0'
+    uci set system.@system[0].md_log_size='20'
+    uci set system.@system[0].md_cyclic_size='200'
+    uci set system.@system[0].md_flush_pls_log='0'
+    uci set system.@system[0].log_store_path='/data/debuglog'
+    uci set system.@system[0].enable_sensitive_log='0'
+    uci set system.@system[0].log_size='10240'
+    uci set system.@system[0].md_memdump_wait_time='0'
+    uci set system.@system[0].md_log_ip='0.0.0.0'
+    uci set system.@system[0].md_log_port='10001'
+    uci set system.@system[0].aee_off_fast_reboot_enable='0'
+    uci set system.@system[0].connsys_start='1'
+    uci set system.@system[0].fls_log_mode='0'
+    uci set system.@system[0].log_file='/data/debuglog/aplog/quectel_ap.log'
+    uci set system.@system[0].log_type='file'
+    uci set system.@system[0].conloglevel='4'
+    uci set system.@system[0].mdee_strategy='default'
+    uci set system.@system[0].fcc_ic_type='0'
+    uci commit system
+fi
+
+exit 0

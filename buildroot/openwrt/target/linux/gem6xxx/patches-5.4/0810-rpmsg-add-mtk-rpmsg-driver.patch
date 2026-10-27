@@ -1,0 +1,29 @@
+--- a/drivers/rpmsg/Kconfig
++++ b/drivers/rpmsg/Kconfig
+@@ -15,6 +15,16 @@ config RPMSG_CHAR
+ 	  in /dev. They make it possible for user-space programs to send and
+ 	  receive rpmsg packets.
+ 
++config RPMSG_MTK
++	tristate "MediaTek TinySys RPM driver"
++	depends on MTK_MBOX
++	select RPMSG
++	help
++	  Say y here to enable support communication channels to remote
++	  processors in MediaTek platforms. This uses MTK MBOX driver to
++	  communicate with remote processors base on rpmsg framework. It
++	  provide channels, endpoints creation and send operations.
++
+ config RPMSG_QCOM_GLINK_NATIVE
+ 	tristate
+ 	select RPMSG
+--- a/drivers/rpmsg/Makefile
++++ b/drivers/rpmsg/Makefile
+@@ -1,6 +1,7 @@
+ # SPDX-License-Identifier: GPL-2.0
+ obj-$(CONFIG_RPMSG)		+= rpmsg_core.o
+ obj-$(CONFIG_RPMSG_CHAR)	+= rpmsg_char.o
++obj-$(CONFIG_RPMSG_MTK)	+= mtk_rpmsg_mbox.o
+ obj-$(CONFIG_RPMSG_QCOM_GLINK_RPM) += qcom_glink_rpm.o
+ obj-$(CONFIG_RPMSG_QCOM_GLINK_NATIVE) += qcom_glink_native.o
+ obj-$(CONFIG_RPMSG_QCOM_GLINK_SMEM) += qcom_glink_smem.o

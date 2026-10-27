@@ -1,0 +1,23 @@
+#!/bin/ash
+
+dev=$DEVICENAME
+echo "$DEVICENAME" | grep -q 'sd[a-z][1-9]'
+if [ $? -ne 0 ]; then
+	exit 0
+fi
+case "$ACTION" in
+    add)
+        mkdir -p /mnt/$dev
+        mount -o nls=utf8,rw /dev/$dev /mnt/$dev
+        if [ $? -ne 0 ]; then
+            mount -o utf8=1,rw /dev/$dev /mnt/$dev
+            if [ $? -ne 0 ]; then
+                rmdir /mnt/$dev
+            fi
+        fi
+        ;;
+    remove)
+        umount /mnt/$dev
+        rmdir /mnt/$dev
+        ;;
+esac

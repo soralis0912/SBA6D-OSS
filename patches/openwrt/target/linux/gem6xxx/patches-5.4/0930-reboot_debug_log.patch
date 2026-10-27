@@ -1,0 +1,30 @@
+diff --git a/kernel/reboot.c b/kernel/reboot.c
+index ac19159..0ea7262 100644
+--- a/kernel/reboot.c
++++ b/kernel/reboot.c
+@@ -246,6 +246,9 @@ void kernel_restart(char *cmd)
+ 	kernel_restart_prepare(cmd);
+ 	migrate_to_reboot_cpu();
+ 	syscore_shutdown();
++	/* Debug information */
++	pr_emerg("Debugging purpose - dump_backtrace\n");
++	dump_stack();
+ 	if (!cmd)
+ 		pr_emerg("Restarting system\n");
+ 	else
+diff --git a/kernel/signal.c b/kernel/signal.c
+index 0b53826..ddf6ea4 100644
+--- a/kernel/signal.c
++++ b/kernel/signal.c
+@@ -3640,6 +3640,11 @@ SYSCALL_DEFINE2(kill, pid_t, pid, int, sig)
+ 
+ 	prepare_kill_siginfo(sig, &info);
+ 
++	if (pid == 1 && (sig == SIGTERM || sig == SIGUSR2)) {
++		pr_emerg("Debugging purpose - dump_backtrace\n");
++		dump_stack();
++	}
++
+ 	return kill_something_info(sig, &info, pid);
+ }
+ 

@@ -1,0 +1,11 @@
+config usb 'adb'
+	option serial '0123456789ABCDEF'
+
+config usb 'config'
+	option mipcboot '0'
+
+config usb 'vid'
+	option vid '0x2c7c'
+
+config usb 'pid'
+	option pid '0x7006'	

@@ -1,0 +1,21 @@
+Package: ddns-scripts
+Version: 2.8.2-12
+Depends: libc, ddns-scripts-services
+Source: /home/altim/work/t830/feeds/packages/net/ddns-scripts
+SourceName: ddns-scripts
+License: GPL-2.0
+Section: net
+SourceDateEpoch: 1730886256
+Architecture: all
+Installed-Size: 23775
+Description:  Dynamic DNS Client scripts (with IPv6 support)
+ A highly configurable set of scripts for doing dynamic dns updates.
+ - IPv6 support
+ - DNS server support
+ - Glue Record support (require BIND host or KNOT host)
+ - DNS requests via TCP
+ - Proxy server support
+ - log file support
+ - support to run once
+ Version: 2.8.2-12
+ Info   : https://openwrt.org/docs/guide-user/services/ddns/client

@@ -1,0 +1,95 @@
+--- a/mm/oom_kill.c
++++ b/mm/oom_kill.c
+@@ -34,6 +34,7 @@
+ #include <linux/notifier.h>
+ #include <linux/memcontrol.h>
+ #include <linux/mempolicy.h>
++#include <linux/proc_fs.h>
+ #include <linux/security.h>
+ #include <linux/ptrace.h>
+ #include <linux/freezer.h>
+@@ -853,12 +854,21 @@ static bool task_will_free_mem(struct task_struct *task)
+ 	return ret;
+ }
+ 
++#if IS_ENABLED(CONFIG_MMSTAT_PAGE_DETAIL)
++static unsigned int i;
++struct proc_dir_entry *oom_dbg_entry;
++
++static const struct file_operations oom_fops = {
++	.owner      = THIS_MODULE,
++};
++#endif
++
+ static void __oom_kill_process(struct task_struct *victim, const char *message)
+ {
+ 	struct task_struct *p;
+ 	struct mm_struct *mm;
+ 	bool can_oom_reap = true;
+
+ 	p = find_lock_task_mm(victim);
+ 	if (!p) {
+ 		put_task_struct(victim);
+@@ -884,6 +894,18 @@ static void __oom_kill_process(struct task_struct *victim, const char *message)
+ 	 */
+ 	do_send_sig_info(SIGKILL, SEND_SIG_PRIV, victim, PIDTYPE_TGID);
+ 	mark_oom_victim(victim);
++#if IS_ENABLED(CONFIG_MMSTAT_PAGE_DETAIL)
++	if ((i % 10) == 0 && oom_dbg_entry == 0) {
++		oom_dbg_entry = proc_create("oom_dbg", 0440,
++		NULL, &oom_fops);
++               if (oom_dbg_entry == NULL) {
++		    pr_err("CREATE %s fail\n", "oom_dbg");
++                   oom_dbg_entry = (struct proc_dir_entry *)0xffffdead;
++               } else
++		    pr_err("CREATE %s done\n", "oom_dbg");
++	}
++	i++;
++#endif
+ 	pr_err("%s: Killed process %d (%s) total-vm:%lukB, anon-rss:%lukB, file-rss:%lukB, shmem-rss:%lukB, UID:%u pgtables:%lukB oom_score_adj:%hd\n",
+ 		message, task_pid_nr(victim), victim->comm, K(mm->total_vm),
+ 		K(get_mm_counter(mm, MM_ANONPAGES)),
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -31,6 +31,7 @@
+ #include <linux/buffer_head.h>	/* for try_to_release_page(),
+ 					buffer_heads_over_limit */
+ #include <linux/mm_inline.h>
++#include <linux/proc_fs.h>
+ #include <linux/backing-dev.h>
+ #include <linux/rmap.h>
+ #include <linux/topology.h>
+@@ -3915,6 +3916,14 @@ static void kswapd_try_to_sleep(pg_data_t *pgdat, int alloc_order, int reclaim_o
+  * If there are applications that are active memory-allocators
+  * (most normal use), this basically shouldn't matter.
+  */
++#if IS_ENABLED(CONFIG_MMSTAT_PAGE_DETAIL)
++static unsigned int i;
++struct proc_dir_entry *kswapd_dbg_entry;
++
++static const struct file_operations kswapd_fops = {
++	.owner      = THIS_MODULE,
++};
++#endif
+ static int kswapd(void *p)
+ {
+ 	unsigned int alloc_order, reclaim_order;
+@@ -3980,6 +3989,18 @@ kswapd_try_sleep:
+ 		 */
+ 		trace_mm_vmscan_kswapd_wake(pgdat->node_id, classzone_idx,
+ 						alloc_order);
++#if IS_ENABLED(CONFIG_MMSTAT_PAGE_DETAIL)
++	if ((i % 10) == 0 && kswapd_dbg_entry == 0) {
++		kswapd_dbg_entry = proc_create("kswapd_dbg", 0440,
++		NULL, &kswapd_fops);
++               if (kswapd_dbg_entry == NULL) {
++		    pr_err("CREATE %s fail\n", "kswapd_dbg");
++                   kswapd_dbg_entry = (struct proc_dir_entry *)0xffffdead;
++               } else
++		    pr_err("CREATE %s done\n", "kswapd_dbg");
++	}
++	i++;
++#endif
+ 		reclaim_order = balance_pgdat(pgdat, alloc_order, classzone_idx);
+ 		if (reclaim_order < alloc_order)
+ 			goto kswapd_try_sleep;

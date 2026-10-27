@@ -1,0 +1,357 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2020 MediaTek Inc.
+ */
+#include <dt-bindings/iio/mt635x-auxadc.h>
+
+&spmi_bus {
+	pmic: mt6330 {
+		compatible = "mediatek,mt6330";
+		reg = <0x4 SPMI_USID 0x1 SPMI_GSID>;
+		interrupts = <4>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+
+		mt-pmic {
+			compatible = "mediatek,mt63xx-debug";
+		};
+
+		pmic_auxadc: pmic_auxadc {
+			compatible = "mediatek,pmic-auxadc",
+				     "mediatek,mt6330-auxadc";
+			#io-channel-cells = <1>;
+			batadc {
+				channel = <AUXADC_BATADC>;
+				resistance-ratio = <3 1>;
+				avg-num = <128>;
+			};
+			chip_temp {
+				channel = <AUXADC_CHIP_TEMP>;
+			};
+			vcore_temp {
+				channel = <AUXADC_VCORE_TEMP>;
+			};
+			vproc_temp {
+				channel = <AUXADC_VPROC_TEMP>;
+			};
+			vgpu_temp {
+				channel = <AUXADC_VGPU_TEMP>;
+			};
+			tsx_temp {
+				channel = <AUXADC_TSX_TEMP>;
+				avg-num = <128>;
+			};
+			dcxo_temp {
+				channel = <AUXADC_DCXO_TEMP>;
+				avg-num = <16>;
+			};
+			dcxo_ext0 {
+				channel = <AUXADC_TYPEL>;
+				avg-num = <128>;
+			};
+			dcxo_ext1 {
+				channel = <AUXADC_DRDI>;
+				avg-num = <128>;
+			};
+		};
+
+		pmic_efuse: pmic_efuse {
+			compatible = "mediatek,mt6330-efuse";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			thermal_efuse_data1: t_e_data1@6c {
+				reg = <0x6c 12>;
+			};
+		};
+
+		mt6330regulator: mt6330regulator {
+			compatible = "mediatek,mt6330-regulator";
+			mt6330_vs1_buck_reg: buck_vs1 {
+				regulator-name = "vs1";
+				regulator-min-microvolt = <800000>;
+				regulator-max-microvolt = <2200000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-always-on;
+			};
+			mt6330_vmd12_buck_reg: buck_vmd12 {
+				regulator-name = "vmd12";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1193000>;
+				regulator-enable-ramp-delay = <200>;
+			};
+			mt6330_vrfdig_buck_reg: buck_vrfdig {
+				regulator-name = "vrfdig";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1193000>;
+				regulator-enable-ramp-delay = <200>;
+			};
+			mt6330_vcore_buck_reg: buck_vcore {
+				regulator-name = "vcore";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1193000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-always-on;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6330_vs2_buck_reg: buck_vs2 {
+				regulator-name = "vs2";
+				regulator-min-microvolt = <800000>;
+				regulator-max-microvolt = <1600000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-always-on;
+			};
+			mt6330_vmd11_buck_reg: buck_vmd11 {
+				regulator-name = "vmd11";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1193000>;
+				regulator-enable-ramp-delay = <200>;
+			};
+			mt6330_vsram_md_buck_reg: buck_vsram_md {
+				regulator-name = "vsram_md";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1193000>;
+				regulator-enable-ramp-delay = <200>;
+			};
+			mt6330_vs3_buck_reg: buck_vs3 {
+				regulator-name = "vs3";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1193000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-always-on;
+			};
+			mt6330_vrfck_ldo_reg: ldo_vrfck {
+				regulator-name = "vrfck";
+				regulator-min-microvolt = <1240000>;
+				regulator-max-microvolt = <1600000>;
+				regulator-enable-ramp-delay = <240>;
+			};
+			mt6330_vsim1_ldo_reg: ldo_vsim1 {
+				regulator-name = "vsim1";
+				regulator-min-microvolt = <1700000>;
+				regulator-max-microvolt = <3000000>;
+				regulator-enable-ramp-delay = <720>;
+			};
+			mt6330_vio18_2_ldo_reg: ldo_vio18_2 {
+				regulator-name = "vio18_2";
+				regulator-min-microvolt = <1600000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-enable-ramp-delay = <720>;
+				regulator-always-on;
+			};
+			mt6330_vusb_ldo_reg: ldo_vusb {
+				regulator-name = "vusb";
+				regulator-min-microvolt = <3000000>;
+				regulator-max-microvolt = <3000000>;
+				regulator-enable-ramp-delay = <720>;
+			};
+			mt6330_vmdd2_ldo_reg: ldo_vmdd2 {
+				regulator-name = "vmdd2";
+				regulator-min-microvolt = <1000000>;
+				regulator-max-microvolt = <1150000>;
+				regulator-enable-ramp-delay = <720>;
+			};
+			mt6330_vcn18_ldo_reg: ldo_vcn18 {
+				regulator-name = "vcn18";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-enable-ramp-delay = <240>;
+			};
+			mt6330_vaux18_ldo_reg: ldo_vaux18 {
+				regulator-name = "vaux18";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-enable-ramp-delay = <240>;
+			};
+			mt6330_vsram_core_ldo_reg: ldo_vsram_core {
+				regulator-name = "vsram_core";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <1293750>;
+				regulator-enable-ramp-delay = <210>;
+			};
+			mt6330_vrf13_ldo_reg: ldo_vrf13 {
+				regulator-name = "vrf13";
+				regulator-min-microvolt = <1100000>;
+				regulator-max-microvolt = <1300000>;
+				regulator-enable-ramp-delay = <210>;
+			};
+			mt6330_vsram_proc_ldo_reg: ldo_vsram_proc {
+				regulator-name = "vsram_proc";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <1293750>;
+				regulator-enable-ramp-delay = <210>;
+			};
+			mt6330_vxo22_ldo_reg: ldo_vxo22 {
+				regulator-name = "vxo22";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <2200000>;
+				regulator-enable-ramp-delay = <240>;
+				regulator-always-on;
+			};
+			mt6330_vefuse_ldo_reg: ldo_vefuse {
+				regulator-name = "vefuse";
+				regulator-min-microvolt = <1700000>;
+				regulator-max-microvolt = <2000000>;
+				regulator-enable-ramp-delay = <240>;
+			};
+			mt6330_vio18_1_ldo_reg: ldo_vio18_1 {
+				regulator-name = "vio18_1";
+				regulator-min-microvolt = <1600000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-enable-ramp-delay = <240>;
+				regulator-always-on;
+			};
+			mt6330_va12_2_ldo_reg: ldo_va12_2 {
+				regulator-name = "va12_2";
+				regulator-min-microvolt = <1100000>;
+				regulator-max-microvolt = <1300000>;
+				regulator-enable-ramp-delay = <720>;
+			};
+			mt6330_vemc_ldo_reg: ldo_vemc {
+				regulator-name = "vemc";
+				regulator-min-microvolt = <2800000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-enable-ramp-delay = <240>;
+			};
+			mt6330_vsram_rfdig_ldo_reg: ldo_vsram_rfdig {
+				regulator-name = "vsram_rfdig";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <1293750>;
+				regulator-enable-ramp-delay = <210>;
+			};
+			mt6330_vrf09_ldo_reg: ldo_vrf09 {
+				regulator-name = "vrf09";
+				regulator-min-microvolt = <900000>;
+				regulator-max-microvolt = <900000>;
+				regulator-enable-ramp-delay = <210>;
+			};
+			mt6330_vmddr_ldo_reg: ldo_vmddr {
+				regulator-name = "vmddr";
+				regulator-min-microvolt = <700000>;
+				regulator-max-microvolt = <800000>;
+				regulator-enable-ramp-delay = <720>;
+			};
+			mt6330_vrf18_ldo_reg: ldo_vrf18 {
+				regulator-name = "vrf18";
+				regulator-min-microvolt = <1700000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-enable-ramp-delay = <210>;
+			};
+			mt6330_vmddq_ldo_reg: ldo_vmddq {
+				regulator-name = "vmddq";
+				regulator-min-microvolt = <550000>;
+				regulator-max-microvolt = <650000>;
+				regulator-enable-ramp-delay = <720>;
+			};
+			mt6330_vmc_ldo_reg: ldo_vmc {
+				regulator-name = "vmc";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-enable-ramp-delay = <720>;
+			};
+			mt6330_vbbck_ldo_reg: ldo_vbbck {
+				regulator-name = "vbbck";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <240>;
+			};
+			mt6330_va12_1_ldo_reg: ldo_va12_1 {
+				regulator-name = "va12_1";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <210>;
+			};
+			mt6330_vsim2_ldo_reg: ldo_vsim2 {
+				regulator-name = "vsim2";
+				regulator-min-microvolt = <1700000>;
+				regulator-max-microvolt = <3000000>;
+				regulator-enable-ramp-delay = <720>;
+			};
+		};
+
+		mt6330keys: mt6330keys {
+			compatible = "mediatek,mt6330-keys";
+			mediatek,long-press-mode = <1>;
+			power-off-time-sec = <0>;
+
+			power {
+				linux,keycodes = <116>;
+				wakeup-source;
+			};
+		};
+
+		clock_buffer_ctrl: clock_buffer_ctrl {
+			compatible = "mediatek,clock_buffer";
+			clkbuf-bring-up = "n";
+
+			n-clkbuf-pmic-dependent = <8>;
+			clkbuf-pmic-dependent = "pmic-bblpm-hw",
+						"pmic-bblpm-sel",
+						"pmic-ldo-vrfck",
+						"pmic-vrfck-hv-en",
+						"pmic-ldo-vbbck",
+						"pmic-auxout-sel",
+						"pmic-auxout-xo",
+						"pmic-auxout-bblpm-en";
+
+			pmic-dcxo-cw00 = <0x788 0 0x78b 0>;
+			pmic-dcxo-cw08 = <0x79c 0 0x79d 0>;
+			pmic-dcxo-cw09 = <0x79e 0 0x7a1 0>;
+			pmic-dcxo-cw12 = <0x7a8 0 0x7a9 0>;
+			pmic-dcxo-cw13 = <0x7aa 0 0x7ab 0>;
+			pmic-dcxo-cw19 = <0x7b6 0 0x7b7 0 0x7b8 0>;
+			pmic-xo-mode = <0x788 0 0x788 3 0x788 6 0x78b 1
+				0xffff 0xffff 0x7a1 1 0x7a1 4>;
+			pmic-xo-en = <0x788 2 0x788 5 0x78b 0 0x78b 3
+				0xffff 0xffff 0x7a1 3 0x7a1 6>;
+			pmic-bblpm-sw = <0x78b 4>;
+			pmic-srclkeni3 = <0x412 0>;
+
+			n-pmic-bblpm-hw = <7>;
+			pmic-bblpm-hw = <0x7a8 1 0x7a8 2 0x7a8 3 0x7a8 4
+				0xffff 0xffff 0x7a8 5 0x7a8 6>;
+			n-pmic-bblpm-sel = <1>;
+			pmic-bblpm-sel = <0x7a8 0>;
+			n-pmic-ldo-vrfck = <2>;
+			pmic-ldo-vrfck = <0x1bb7 0 0x1bbe 6>;
+			n-pmic-vrfck-hv-en = <1>;
+			pmic-vrfck-hv-en = <0x1f90 4>;
+			n-pmic-ldo-vbbck = <2>;
+			pmic-ldo-vbbck = <0x1ba7 0 0x1bae 6>;
+			n-pmic-auxout-sel = <3>;
+			pmic-auxout-sel = <0x7b0 0 0x7b0 6 0x7b0 27>;
+			n-pmic-auxout-xo = <7>;
+			pmic-auxout-xo = <0x7b3 5 0x7b3 3 0x7b3 1 0x7b2 7
+				0xffff 0xffff 0x7b2 5 0x7b2 3>;
+			n-pmic-auxout-bblpm-en = <1>;
+			pmic-auxout-bblpm-en = <0x7b2 0>;
+		};
+
+		mt6330rtc: mt6330rtc {
+			compatible = "mediatek,mt6330-rtc";
+
+			fg_init: fg_init {
+				reg = <0 0x1>;
+				bits = <0 8>;
+			};
+			fg_soc: fg_soc {
+				reg = <1 0x1>;
+				bits = <0 8>;
+			};
+			ext_32k: ext_32k {
+				reg = <2 0x1>;
+				bits = <6 1>;
+			};
+		};
+	};
+};
+
+&spmi_p_bus {
+	mt6330: mt6330-spmi_p {
+		compatible = "mediatek,mt6330-spmi_p";
+		reg = <0x4 SPMI_USID 0x1 SPMI_GSID>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+};

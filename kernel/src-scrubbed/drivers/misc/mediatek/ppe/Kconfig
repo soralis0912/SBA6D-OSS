@@ -1,0 +1,4 @@
+config MTK_PPE
+	tristate "MediaTek SoC PPE support"
+	---help---
+	  This driver supports PPE for linux flowtable

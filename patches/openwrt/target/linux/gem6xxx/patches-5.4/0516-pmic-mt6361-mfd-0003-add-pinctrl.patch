@@ -1,0 +1,23 @@
+--- a/drivers/pinctrl/mediatek/Kconfig
++++ b/drivers/pinctrl/mediatek/Kconfig
+@@ -144,4 +144,13 @@ config PINCTRL_MT6397
+ 	default MFD_MT6397
+ 	select PINCTRL_MTK
+ 
++config PINCTRL_MT6361
++	tristate "Pinctrl driver for the Mediatek MT6361 MFD devices"
++	depends on MFD_MT6361
++	select PINMUX
++	select GENERIC_PINCONF
++	select GPIOLIB
++	help
++	  MT6361 supports the configuration of pin for different functionality.
++
+ endmenu
+--- a/drivers/pinctrl/mediatek/Makefile
++++ b/drivers/pinctrl/mediatek/Makefile
+@@ -22,3 +22,4 @@ obj-$(CONFIG_PINCTRL_MT8173)	+= pinctrl-
+ obj-$(CONFIG_PINCTRL_MT8183)	+= pinctrl-mt8183.o
+ obj-$(CONFIG_PINCTRL_MT8516)	+= pinctrl-mt8516.o
+ obj-$(CONFIG_PINCTRL_MT6397)	+= pinctrl-mt6397.o
++obj-$(CONFIG_PINCTRL_MT6361)	+= pinctrl-mt6361.o

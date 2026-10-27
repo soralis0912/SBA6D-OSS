@@ -1,0 +1,11 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.c
+@@ -151,7 +151,7 @@ static const char * const mt2712_dwmac_c
+ };
+ 
+ static const char * const mt2737_dwmac_clk_l[] = {
+-	"mac_main", "ptp_ref", "eth_cg", "eth_rmii"
++	"mac_main", "ptp_ref", "eth_rmii", "eth_axi", "eth_overclk"
+ #if defined(CONFIG_MTK_SGMII_SNPS)
+ 	, "sgmii_sel", "sgmii_sbus_sel"
+ #endif

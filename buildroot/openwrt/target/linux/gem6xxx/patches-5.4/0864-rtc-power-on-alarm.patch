@@ -1,0 +1,171 @@
+--- a/drivers/rtc/Kconfig
++++ b/drivers/rtc/Kconfig
+@@ -1834,11 +1834,21 @@ config RTC_DRV_MT6685
+ 	depends on MFD_MT6685 || (COMPILE_TEST && IRQ_DOMAIN)
+ 	help
+ 	  This selects the MediaTek(R) RTC driver. RTC is part of MediaTek
+-	  MT6330 PMIC. You should enable MT6330 PMIC MFD before select
++	  MT6685 PMIC. You should enable MT6685 PMIC MFD before select
+ 	  MediaTek(R) RTC driver.
+ 
+ 	  If you want to use MediaTek(R) RTC interface, select Y or M here.
+ 
++config RTC_POWER_ON_ALARM
++	tristate "MediaTek PMIC based RTC power on alarm"
++	depends on MFD_MT6685 || (COMPILE_TEST && IRQ_DOMAIN)
++	help
++	  This selects the MediaTek(R) RTC power on feature. RTC will power
++	  on system when alarm expired. You should enable MT6685 PMIC MFD 
++	  before select MediaTek(R) RTC power on feature.
++
++	  If you want to use MediaTek(R) RTC interface, select Y or M here.
++
+ config RTC_DRV_MT7622
+ 	tristate "MediaTek SoC based RTC"
+ 	depends on ARCH_MEDIATEK || COMPILE_TEST
+--- a/drivers/rtc/interface.c
++++ b/drivers/rtc/interface.c
+@@ -470,6 +470,9 @@ int rtc_set_alarm(struct rtc_device *rtc
+ 
+ 	rtc->aie_timer.node.expires = rtc_tm_to_ktime(alarm->time);
+ 	rtc->aie_timer.period = 0;
++#if IS_ENABLED(CONFIG_RTC_POWER_ON_ALARM)
++	rtc->aie_timer.enabled = alarm->enabled;
++#endif
+ 	if (alarm->enabled)
+ 		err = rtc_timer_enqueue(rtc, &rtc->aie_timer);
+ 
+@@ -799,6 +802,9 @@ static int rtc_timer_enqueue(struct rtc_
+	if (err)
+		return err;
+ 
++#if IS_ENABLED(CONFIG_RTC_POWER_ON_ALARM)
++	if (timer->enabled == 0)
++#endif
+	timer->enabled = 1;
+ 	now = rtc_tm_to_ktime(tm);
+ 
+@@ -815,7 +821,11 @@ static int rtc_timer_enqueue(struct rtc_
+		struct rtc_wkalrm alarm;
+ 
+ 		alarm.time = rtc_ktime_to_tm(timer->node.expires);
++#if IS_ENABLED(CONFIG_RTC_POWER_ON_ALARM)
++		alarm.enabled = timer->enabled;
++#else
+ 		alarm.enabled = 1;
++#endif
+ 		err = __rtc_set_alarm(rtc, &alarm);
+ 		if (err == -ETIME) {
+ 			pm_stay_awake(rtc->dev.parent);
+--- a/drivers/rtc/sysfs.c
++++ b/drivers/rtc/sysfs.c
+@@ -211,6 +211,99 @@ wakealarm_store(struct device *dev, stru
+ }
+ static DEVICE_ATTR_RW(wakealarm);
+ 
++#if IS_ENABLED(CONFIG_RTC_POWER_ON_ALARM)
++static ssize_t
++poweralarm_show(struct device *dev, struct device_attribute *attr, char *buf)
++{
++	ssize_t retval;
++	time64_t alarm;
++	struct rtc_wkalrm alm;
++
++	/* Don't show disabled alarms.  For uniformity, RTC alarms are
++	 * conceptually one-shot, even though some common RTCs (on PCs)
++	 * don't actually work that way.
++	 *
++	 * NOTE: RTC implementations where the alarm doesn't match an
++	 * exact YYYY-MM-DD HH:MM[:SS] date *must* disable their RTC
++	 * alarms after they trigger, to ensure one-shot semantics.
++	 */
++	retval = rtc_read_alarm(to_rtc_device(dev), &alm);
++	if (retval == 0 && alm.enabled) {
++		alarm = rtc_tm_to_time64(&alm.time);
++		retval = sprintf(buf, "%lld\n", alarm);
++	}
++
++	return retval;
++}
++
++static ssize_t
++poweralarm_store(struct device *dev, struct device_attribute *attr,
++		const char *buf, size_t n)
++{
++	ssize_t retval;
++	time64_t now, alarm;
++	time64_t push = 0;
++	struct rtc_wkalrm alm;
++	struct rtc_device *rtc = to_rtc_device(dev);
++	const char *buf_ptr;
++	int adjust = 0;
++
++	/* Only request alarms that trigger in the future.  Disable them
++	 * by writing another time, e.g. 0 meaning Jan 1 1970 UTC.
++	 */
++	retval = rtc_read_time(rtc, &alm.time);
++	if (retval < 0)
++		return retval;
++	now = rtc_tm_to_time64(&alm.time);
++
++	buf_ptr = buf;
++	if (*buf_ptr == '+') {
++		buf_ptr++;
++		if (*buf_ptr == '=') {
++			buf_ptr++;
++			push = 1;
++		} else
++			adjust = 1;
++	}
++	retval = kstrtos64(buf_ptr, 0, &alarm);
++	if (retval)
++		return retval;
++	if (adjust)
++		alarm += now;
++
++	if (alarm > now || push) {
++		/* Avoid accidentally clobbering active alarms; we can't
++		 * entirely prevent that here, without even the minimal
++		 * locking from the /dev/rtcN api.
++		 */
++		retval = rtc_read_alarm(rtc, &alm);
++		if (retval < 0)
++			return retval;
++		if (alm.enabled) {
++			if (push) {
++				push = rtc_tm_to_time64(&alm.time);
++				alarm += push;
++			} else
++				return -EBUSY;
++		} else if (push)
++			return -EINVAL;
++		alm.enabled = 3;
++	} else {
++		alm.enabled = 4;
++
++		/* Provide a valid future alarm time.  Linux isn't EFI,
++		 * this time won't be ignored when disabling the alarm.
++		 */
++		alarm = now + 300;
++	}
++	rtc_time64_to_tm(alarm, &alm.time);
++
++	retval = rtc_set_alarm(rtc, &alm);
++	return (retval < 0) ? retval : n;
++}
++static DEVICE_ATTR_RW(poweralarm);
++#endif
++
+ static ssize_t
+ offset_show(struct device *dev, struct device_attribute *attr, char *buf)
+ {
+@@ -255,6 +348,9 @@ static struct attribute *rtc_attrs[] = {
+ 	&dev_attr_max_user_freq.attr,
+ 	&dev_attr_hctosys.attr,
+ 	&dev_attr_wakealarm.attr,
++#if IS_ENABLED(CONFIG_RTC_POWER_ON_ALARM)
++	&dev_attr_poweralarm.attr,
++#endif
+ 	&dev_attr_offset.attr,
+ 	&dev_attr_range.attr,
+ 	NULL,

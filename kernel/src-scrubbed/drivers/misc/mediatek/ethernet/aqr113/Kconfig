@@ -1,0 +1,4 @@
+config QUEC_MARVELL_AQR113C
+	bool "Quec support Marvell Aqr113c PHYs"
+	---help---
+	  Supports the Marvell Aqr113c PHY.

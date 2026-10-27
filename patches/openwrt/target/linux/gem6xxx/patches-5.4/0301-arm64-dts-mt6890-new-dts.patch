@@ -1,0 +1,31 @@
+Index: linux-5.4.143/arch/arm64/boot/dts/mediatek/Makefile
+===================================================================
+--- linux-5.4.143.orig/arch/arm64/boot/dts/mediatek/Makefile	2021-08-26 20:55:22.000000000 +0800
++++ linux-5.4.143/arch/arm64/boot/dts/mediatek/Makefile	2021-09-23 10:03:24.049404843 +0800
+@@ -8,3 +8,11 @@ dtb-$(CONFIG_ARCH_MEDIATEK) += mt7622-rf
+ dtb-$(CONFIG_ARCH_MEDIATEK) += mt7622-bananapi-bpi-r64.dtb
+ dtb-$(CONFIG_ARCH_MEDIATEK) += mt8173-evb.dtb
+ dtb-$(CONFIG_ARCH_MEDIATEK) += mt8183-evb.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += evb6880v1_datacard.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += evb6890v1_64_cpe.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += evb6890v1_64_cpe_emmc.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += evb6890v1_64_mifi.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += evb6890v1_64_odu.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += evb6890v1_datacard.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += fpga6990_64.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += k6880v1_mdot2_datacard.dtb
+Index: linux-5.4.143/scripts/Makefile.lib
+===================================================================
+--- linux-5.4.143.orig/scripts/Makefile.lib	2021-09-23 09:58:47.234879342 +0800
++++ linux-5.4.143/scripts/Makefile.lib	2021-09-23 09:58:48.382943137 +0800
+@@ -177,6 +177,10 @@ DTC_INCLUDE    := $(srctree)/scripts/dtc
+ 
+ dtc_cpp_flags  = -Wp,-MD,$(depfile).pre.tmp -nostdinc                    \
+ 		 $(addprefix -I,$(DTC_INCLUDE))                          \
++		 -I$(srctree)/arch/$(SRCARCH)/boot/dts                   \
++		 -I$(srctree)/arch/$(SRCARCH)/boot/dts/include           \
++		 -I$(objtree)/include/                                   \
++		 -Iarch/$(SRCARCH)/boot/dts                              \
+ 		 -undef -D__DTS__
+ 
+ # Useful for describing the dependency of composite objects

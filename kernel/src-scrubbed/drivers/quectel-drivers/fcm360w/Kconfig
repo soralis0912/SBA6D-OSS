@@ -1,0 +1,5 @@
+config QL_FCM360W_WIFI
+    bool "Quectel FCM360W Wi-Fi"
+    default n
+    help
+      FCM360W Wi-Fi Device Tree Setting(SPI and IRQ GPIO)

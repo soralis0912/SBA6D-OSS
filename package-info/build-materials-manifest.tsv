@@ -1,0 +1,43 @@
+Item	Path	Reason	Disclosure
+Target Linux patches	openwrt/target/linux/gem6xxx/patches-5.4	Kernel patches applied by OpenWrt target integration	Include candidate
+Target Linux files overlay	openwrt/target/linux/gem6xxx/files-5.4	Kernel files overlay including DTS and driver additions	Include candidate
+Target config	openwrt/target/linux/gem6xxx/evb6990_cpe_mt7990_emmc/target.config	OpenWrt target configuration	Include candidate
+Target kernel fragment	openwrt/target/linux/gem6xxx/evb6990_cpe_mt7990_emmc/config-5.4	Kernel configuration fragment for target	Include candidate
+OpenWrt feeds config	openwrt/feeds.conf.default	Links buildroot to feeds source trees	Include candidate
+Downloaded source cache	quectel/prebuilt/openwrt-dl	Contains upstream source archives used by builds	Include candidate with filtering
+External kernel tree	quectel/ext_kernel-5.4	Configured as EXTERNAL_KERNEL_TREE in build metadata	Include candidate after confidentiality review
+External toolchain	mtk/prebuilt/openwrt-toolchain	Referenced by build metadata for libc/libgcc roots	Review / likely exclude binaries
+Package patches: alsa-lib	openwrt/package/feeds/packages/alsa-lib/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: blkid	openwrt/package/utils/util-linux/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: busybox	openwrt/package/utils/busybox/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: conntrack	openwrt/package/feeds/packages/conntrack-tools/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: dnsmasq	openwrt/package/network/services/dnsmasq/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: dtc	openwrt/package/utils/dtc/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: e2fsprogs	openwrt/package/utils/e2fsprogs/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: ebtables	openwrt/package/network/utils/ebtables/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: ebtables-utils	openwrt/package/network/utils/ebtables/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: fstools	openwrt/package/system/fstools/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: getrandom	openwrt/package/system/ubox/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: ip-bridge	openwrt/package/network/utils/iproute2/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: ip-tiny	openwrt/package/network/utils/iproute2/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: ip6tables	openwrt/package/network/utils/iptables/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: iptables	openwrt/package/network/utils/iptables/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: iptables-mod-conntrack-extra	openwrt/package/network/utils/iptables/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: iptables-mod-ipopt	openwrt/package/network/utils/iptables/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: iw	openwrt/package/network/utils/iw/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: liboping	openwrt/package/feeds/packages/liboping/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: libpng	openwrt/package/feeds/packages/libpng/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: logd	openwrt/package/system/ubox/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: mmc-utils	openwrt/package/feeds/packages/mmc-utils/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: netifd	openwrt/package/network/config/netifd/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: ntpclient	openwrt/package/feeds/packages/ntpclient/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: opkg	openwrt/package/system/opkg/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: procd	openwrt/package/system/procd/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: sysstat	openwrt/package/feeds/packages/sysstat/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: tc-mod-iptables	openwrt/package/network/utils/iproute2/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: tc-tiny	openwrt/package/network/utils/iproute2/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: ubox	openwrt/package/system/ubox/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: uclibcxx	openwrt/package/libs/uclibc++/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: vnstat2	openwrt/package/feeds/packages/vnstat2/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: vnstati2	openwrt/package/feeds/packages/vnstat2/patches	Package-local patches for GPL/LGPL package	Include candidate
+Package patches: wireless-tools	openwrt/package/network/utils/wireless-tools/patches	Package-local patches for GPL/LGPL package	Include candidate

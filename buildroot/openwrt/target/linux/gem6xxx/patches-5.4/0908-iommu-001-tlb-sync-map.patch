@@ -1,0 +1,49 @@
+--- a/drivers/iommu/iommu.c
++++ b/drivers/iommu/iommu.c
+@@ -1537,6 +1537,11 @@ int bus_set_iommu(struct bus_type *bus,
+ {
+ 	int err;
+ 
++	if (ops == NULL) {
++		bus->iommu_ops = NULL;
++		return 0;
++	}
++
+ 	if (bus->iommu_ops != NULL)
+ 		return -EBUSY;
+ 
+@@ -1903,8 +1908,8 @@ int iommu_map(struct iommu_domain *domai
+ 		size -= pgsize;
+ 	}
+ 
+-	if (ops->iotlb_sync_map)
+-		ops->iotlb_sync_map(domain);
++	if (ret == 0 && ops->iotlb_sync_map)
++		ops->iotlb_sync_map(domain, iova, size);
+ 
+ 	/* unroll mapping in case something went wrong */
+ 	if (ret)
+--- a/drivers/iommu/tegra-gart.c
++++ b/drivers/iommu/tegra-gart.c
+@@ -273,7 +273,8 @@ static int gart_iommu_of_xlate(struct de
+ 	return 0;
+ }
+ 
+-static void gart_iommu_sync_map(struct iommu_domain *domain)
++static void gart_iommu_sync_map(struct iommu_domain *domain, unsigned long iova,
++				size_t size)
+ {
+ 	FLUSH_GART_REGS(gart_handle);
+ }
+--- a/include/linux/iommu.h
++++ b/include/linux/iommu.h
+@@ -260,7 +260,8 @@ struct iommu_ops {
+ 	size_t (*unmap)(struct iommu_domain *domain, unsigned long iova,
+ 		     size_t size, struct iommu_iotlb_gather *iotlb_gather);
+ 	void (*flush_iotlb_all)(struct iommu_domain *domain);
+-	void (*iotlb_sync_map)(struct iommu_domain *domain);
++	void (*iotlb_sync_map)(struct iommu_domain *domain, unsigned long iova,
++			       size_t size);
+ 	void (*iotlb_sync)(struct iommu_domain *domain,
+ 			   struct iommu_iotlb_gather *iotlb_gather);
+ 	phys_addr_t (*iova_to_phys)(struct iommu_domain *domain, dma_addr_t iova);

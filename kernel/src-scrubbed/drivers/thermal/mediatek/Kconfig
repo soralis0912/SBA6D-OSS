@@ -1,0 +1,128 @@
+config MTK_THERMAL
+	tristate "Mediatek thermal drivers"
+	depends on THERMAL_OF
+	help
+	  This is the option for Mediatek thermal software
+	  solutions. Please enable corresponding options to
+	  get temperature information from thermal sensors or
+	  turn on throttle mechaisms for thermal mitigation.
+
+if MTK_THERMAL
+
+config MTK_SOC_THERMAL
+	tristate "Temperature sensor driver for Mediatek SoCs"
+	depends on HAS_IOMEM
+	depends on NVMEM || NVMEM=n
+	depends on RESET_CONTROLLER
+	help
+	  Enable this option if you want to get SoC temperature
+	  information for Mediatek platforms. This driver
+	  configures thermal controllers to collect temperature
+	  via AUXADC interface.
+
+config MTK_SOC_THERMAL_LVTS
+	tristate "LVTS (Low voltage thermal sensor) driver for Mediatek SoCs"
+	depends on HAS_IOMEM
+	depends on NVMEM
+	depends on RESET_TI_SYSCON
+	help
+	  Enable this option if you want to get SoC temperature
+	  information for Mediatek platforms. This driver
+	  configures LVTS thermal controllers to collect temperatures
+	  via ASIF interface.
+
+config MTK_BOARD_THERMAL
+	tristate "On-board NTC thermistor driver for Mediatek SoCs"
+	help
+	  Enable this option if you want to get PCB temperature
+	  via on-board NTC for Mediatek platforms.
+	  This driver reads the voltage value from TIA hardware
+	  which is responsible for reading all PMIC AUXADC channels
+	  sequentially. The address of TIA register for each channel
+	  and temperature convert table should be specified in
+	  device tree.
+
+config MTK_PMIC_THERMAL
+	tristate "PMIC thermal sensor driver for Mediatek SoCs"
+	help
+	  Enable this option if you want to get PMIC temperature
+	  for Mediatek platforms.
+	  This driver reads the voltage value from PMIC AUXADC channels,
+	  and converts raw value to PMIC temperature via PMIC efuse data.
+
+config MTK_MD_THERMAL
+	tristate "Mediatek Modem cooling framework"
+	depends on MTK_ECCCI_DRIVER
+	help
+	  Enable this option to turn on modem throttle mechanisms
+	  for Mediatek platforms.
+	  This option depends on MTK_ECCCI_DRIVER which is the
+	  IPC interface between AP SoC and modem.
+
+if MTK_MD_THERMAL
+
+config MTK_MD_THERMAL_MUTT
+	tristate "Mediatek modem uplink throughput throttle driver"
+	help
+	  Enable this option if you want to use modem
+	  uplink throughput throttle cooler for Mediatek
+	  platforms.
+	  The throttling levels are defined in modem.
+
+config MTK_MD_THERMAL_TX_POWER
+	tristate "Mediatek modem TX power throttle driver"
+	help
+	  Enable this option if you want use modem TX power
+	  throttle cooler for Mediatek platforms.
+	  This feature is only supported for mt6297 or later
+	  modem platforms.
+
+config MTK_MD_THERMAL_SCG_OFF
+	tristate "Mediatek modem SCG cell off driver"
+	help
+	  Enable this option if you want use modem SCG cell
+	  throttle cooler for Mediatek platforms.
+	  This feature is only supported for mt6297 or later
+	  modem platforms.
+
+config MTK_MD_THERMAL_SYSFS
+	tristate "Mediatek modem throttle sysfs driver"
+	default n
+	help
+	  Enable this option if you want to use sysfs debug
+	  interface for Mediatek modem coolers.
+	  This option should be enabled only for HW power
+	  evaluation purpose.
+endif
+
+config MTK_MD_RF_THERMAL
+	tristate "Mediatek modem RF thermal zone driver"
+	depends on MTK_ECCCI_DRIVER
+	help
+	  Enable this option if you want to get modem RF
+	  temperature information for Mediatek platforms.
+	  This driver queries temperature via CCCI interface
+	  and handles the feedback from modem in the callback
+	  function which is registered to CCCI driver at
+	  driver initialization stage.
+
+config MTK_THERMAL_IPI
+	tristate "Mediatek thermal IPI interface driver"
+	depends on MTK_TINYSYS_SSPM_SUPPORT
+	help
+	  Enable this option if you want to use and communicate
+	  with tinysys microprocessors for Mediatek platforms.
+	  This driver defines thermal ipi commands and provides an
+	  API to send a ipi command to tinysys microprocessors.
+
+if MTK_THERMAL_IPI
+config MTK_THERMAL_TRM
+	tristate "Mediatek thermal risk monitor (TRM) driver"
+	help
+	  Enable this option if you want to offload Linux thermal
+	  framework (LTF) onto a tinysys microprocesssor when AP MCU
+	  suspended. TRM will take it over and keep monitoring
+	  temperatures. If a device is going to overheat, TRM will
+	  wake AP MCU up and give the control back to LTF.
+endif
+endif

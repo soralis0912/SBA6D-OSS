@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# 2.4G WIFI Tx blink
+iwpriv ra0 set led_setting=00-00-00-00-02-00-00-02
+# 5G WIFI Tx blink
+iwpriv rai0 set led_setting=01-00-00-00-02-00-00-02
+# WPS default OFF
+iwpriv ra0 set led_setting=02-00-01-00-00-00-00-01
+
+exit 0

@@ -1,0 +1,61 @@
+--- a/drivers/watchdog/watchdog_dev.c
++++ b/drivers/watchdog/watchdog_dev.c
+@@ -48,6 +48,10 @@
+ #include "watchdog_core.h"
+ #include "watchdog_pretimeout.h"
+ 
++#ifdef CONFIG_MTK_AEE_IPANIC
++#include <mt-plat/mboot_params.h>
++#endif
++
+ /*
+  * struct watchdog_core_data - watchdog core internal data
+  * @dev:	The watchdog's internal device
+@@ -84,6 +88,47 @@ static bool handle_boot_enabled =
+ 
+ static unsigned open_timeout = CONFIG_WATCHDOG_OPEN_TIMEOUT;
+ 
++#ifdef CONFIG_MTK_AEE_IPANIC
++static char dbg_buf[128] = { 0 };
++static int aee_log_ret;
++#define aee_log(fmt, ...) \
++do { \
++	memset(dbg_buf, 0, sizeof(dbg_buf)); \
++	aee_log_ret = snprintf(dbg_buf, sizeof(dbg_buf), fmt, ##__VA_ARGS__); \
++	if (aee_log_ret < 0) { \
++		return; } \
++	aee_sram_fiq_log(dbg_buf); \
++} while (0)
++
++void dump_watchdog_dev_info(void)
++{
++	struct hrtimer *wdd_timer;
++	struct kthread_work *work = NULL;
++
++	if (old_wd_data && old_wd_data->wdd && watchdog_active(old_wd_data->wdd)) {
++		aee_log("watchdog ping is taken by user space process\n");
++	} else {
++		if (watchdog_kworker) {
++		    aee_log("watchdog_kworker flags: 0x%x, comm: %s\n", watchdog_kworker->flags, watchdog_kworker->task->comm);
++			if (!list_empty(&watchdog_kworker->work_list)) {
++				work = list_first_entry(&watchdog_kworker->work_list,
++					struct kthread_work, node);
++				aee_log("watchdog_work %pF\n", work->func);
++			} else {
++				aee_log("watchdog_work empty\n");
++			}
++			if (watchdog_kworker->current_work) {
++				aee_log("current_work fn: %pF\n", watchdog_kworker->current_work->func);
++			}
++		}
++		if (old_wd_data && old_wd_data->wdd && old_wd_data->wdd->wd_data) {
++			wdd_timer = &old_wd_data->wdd->wd_data->timer;
++			aee_log("wdd timer next expired: %lld(%lld), state %d, fn: %pF\n", ktime_to_ns(wdd_timer->_softexpires), ktime_to_ns(wdd_timer->node.expires), wdd_timer->state, wdd_timer->function);
++		}
++	}
++}
++#endif
++
+ static bool watchdog_past_open_deadline(struct watchdog_core_data *data)
+ {
+ 	return ktime_after(ktime_get(), data->open_deadline);

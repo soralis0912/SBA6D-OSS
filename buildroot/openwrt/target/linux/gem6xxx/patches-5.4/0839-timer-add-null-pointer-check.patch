@@ -1,0 +1,12 @@
+--- a/drivers/clocksource/timer-mediatek.c
++++ b/drivers/clocksource/timer-mediatek.c
+@@ -84,7 +84,8 @@ static irqreturn_t mtk_syst_handler(int
+ 	struct timer_of *to = to_timer_of(clkevt);
+ 
+ 	mtk_syst_ack_irq(to);
+-	clkevt->event_handler(clkevt);
++	if (clkevt->event_handler)
++		clkevt->event_handler(clkevt);
+ 
+ 	return IRQ_HANDLED;
+ }

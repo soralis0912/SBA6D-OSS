@@ -1,0 +1,114 @@
+--- fstools-2016-12-04-84b530a7.orig/libfstools/rootdisk.c   2022-06-05 16:28:28.330614207 +0800
++++ fstools-2016-12-04-84b530a7/libfstools/rootdisk.c       2022-06-05 16:25:17.422197853 +0800
+
+@@ -47,6 +47,73 @@ struct rootdev_volume {
+ static const char *rootdev;
+ static struct driver rootdisk_driver;
+ 
++#define DM_VERITY_MMCBLK_SIZE_RSRVD (20)  /* MB */
++#define ROOTFS_MMCBLK_SIZE_TOTAL    (128)  /* MB */
++
++static bool is_dm_verity_enabled = 0;
++static char dm_verity_rootdev[20];
++
++static int get_dm_verity_rootdev(char *cmdline, char *rootdev)
++{
++	char *sp = NULL;
++	int idx = 0;
++	int ret;
++
++	/* cmdline: dm-mod.create="a,,,ro, 0 66392 verity 1 /dev/mmcblk0p24 */
++	/* the rootdev is specified by the nearest "/dev/xxx"  */
++	sp = strstr(cmdline, "/dev/");
++	if (sp)
++	{
++		while(sp[idx] != ' ')
++		{
++			rootdev[idx] = sp[idx];
++			idx++;
++		}
++		ret = 0;
++	}
++	else
++	{
++		ULOG_ERR("/dev/ not found in dm-verity cmdline\n");
++		ret = 1;
++	}
++
++	return ret;
++}
++
++static void get_dm_verity_status(void)
++{
++	FILE *f;
++	char cmdline[1024];
++	char *sp; /* seach point */
++	int ret;
++
++	is_dm_verity_enabled = 0;
++	dm_verity_rootdev[0] = '\0';
++
++	f = fopen("/proc/cmdline", "r");
++	if (f)
++	{
++		fread(cmdline, 1024, 1, f);
++		sp = strstr(cmdline, "dm-mod.create");
++		if (sp)
++		{
++			ULOG_INFO("detect dm-verity is enabled\n");
++			is_dm_verity_enabled = 1;
++			ret = get_dm_verity_rootdev(sp, dm_verity_rootdev);
++			if (!ret)
++				ULOG_INFO("get dm-verity rootdev %s\n", dm_verity_rootdev);
++			else
++				ULOG_ERR("get dm-verity rootdev failed\n");
++		}
++	}
++	else
++	{
++		ULOG_ERR("read /proc/cmdline failed\n");
++	}
++
++	fclose(f);
++}
++
+ static char *get_blockdev(dev_t dev)
+ {
+ 	const char *dirname = "/dev";
+@@ -136,6 +203,18 @@ static struct volume *rootdisk_volume_fi
+ 	if (!rootdev)
+ 		return NULL;
+ 
++	get_dm_verity_status();
++
++	/* if ubiblock is used, follow the existing mechanism to
++	 * search ubi volume "rootfs_data"
++	 */
++	if (is_dm_verity_enabled && strstr(dm_verity_rootdev, "ubiblock"))
++		return NULL;
++
++	/* if mmcblk is used, overwrite rootdev with the real rootfs path */
++	if (is_dm_verity_enabled && strstr(dm_verity_rootdev, "mmcblk"))
++		rootdev = dm_verity_rootdev;
++
+ 	if (strstr(rootdev, "mtdblock") ||
+ 	    strstr(rootdev, "ubiblock"))
+ 		return NULL;
+@@ -151,6 +230,17 @@ static struct volume *rootdisk_volume_fi
+ 	p->v.name = "rootfs_data";
+ 
+ 	p->offset = le64_to_cpu(sb.bytes_used);
++
++	if (is_dm_verity_enabled && strstr(dm_verity_rootdev, "mmcblk"))
++	{
++		ULOG_INFO("origianl sb.bytes_used = %ld\n", sb.bytes_used);
++		ULOG_INFO("reserve the last %dMB on %s for rootfs_data\n",
++			  DM_VERITY_MMCBLK_SIZE_RSRVD, dm_verity_rootdev);
++		p->offset = (ROOTFS_MMCBLK_SIZE_TOTAL * 1024 * 1024)
++					- (DM_VERITY_MMCBLK_SIZE_RSRVD * 1024 * 1024); 
++		ULOG_INFO("re-config offset to %ld\n", p->offset);
++	}
++
+ 	p->offset = ((p->offset + (ROOTDEV_OVERLAY_ALIGN - 1)) &
+ 		     ~(ROOTDEV_OVERLAY_ALIGN - 1));
+ 

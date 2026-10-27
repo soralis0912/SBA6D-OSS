@@ -1,0 +1,35 @@
+--- a/drivers/mtd/Kconfig
++++ b/drivers/mtd/Kconfig
+@@ -212,6 +212,22 @@ config MTD_PARTITIONED_MASTER
+ 	  the parent of the partition device be the master device, rather than
+ 	  what lies behind the master.
+ 
++config MTD_NANDX_V2
++	tristate "Enable or disable Mediatek NAND-2.0 Feature"
++	depends on MTD
++	help
++	  This option will support parallel SLC & SPI NAND device via Mediatek
++	  NFI controller. If the option is enabled, the NAND-2.0 specific files
++	  will be compiled in nandx.
++
++config NAND_BBM
++	tristate "Enable or disable Mediatek bbm Feature"
++	depends on MTD_NANDX_V2
++	help
++	  This option will support Mediatek bbm
++	  If the option is enabled, the bbm specific files
++	  will be compiled in nandx.
++
+ source "drivers/mtd/chips/Kconfig"
+ 
+ source "drivers/mtd/maps/Kconfig"
+--- a/drivers/mtd/Makefile
++++ b/drivers/mtd/Makefile
+@@ -35,3 +35,7 @@ obj-$(CONFIG_MTD_HYPERBUS)	+= hyperbus/
+ 
+ # Composite drivers must be loaded last
+ obj-y				+= composite/
++
++ifeq ($(CONFIG_MTD_NANDX_V2), y)
++include $(srctree)/drivers/mtd/nandx/Nandx.mk
++endif

@@ -1,0 +1,39 @@
+--- a/drivers/mtd/mtdpart.c
++++ b/drivers/mtd/mtdpart.c
+@@ -828,6 +828,17 @@ static void split_firmware(struct mtd_in
+ 	run_parsers_by_type(part, MTD_PARSER_TYPE_FIRMWARE);
+ }
+ 
++#define MTK_BOOT_DEV_MAX    30
++static char mtk_boot_slot[MTK_BOOT_DEV_MAX];
++
++static int __init get_mtk_boot_slot(char *str)
++{
++    strlcpy(mtk_boot_slot, str, MTK_BOOT_DEV_MAX);
++    return 1;
++}
++
++__setup("bootslot=", get_mtk_boot_slot);
++
+ static void mtd_partition_split(struct mtd_info *master, struct mtd_part *part)
+ {
+ 	static int rootfs_found = 0;
+@@ -839,6 +850,18 @@ static void mtd_partition_split(struct m
+ 		run_parsers_by_type(part, MTD_PARSER_TYPE_ROOTFS);
+ 
+ 		rootfs_found = 1;
++	} else {
++		if (!strcmp(mtk_boot_slot, "a")) {
++			if (!strcmp(part->mtd.name, "rootfs_a")) {
++				run_parsers_by_type(part, MTD_PARSER_TYPE_ROOTFS);
++				rootfs_found = 1;
++			}
++		} else if (!strcmp(mtk_boot_slot, "b")) {
++			if (!strcmp(part->mtd.name, "rootfs_b")) {
++				run_parsers_by_type(part, MTD_PARSER_TYPE_ROOTFS);
++				rootfs_found = 1;
++			}
++		}
+ 	}
+ 
+ 	if (IS_ENABLED(CONFIG_MTD_SPLIT_FIRMWARE) &&

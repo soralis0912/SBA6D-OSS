@@ -1,0 +1,14 @@
+#
+# Focaltech Touchscreen driver configuration
+#
+
+menu "Fts Touch chip type"
+	depends on TOUCHSCREEN_FTS
+
+config FTS_CHIPTYPE
+	hex "FTS Chip Type"
+	default 0
+	help
+	   select FTS chip type(0x6336,0x5446,...)
+
+endmenu

@@ -1,0 +1,6 @@
+if PACKAGE_adbd_usb
+config MTK_ADB_ENABLE
+	bool "Enable ADB(Android Debug Bridge) functions"
+	default n
+	depends on PACKAGE_adbd_usb
+endif #PACKAGE_adbd_usb#

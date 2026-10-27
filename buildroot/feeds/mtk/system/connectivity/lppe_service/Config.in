@@ -1,0 +1,6 @@
+if PACKAGE_lppe_service
+config MTK_LPPE_NLP_SUPPORT
+	bool "Support 3rd party NLP(Network Location Provider) functions"
+	default n
+	depends on PACKAGE_lppe_service
+endif #PACKAGE_lppe_service#

@@ -1,0 +1,8 @@
+menu "Configuration"
+        depends on PACKAGE_wapp
+
+config WAPP_WPACTRL_SUPPORT
+	bool "Support WPACTRL in wapp"
+	default n
+
+endmenu

@@ -1,0 +1,79 @@
+The latest version of this FAQ is available at
+
+   https://humdi.net/vnstat/FAQ
+
+
+
+----
+
+
+A snapshot of the FAQ (updated 13.4.2019):
+
+
+I managed to get invalid data into the database after ... playing around with
+the system clock / doing some strange network experiments / having the cron
+entry not properly configured. Is there a database editor available?
+
+  Nothing vnStat specific is available. The sqlite3 command can be used to
+  read and modify the database.
+
+
+How do I stop monitoring an interface?
+
+  Execute "vnstat --remove -i interfacename" with correct permissions.
+
+
+How do I uninstall vnStat?
+
+  You only need to run 'make uninstall' in the directory that comes when the
+  .tar.gz is extracted. Just make sure it's the same version you have
+  installed. If you've used a binary package included with the distribution
+  then refer to instructions provided by the package manager.
+
+
+What is this KiB/MiB/GiB/TiB thing?
+
+  See http://en.wikipedia.org/wiki/Binary_prefix#Prefixes and UnitMode
+  option in the configuration file.
+
+
+Is the MB value reported by vnStat 10^6 or 2^20 bytes?
+
+  2^20 bytes. The prefix can be configured to show MiB from the configuration
+  file instead of MB if that looks better.
+
+
+What does the 'estimated' value mean?
+
+  The estimated value is an calculated average that tries to predict the total
+  traffic for the current day/month based on previous traffic. This estimate
+  works fairly well if the monitored interface has constant traffic of the same
+  magnitude (like game servers). It can't predic peaks but the accuracy
+  usually gets better by the end of the day/month.
+
+
+Why isn't the estimated value shown with --json or xml outputs?
+
+  Those features only dump the database and since the estimate is always
+  calculated in real time, there's no reason to write it into the database.
+
+
+How is the estimated value calculated?
+
+  estimate = ( x / y ) * z
+
+    x = traffic so far for the day/month
+    y = passed minutes/hours ...
+    z = total minutes/hours ...
+
+
+About bug reports
+
+  If the latest version isn't being used then test if the issue can still
+  be replicated with the latest or latest development version. If the issue
+  can still be reproduced, check if there's already an issue open in GitHub.
+  If not then using https://github.com/vergoh/vnstat/issues for reporting new
+  issues is suggested. Any bug report should at least include an explanation
+  about how the bug can be reproduced. Also include information about the used
+  distribution, kernel (uname -a), compiler (gcc --version) and network
+  interface card. Read the report again before sending it. :)

@@ -1,0 +1,493 @@
+Index: ubox-2020-10-25-9ef88681/CMakeLists.txt
+===================================================================
+--- ubox-2020-10-25-9ef88681.orig/CMakeLists.txt	2020-10-19 23:45:48.000000000 +0800
++++ ubox-2020-10-25-9ef88681/CMakeLists.txt	2021-12-09 09:56:21.700280000 +0800
+@@ -63,7 +63,10 @@
+ )
+ 
+ ADD_EXECUTABLE(logread log/logread.c)
+-TARGET_LINK_LIBRARIES(logread ubox ubus ${json} blobmsg_json)
++IF(SUPPORT_LOG_RECYCLE)
++  ADD_DEFINITIONS(-DSUPPORT_LOG_RECYCLE)
++ENDIF()
++TARGET_LINK_LIBRARIES(logread ubox ubus ${json} blobmsg_json uci)
+ INSTALL(TARGETS logread
+ 	RUNTIME DESTINATION sbin
+ )
+Index: ubox-2020-10-25-9ef88681/log/logread.c
+===================================================================
+--- ubox-2020-10-25-9ef88681.orig/log/logread.c 2020-10-19 23:45:48.000000000 +0800
++++ ubox-2020-10-25-9ef88681/log/logread.c      2021-12-09 09:02:55.145561000 +0800
+@@ -33,8 +33,23 @@
+ #include "libubus.h"
+ #include "syslog.h"
+ 
++#include <libgen.h>
++#include <uci.h>
++
++#include <dirent.h> //DIR structure
++#include<mntent.h>
++#include <sys/stat.h>
++#ifdef SUPPORT_LOG_RECYCLE
++#include <sys/statfs.h>
++#endif
++#include <sys/types.h>
++
+ #define LOGD_CONNECT_RETRY	10
+ 
++//to avoid write performance is worse we will stop record or do recycle if space is less than  5MB
++#define STORAGE_RESERVED_SPACE       (5  * 1024 * 1024)
++#define CHECK_STORAGE_SIZE_COUNT     1000
++
+ enum {
+ 	LOG_STDOUT,
+ 	LOG_FILE,
+@@ -69,6 +84,12 @@
+ static int facility_include;
+ static int facility_exclude;
+ 
++static bool support_multi_files = false;
++static int  support_max_saving_files_per_time = 0;
++static int  support_max_bootlog_folder_number = 5;
++static int  current_file_idx = 1;
++static int  skip_write = 0;
++
+ /* check for facility filter; return 0 if message shall be dropped */
+ static int check_facility_filter(int f)
+ {
+@@ -79,6 +100,302 @@
+ 	return 1;
+ }
+ 
++#ifdef SUPPORT_LOG_RECYCLE
++static int  storage_check_count = 0;
++#endif
++
++#if 0
++static int isDataPartitionReady() {
++	FILE * mtab = NULL;
++	struct mntent * part = NULL;
++	int is_mounted = 0;
++
++	if ((mtab = setmntent("/etc/mtab", "r")) != NULL) {
++		while ((part = getmntent(mtab)) != NULL) {
++			if ((part->mnt_fsname != NULL)
++				&& (strcmp(part->mnt_fsname, "/dev/block/user_data")) == 0) {
++				is_mounted = 1;
++				sleep(3);
++			}
++		}
++	}
++
++	endmntent(mtab);
++
++	return is_mounted;
++}
++#endif
++
++static void mkdirs(const char *muldir) {
++	int i,len;
++	char str[512];
++	struct stat s = {0};
++
++	strncpy(str, muldir, 512);
++	len=strlen(str);
++
++	for( i=0; i<len; i++ ) {
++		if( str[i]=='/' ) {
++			str[i] = '\0';
++			if(strlen(str) > 0) {
++				while ( stat(str, &s) < 0) {
++					if( !strncmp(str,"data",sizeof(str))
++							|| !strncmp(str,"/data",sizeof(str))) {
++						// wait for data partition mounted
++						sleep(1);
++					} else {
++						if ( mkdir(str, 0755) != 0) {
++							sleep(1);
++						}
++					}
++				}
++			}
++			str[i]='/';
++		}
++	}
++
++	if( len>0 ) {
++		while ( stat(str, &s) < 0) {
++			if ( mkdir(str, 0755) != 0) {
++				sleep(1);
++			}
++		}
++	}
++	return;
++}
++
++static void remove_oldest_folder(const char *dir) {
++	char cur_dir[] = ".";
++	char up_dir[] = "..";
++	char dir_name[512];
++	DIR *dirp;
++	struct dirent *dp;
++	struct stat dir_stat;
++
++	if ( 0 != access(dir, F_OK) ) {
++		fprintf(stderr, "%s access error", __FUNCTION__);
++		return;
++	}
++
++	if ( 0 > stat(dir, &dir_stat) ) {
++		fprintf(stderr, "%s get directory stat error", __FUNCTION__);
++		return;
++	}
++
++	if ( S_ISDIR(dir_stat.st_mode) ) {
++		dirp = opendir(dir);
++		if ( dirp == NULL ) return;
++		while ( (dp=readdir(dirp)) != NULL ) {
++			if ( (0 == strcmp(cur_dir, dp->d_name)) || (0 == strcmp(up_dir, dp->d_name)) ) {
++				continue;
++			}
++
++			sprintf(dir_name, "%s/%s", dir, dp->d_name);
++			syslog( LOG_INFO, "%s remove %s folder", __FUNCTION__, dir_name);
++			remove_oldest_folder(dir_name);
++		}
++		closedir(dirp);
++
++		rmdir(dir);
++	} else if (S_ISREG(dir_stat.st_mode)) {
++		remove(dir);
++	}
++}
++
++static int get_oldest_folder_if_outnumber(const char *dir, char *oldest_folder, int outnumber)
++{
++	char cur_dir[] = ".";
++	char up_dir[] = "..";
++	char dir_name[512];
++	DIR *dirp;
++	struct dirent *dp = NULL;
++	struct stat dir_stat;
++	int folder_count = 0;
++
++	if ( 0 != access(dir, F_OK) ) {
++		syslog( LOG_ERR, "%s access error", __FUNCTION__);
++		return 0;
++	}
++
++	if ( 0 > stat(dir, &dir_stat) ) {
++		syslog( LOG_ERR, "%s get directory stat error", __FUNCTION__);
++		return 0;
++	}
++
++	if ( S_ISDIR(dir_stat.st_mode) ) {
++		dirp = opendir(dir);
++		time_t t_oldest;
++
++		time(&t_oldest);
++		while ( (dp=readdir(dirp)) != NULL ) {
++			if ( (0 == strcmp(cur_dir, dp->d_name)) || (0 == strcmp(up_dir, dp->d_name)) ) {
++				continue;
++			}
++
++			if (dp->d_type == DT_DIR) {
++				folder_count ++;
++				sprintf(dir_name, "%s/%s", dir, dp->d_name);
++				if ( !stat(dir_name, &dir_stat) ) {
++					if(difftime(dir_stat.st_mtime, t_oldest) < 0){
++						t_oldest = dir_stat.st_mtime;
++						memcpy(oldest_folder, dir_name, sizeof(dir_name));
++					}
++				} else {
++					syslog( LOG_INFO, "%s stat file error:%s", __FUNCTION__, strerror(errno));
++				}
++			}
++		}
++		closedir(dirp);
++	}
++
++	syslog( LOG_INFO, "%s oldest_folder_path:%s", __FUNCTION__, oldest_folder);
++	if ( folder_count > outnumber ) {
++		return 1;
++	} else {
++		return 0;
++	}
++}
++
++#ifdef SUPPORT_LOG_RECYCLE
++static unsigned long getStorageRemainSize(const char *storage_path) {
++	int retrycount = 0;
++	struct statfs fileStat;
++
++	syslog(LOG_INFO, "%s check path=%s", __FUNCTION__, storage_path);
++	memset(&fileStat,0,sizeof(fileStat));
++
++	RECHECK:
++	if (statfs(storage_path, &fileStat) == -1) {
++		syslog(LOG_ERR, "%s fail to get storage information: errno=%d", __FUNCTION__, errno);
++		if (errno == EINTR && retrycount > 5) {
++			retrycount ++;
++			usleep(200000);
++			goto RECHECK;
++		} else {
++			return 0;
++		}
++	} else if (0 == fileStat.f_blocks) {
++		// Disk is not available
++		syslog(LOG_ERR, "storage is not available");
++		return 0;
++	}
++	syslog(LOG_INFO, "Logread getStorageRemainSize f_bavail:%lld f_bsize:%lld\n", (long long)fileStat.f_bavail, (long long)fileStat.f_bsize);
++	return (unsigned long) ((fileStat.f_bavail * fileStat.f_bsize) / 1024);
++}
++
++static bool old_folder_recycle(char *folder_name) {
++	char oldest_folder_path[512] = {0};
++	int is_old_folder_found = 0;
++	unsigned long storage_remain_size = 0;
++
++	do {
++		is_old_folder_found = get_oldest_folder_if_outnumber(
++				folder_name,oldest_folder_path,1);
++		syslog(LOG_INFO, "oldest_folder_path:%s\n", oldest_folder_path);
++		if ( is_old_folder_found ) {
++			remove_oldest_folder(oldest_folder_path);
++		} else {
++			return false;
++		}
++
++		storage_remain_size = getStorageRemainSize(folder_name);
++		syslog(LOG_INFO, "storage_remain_szie:%ld \n",storage_remain_size);
++
++		if(storage_remain_size > STORAGE_RESERVED_SPACE/1024) {
++			return true;
++		}
++	} while(1);
++}
++
++static bool doLogRecycle() {
++	char *file_folder = dirname(strdup(log_file));
++	char *recycle_folder = NULL;
++
++	syslog(LOG_INFO, "file folder:%s\n", file_folder);
++	if(strstr(file_folder,"aplog") || strstr(file_folder,"bootlog")) {
++		//file folder contain aplog or bootlog string which mean the file store in /aplog/aplog_time/ or /bootlog/bootlog_time/
++		recycle_folder = dirname(dirname(file_folder));
++	} else {
++		//file folder didn't contain aplog and bootlog
++		recycle_folder = file_folder;
++	}
++	syslog(LOG_INFO, "recycle folder:%s\n", recycle_folder);
++
++	// do aplog folder recycle
++	char aplog_folder_path[512] = {0};
++	sprintf(aplog_folder_path, "%s/%s", recycle_folder, "aplog");
++	if (old_folder_recycle(aplog_folder_path)) {
++		return true;
++	}
++
++	// do bootlog folder recycle
++	char bootlog_folder_path[512] = {0};
++	sprintf(bootlog_folder_path, "%s/%s", recycle_folder, "bootlog");
++	if (old_folder_recycle(bootlog_folder_path)) {
++		return true;
++	}
++
++	// do file recycle
++	if (support_multi_files && (support_max_saving_files_per_time > 2)) {
++		char remove_file_name[512];
++		unsigned long storage_remain_size = 0;
++
++		for( int i=0; i < support_max_saving_files_per_time; i++ ) {
++			memset(remove_file_name, 0, sizeof(char)*512);
++			sprintf(remove_file_name, "%s_%d", log_file, i+1);
++			remove(remove_file_name);
++		}
++		current_file_idx = 0;
++		storage_remain_size = getStorageRemainSize(file_folder);
++		syslog(LOG_INFO, "storage_remain_szie:%ld \n",storage_remain_size);
++
++		if(storage_remain_size > STORAGE_RESERVED_SPACE/1024) {
++			return true;
++		}
++	}
++
++	return false;
++}
++#endif
++
++#define UCI_CONFIG_FILE "/etc/config/system"
++
++static int getCfgValue(char *name,char *value, int valueBufLen)
++{
++	if (NULL == name || NULL == value) {
++		return -1;
++	}
++
++	struct uci_context * uciCtx = uci_alloc_context();
++	const char * pValueData = NULL;
++	struct uci_package * pkg = NULL;
++	struct uci_element * e;
++
++	if (UCI_OK != uci_load(uciCtx, UCI_CONFIG_FILE, &pkg)) {
++		goto cleanup;
++	}
++
++	uci_foreach_element(&pkg->sections, e)
++	{
++		struct uci_section *s = uci_to_section(e);
++		if (NULL != (pValueData = uci_lookup_option_string(uciCtx, s, name))) {
++			strncpy(value, pValueData, valueBufLen);
++		}
++	}
++
++	uci_unload(uciCtx, pkg);
++
++cleanup:
++	uci_free_context(uciCtx);
++	uciCtx = NULL;
++	return 1;
++}
++
++static void sigbus_msg_handler()
++{
++    syslog(LOG_ERR, "Logread receive sigbus error which may cause log time incorrect.\n");
++}
++
+ static const char* getcodetext(int value, CODE *codetable) {
+ 	CODE *i;
+ 
+@@ -135,7 +452,12 @@
+ 
+ 		close(sender.fd);
+ 		if (old) {
+-			sprintf(old, "%s.old", log_file);
++			if (support_multi_files && (support_max_saving_files_per_time > 2)) {
++				sprintf(old, "%s_%d", log_file, current_file_idx);
++				current_file_idx = current_file_idx % support_max_saving_files_per_time + 1;
++			} else {
++				sprintf(old, "%s.old", log_file);
++			}
+ 			rename(log_file, old);
+ 			free(old);
+ 		}
+@@ -200,12 +522,37 @@
+ 			uloop_timeout_set(&retry, 1000);
+ 		}
+ 	} else {
+-		snprintf(buf, sizeof(buf), "%s %s%s.%s%s %s\n",
+-			c, log_timestamp ? buf_ts : "",
+-			getcodetext(LOG_FAC(p) << 3, facilitynames),
+-			getcodetext(LOG_PRI(p), prioritynames),
+-			(blobmsg_get_u32(tb[LOG_SOURCE])) ? ("") : (" kernel:"), m);
+-		ret = write(sender.fd, buf, strlen(buf));
++#ifdef SUPPORT_LOG_RECYCLE
++		if (log_type == LOG_FILE) {
++			if (storage_check_count % CHECK_STORAGE_SIZE_COUNT == 0) {
++				unsigned long storage_remain_size = getStorageRemainSize(dirname(strdup(log_file)));
++				syslog(LOG_ERR, "check storage remain size:%ld\n", storage_remain_size);
++
++				if (storage_remain_size > 0) {
++					if (storage_remain_size < STORAGE_RESERVED_SPACE/1024) {
++						if (!doLogRecycle()) {
++							syslog(LOG_ERR,"System does not have enough space for saving log and skip_write set to 1\n");
++							skip_write = 1;
++						}
++					} else {
++						skip_write = 0;
++					}
++				} else {
++					syslog(LOG_ERR, "failed to get storage size and skip_write set to 1\n");
++					skip_write = 1;
++				}
++			}
++			storage_check_count++;
++		}
++#endif
++		if (!skip_write) {
++			snprintf(buf, sizeof(buf), "%s %s%s.%s%s %s\n",
++				c, log_timestamp ? buf_ts : "",
++				getcodetext(LOG_FAC(p) << 3, facilitynames),
++				getcodetext(LOG_PRI(p), prioritynames),
++				(blobmsg_get_u32(tb[LOG_SOURCE])) ? ("") : (" kernel:"), m);
++			ret = write(sender.fd, buf, strlen(buf));
++		}
+ 	}
+ 
+ 	if (log_type == LOG_FILE)
+@@ -286,7 +633,40 @@
+ 		retry.cb = log_handle_reconnect;
+ 		uloop_timeout_set(&retry, 1000);
+ 	} else if (log_file) {
++		char *parent_folder = dirname(strdup(log_file));
++#ifdef SUPPORT_LOG_RECYCLE
++		unsigned long storage_remain_size = 0;
++#endif
++
+ 		log_type = LOG_FILE;
++		mkdirs(parent_folder);
++		if(strstr(parent_folder,"bootlog")) {
++			char oldest_folder_path[512];
++			memset(oldest_folder_path, 0, sizeof(char)*512);
++			int found_old_folder = get_oldest_folder_if_outnumber(
++					dirname(dirname(strdup(log_file))),
++					oldest_folder_path,
++					support_max_bootlog_folder_number);
++			syslog(LOG_INFO, "oldest_folder_path:%s\n", oldest_folder_path);
++			if ( found_old_folder ) {
++				remove_oldest_folder(oldest_folder_path);
++			}
++		}
++#ifdef SUPPORT_LOG_RECYCLE
++		storage_remain_size = getStorageRemainSize(parent_folder);
++		syslog(LOG_INFO, "LOGREAD: storage_remain_szie:%ld \n",storage_remain_size);
++
++		if (storage_remain_size > 0) {
++			if (storage_remain_size < STORAGE_RESERVED_SPACE/1024) {
++				if (!doLogRecycle()) {
++					syslog(LOG_ERR,"System does not have enough space for saving log\n");
++					exit(-1);
++				}
++			}
++		} else {
++			syslog(LOG_ERR, "failed to access parent_folder\n");
++		}
++#endif
+ 		sender.fd = open(log_file, O_CREAT | O_WRONLY| O_APPEND, 0600);
+ 		if (sender.fd < 0) {
+ 			fprintf(stderr, "failed to open %s: %m\n", log_file);
+@@ -305,7 +685,33 @@
+ 	int ch, ret, lines = 0;
+ 	static struct blob_buf b;
+ 
++	char configStr[128];
++
++	openlog("LOGREAD", LOG_PID, 0);
++
+ 	signal(SIGPIPE, SIG_IGN);
++	signal(SIGBUS, sigbus_msg_handler);
++	
++	memset(configStr, 0, sizeof(configStr));
++	if (getCfgValue("ap_save_mode", configStr, sizeof(configStr))) {
++		if (atoi(configStr) == 1) {
++			support_multi_files = true;
++		}
++	}
++
++	memset(configStr, 0, sizeof(configStr));
++	if (getCfgValue("ap_max_files", configStr, sizeof(configStr))) {
++		if (atoi(configStr) > 2) {
++			support_max_saving_files_per_time = atoi(configStr);
++		}
++	}
++
++	memset(configStr, 0, sizeof(configStr));
++	if (getCfgValue("ap_max_bootlog_folders", configStr, sizeof(configStr))) {
++		if (atoi(configStr) > 5) {
++			support_max_bootlog_folder_number = atoi(configStr);
++		}
++	}
+ 
+ 	while ((ch = getopt(argc, argv, "u0fcs:l:z:Z:r:F:p:S:P:h:e:t")) != -1) {
+ 		switch (ch) {

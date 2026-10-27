@@ -1,0 +1,11 @@
+--- a/proto-shell.c	2023-01-11 15:38:21.948238187 +0800
++++ b/proto-shell.c	2023-01-11 15:55:48.823236080 +0800
+@@ -217,7 +217,7 @@
+ 				snprintf(error_buf, sizeof(error_buf), "ERROR=%d", state->last_error);
+ 				envp[j++] = error_buf;
+ 			}
+-			uloop_timeout_set(&state->teardown_timeout, 5000);
++			uloop_timeout_set(&state->teardown_timeout, 15000);
+ 			break;
+ 
+ 		case S_TEARDOWN:

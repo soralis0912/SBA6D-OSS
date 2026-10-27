@@ -1,0 +1,231 @@
+--- a/net/Kconfig
++++ b/net/Kconfig
+@@ -460,6 +460,18 @@ config FAILOVER
+ 	  migration of VMs with direct attached VFs by failing over to the
+ 	  paravirtual datapath when the VF is unplugged.
+ 
++config HW_NAT
++       bool "HW NAT support"
++       default n
++       ---help---
++        This feature provides a fast path to support network lan/wan nat.
++        If you need hw_nat engine to reduce cpu loading, please say Y.
++
++         Note that the answer to this question doesn't directly affect the
++         kernel: saying N will just cause the configurator to skip all
++         the questions about Mediatek Ethernet devices. If you say Y,
++         you will be asked for your specific card in the following questions.
++
+ endif   # if NET
+ 
+ # Used by archs to tell that they support BPF JIT compiler plus which flavour.ndex: linux-5.4.238/net/Makefile
+--- a/net/Makefile
++++ b/net/Makefile
+@@ -62,6 +62,9 @@ endif
+ obj-$(CONFIG_6LOWPAN)		+= 6lowpan/
+ obj-$(CONFIG_IEEE802154)	+= ieee802154/
+ obj-$(CONFIG_MAC802154)		+= mac802154/
++ifeq ($(CONFIG_HW_NAT),y)
++obj-y                           += nat/foe_hook/
++endif
+ 
+ ifeq ($(CONFIG_NET),y)
+ obj-$(CONFIG_SYSCTL)		+= sysctl_net.o
+--- a/net/core/skbuff.c
++++ b/net/core/skbuff.c
+@@ -79,6 +79,7 @@
+ 
+ #include "datagram.h"
+ 
++#include <net/ra_nat.h>
+ struct kmem_cache *skbuff_head_cache __ro_after_init;
+ static struct kmem_cache *skbuff_fclone_cache __ro_after_init;
+ #ifdef CONFIG_SKB_EXTENSIONS
+@@ -702,6 +703,8 @@ static void skb_release_all(struct sk_bu
+ 
+ void __kfree_skb(struct sk_buff *skb)
+ {
++	hwnat_set_headroom_zero(skb);
++	hwnat_set_tailroom_zero(skb);
+ 	skb_release_all(skb);
+ 	kfree_skbmem(skb);
+ }
+@@ -1666,6 +1669,13 @@ int pskb_expand_head(struct sk_buff *skb
+ 	       skb_shinfo(skb),
+ 	       offsetof(struct skb_shared_info, frags[skb_shinfo(skb)->nr_frags]));
+ 
++	/*hwnat copy headroom*/
++	hwnat_copy_headroom(data, skb);
++	/*hwnat copy tailroom*/
++	hwnat_copy_tailroom(data, size, skb);
++	/*remove hwnat information to avoid skb reuse causing error binding*/
++	hwnat_set_headroom_zero(skb);
++	hwnat_set_tailroom_zero(skb);
+ 	/*
+ 	 * if shinfo is shared we must drop the old head gracefully, but if it
+ 	 * is not we can just drop the old head and let the existing refcount
+--- a/net/ipv4/ip_output.c
++++ b/net/ipv4/ip_output.c
+@@ -82,6 +82,7 @@
+ #include <linux/netfilter_bridge.h>
+ #include <linux/netlink.h>
+ #include <linux/tcp.h>
++#include <net/ra_nat.h>
+ 
+ static int
+ ip_fragment(struct net *net, struct sock *sk, struct sk_buff *skb,
+@@ -538,6 +539,10 @@ packet_routed:
+ 	skb->priority = sk->sk_priority;
+ 	skb->mark = sk->sk_mark;
+ 
++	/* hw_nat use*/
++	hwnat_set_l2tp_unhit(iph, skb);
++	hwnat_check_magic_tag(skb);
++
+ 	res = ip_local_out(net, sk, skb);
+ 	rcu_read_unlock();
+ 	return res;
+--- a/net/ipv4/tcp_input.c
++++ b/net/ipv4/tcp_input.c
+@@ -79,6 +79,7 @@
+ #include <trace/events/tcp.h>
+ #include <linux/jump_label_ratelimit.h>
+ #include <net/busy_poll.h>
++#include <net/ra_nat.h>
+ 
+ int sysctl_tcp_max_orphans __read_mostly = NR_FILE;
+ 
+@@ -5613,6 +5614,8 @@ void tcp_rcv_established(struct sock *sk
+ 	struct tcp_sock *tp = tcp_sk(sk);
+ 	unsigned int len = skb->len;
+ 
++	/*avoid tcp receive path error accelerate*/
++	hwnat_magic_tag_set_zero(skb);
+ 	/* TCP congestion window tracking */
+ 	trace_tcp_probe(sk, skb);
+ 
+--- a/net/ipv4/udp.c
++++ b/net/ipv4/udp.c
+@@ -112,6 +112,7 @@
+ #include <net/sock_reuseport.h>
+ #include <net/addrconf.h>
+ #include <net/udp_tunnel.h>
++#include <net/ra_nat.h>
+ 
+ struct udp_table udp_table __read_mostly;
+ EXPORT_SYMBOL(udp_table);
+@@ -2511,6 +2512,7 @@ int udp_v4_early_demux(struct sk_buff *s
+ 
+ int udp_rcv(struct sk_buff *skb)
+ {
++	hwnat_magic_tag_set_zero(skb);
+ 	return __udp4_lib_rcv(skb, &udp_table, IPPROTO_UDP);
+ }
+ 
+--- a/net/netfilter/nf_conntrack_core.c
++++ b/net/netfilter/nf_conntrack_core.c
+@@ -52,6 +52,7 @@
+ #include <net/netfilter/nf_nat_helper.h>
+ #include <net/netns/hash.h>
+ #include <net/ip.h>
++#include <net/ra_nat.h>
+ 
+ #include "nf_internals.h"
+ 
+@@ -1637,6 +1638,7 @@ nf_conntrack_in(struct sk_buff *skb, con
+ 	struct nf_conn *ct, *tmpl;
+ 	u_int8_t protonum;
+ 	int dataoff, ret;
++	struct nf_conn_help *help;
+ 
+ 	tmpl = nf_ct_get(skb, &ctinfo);
+ 	if (tmpl || ctinfo == IP_CT_UNTRACKED) {
+@@ -1710,6 +1712,11 @@ repeat:
+ 		goto out;
+ 	}
+ 
++	/*hw nat use*/
++	help = nfct_help(ct);
++	if (help && help->helper)
++		magic_tag_set_zero(skb);
++
+ 	if (ctinfo == IP_CT_ESTABLISHED_REPLY &&
+ 	    !test_and_set_bit(IPS_SEEN_REPLY_BIT, &ct->status))
+ 		nf_conntrack_event_cache(IPCT_REPLY, ct);
+--- a/net/netfilter/nf_conntrack_proto.c
++++ b/net/netfilter/nf_conntrack_proto.c
+@@ -41,6 +41,7 @@
+ #include <linux/in6.h>
+ #include <net/ipv6.h>
+ #include <net/inet_frag.h>
++#include <net/ra_nat.h>
+ 
+ extern unsigned int nf_conntrack_net_id;
+ 
+@@ -131,6 +132,7 @@ unsigned int nf_confirm(struct sk_buff *
+ 		const struct nf_conntrack_helper *helper;
+ 		int ret;
+ 
++		hwnat_magic_tag_set_zero(skb);
+ 		/* rcu_read_lock()ed by nf_hook_thresh */
+ 		helper = rcu_dereference(help->helper);
+ 		if (helper) {
+--- a/net/xfrm/xfrm_output.c
++++ b/net/xfrm/xfrm_output.c
+@@ -15,6 +15,7 @@
+ #include <net/dst.h>
+ #include <net/inet_ecn.h>
+ #include <net/xfrm.h>
++#include <net/ra_nat.h>
+ 
+ #include "xfrm_inout.h"
+ 
+@@ -453,6 +454,7 @@ static int xfrm_output_one(struct sk_buf
+ 
+ 		spin_unlock_bh(&x->lock);
+ 
++		hwnat_magic_tag_set_zero(skb);
+ 		skb_dst_force(skb);
+ 		if (!skb_dst(skb)) {
+ 			XFRM_INC_STATS(net, LINUX_MIB_XFRMOUTERROR);
+--- a/net/netfilter/nf_conntrack_proto_tcp.c
++++ b/net/netfilter/nf_conntrack_proto_tcp.c
+@@ -21,6 +21,7 @@
+ #include <linux/netfilter.h>
+ #include <linux/netfilter_ipv4.h>
+ #include <linux/netfilter_ipv6.h>
++#include <linux/inetdevice.h>
+ #include <net/netfilter/nf_conntrack.h>
+ #include <net/netfilter/nf_conntrack_l4proto.h>
+ #include <net/netfilter/nf_conntrack_ecache.h>
+@@ -48,6 +49,11 @@ static int nf_ct_tcp_max_retrans __read_
+   /* FIXME: Examine ipfilter's timeouts and conntrack transitions more
+      closely.  They're more complex. --RR */
+ 
++#ifndef IPV4_DEVCONF_DFLT
++      #define IPV4_DEVCONF_DFLT(net, attr) \
++      IPV4_DEVCONF((*(net)->ipv4.devconf_dflt), attr)
++#endif
++
+ static const char *const tcp_conntrack_names[] = {
+ 	"NONE",
+ 	"SYN_SENT",
+@@ -476,6 +482,18 @@ static bool tcp_in_window(const struct n
+ 	s32 receiver_offset;
+ 	bool res, in_recv_win;
+ 
++  if (net) {
++          if ((net->ipv4.devconf_all && net->ipv4.devconf_dflt && net->ipv6.devconf_all) &&
++              net->ipv6.devconf_dflt) {
++                  if ((IPV4_DEVCONF_DFLT(net, FORWARDING) ||
++                       IPV4_DEVCONF_ALL(net, FORWARDING)) ||
++                      (net->ipv6.devconf_all->forwarding ||
++                       net->ipv6.devconf_dflt->forwarding)) {
++                          return true;
++                  }
++          }
++  }
++
+ 	/*
+ 	 * Get the required data from the packet.
+ 	 */

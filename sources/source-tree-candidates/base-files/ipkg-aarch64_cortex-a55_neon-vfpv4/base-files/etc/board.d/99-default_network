@@ -1,0 +1,21 @@
+#!/bin/sh
+
+. /lib/functions/uci-defaults.sh
+
+read lan_mac < /mnt/vendor/nvcfg/mac0
+read wan_mac < /mnt/vendor/nvcfg/mac1
+
+board_config_update
+
+ucidef_set_interface_wan "eth1"
+ucidef_set_interface_lan "eth0"
+
+[ -n "$lan_mac" ] && ucidef_set_interface_macaddr "lan" "$lan_mac"
+[ -n "$wan_mac" ] && ucidef_set_interface_macaddr "wan" "$wan_mac"
+
+[ -n "$lan_mac" ] && ucidef_set_network_device_mac eth0 $lan_mac
+[ -n "$wan_mac" ] && ucidef_set_network_device_mac eth1 $wan_mac
+
+board_config_flush
+
+exit 0

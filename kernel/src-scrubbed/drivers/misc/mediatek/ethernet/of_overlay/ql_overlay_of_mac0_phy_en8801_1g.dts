@@ -1,0 +1,32 @@
+
+/dts-v1/;
+/plugin/;	/* allow undefined label references and record them */
+#include <generated/autoconf.h>
+
+/ {
+
+	fragment@1 {
+		target-path="/netsys@15100000/ethernet@15100000/mac@0";
+		__overlay__ {
+			compatible = "mediatek,eth-mac";
+			reg = <0>;
+			phy-mode = "sgmii";
+			phy-handle = <&phy0_1g>;
+		};
+	};
+	fragment@0 {
+		target-path="/netsys@15100000/ethernet@15100000/mdio-bus";
+		__overlay__ {
+			phy0_1g: mac0_eth_1g {
+				// reg = <0>;			/* update in of_mdio.h of_mdio_parse_addr */
+				compatible ="ethernet-phy-id03a2.9461";		// config with PHY ID
+				phy-mode = "sgmii";
+				reset-gpios = <&pio CONFIG_SGMII0_PHY_RESET_PIN 1>; /*1 means active low. 0 is means active high*/
+				reset-assert-us =<10000>;
+				reset-deassert-us = <10000>;
+				full-duplex;
+				pause;
+			};
+		};
+	};
+};

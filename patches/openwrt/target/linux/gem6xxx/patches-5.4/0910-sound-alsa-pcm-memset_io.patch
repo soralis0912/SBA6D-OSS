@@ -1,0 +1,11 @@
+--- a/sound/core/pcm_native.c
++++ b/sound/core/pcm_native.c
+@@ -722,7 +722,7 @@ static int snd_pcm_hw_params(struct snd_
+ 
+ 		if (runtime->info & SNDRV_PCM_INFO_MMAP)
+ 			size = PAGE_ALIGN(size);
+-		memset(runtime->dma_area, 0, size);
++		memset_io(runtime->dma_area, 0, size);
+ 	}
+ 
+ 	snd_pcm_timer_resolution_change(substream);

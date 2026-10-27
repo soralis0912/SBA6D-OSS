@@ -1,0 +1,108 @@
+# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/pinctrl/mediatek,mt6361-pinctrl.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Mediatek MT6361 pin controller Device Tree Bindings
+
+maintainers:
+  - ChiYuan Huang <cy_huang@richtek.com>
+
+description: |
+  Mediatek MT6361 integrates total 12 pins, functions can be configured
+  as level shift  or GPIO.
+
+properties:
+  compatible:
+    const: mediatek,mt6361-pinctrl
+
+  gpio-controller: true
+
+  '#gpio-cells':
+    const: 2
+
+  gpio-ranges:
+    maxItems: 1
+
+patternProperties:
+  '^(.*-)?(default|gpio)$':
+    type: object
+    patternProperties:
+      '^mux':
+        type: object
+        description:
+          Pinctrl node's client devices use subnodes for pin muxes,
+          which in turn use below standard properties.
+        $ref: pinmux-node.yaml#
+
+        properties:
+          function:
+            description:
+              Specify the alternative function to be configured for the
+              given pin groups.
+            enum: [lvsf, gpio]
+
+          groups:
+            description:
+              List of groups to select (either this or "pins" must be
+              specified), available groups for this subnode.
+            items:
+              enum: [lvsf1_grp, lvsf2_grp, lvsf3_grp, lvsf4_grp,
+                     lvsf5_grp, lvsf6_grp]
+            maxItems: 6
+
+        required:
+          - groups
+          - function
+
+        additionalProperties: false
+
+      '^conf':
+        type: object
+        description:
+          Pinctrl node's client devices use subnodes for pin configurations,
+          which in turn use the standard properties below.
+        $ref: pincfg-node.yaml#
+
+        properties:
+          pins:
+            description:
+              List of pin names to select in this subnode.
+            items:
+              pattern: '^(A|B)[1-6]$'
+            maxItems: 12
+
+          bias-pull-up: true
+          bias-pull-down: true
+          bias-disable: true
+          input-enable: true
+          output-low: true
+          output-high: true
+          output-enable: true
+          power-source:
+            enum: [0, 1]
+
+        required:
+          - pins
+
+        additionalProperties: false
+
+    additionalProperties: false
+
+required:
+  - compatible
+  - gpio-controller
+  - '#gpio-cells'
+  - gpio-ranges
+
+additionalProperties: false
+
+examples:
+  - |
+    pinctrl: pinctrl {
+      comptaible = "mediatek.mt6361-pinctrl";
+      gpio-controller;
+      #gpio-cells = <2>;
+      gpio-ranges = <&pinctrl 0 0 12>;
+    };

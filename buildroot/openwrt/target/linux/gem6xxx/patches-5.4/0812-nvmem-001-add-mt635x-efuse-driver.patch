@@ -1,0 +1,34 @@
+Index: linux-5.4.143/drivers/nvmem/Kconfig
+===================================================================
+--- linux-5.4.143.orig/drivers/nvmem/Kconfig	2021-08-26 20:55:22.000000000 +0800
++++ linux-5.4.143/drivers/nvmem/Kconfig	2021-09-08 11:00:14.185440386 +0800
+@@ -97,6 +97,16 @@
+ 	  This driver can also be built as a module. If so, the module
+ 	  will be called efuse-mtk.
+ 
++config MT635X_EFUSE
++	tristate "Mediatek MT635x PMIC EFUSE Support"
++	depends on MFD_MT6397 || MFD_MT6330 || COMPILE_TEST
++	help
++	  This is a simple driver to dump specified values of Mediatek
++	  MT635X PMIC from EFUSE.
++
++	  This driver can also be built as a module. If so, the module
++	  will be called nvmem-mt635x-efuse.
++
+ config QCOM_QFPROM
+ 	tristate "QCOM QFPROM Support"
+ 	depends on ARCH_QCOM || COMPILE_TEST
+Index: linux-5.4.143/drivers/nvmem/Makefile
+===================================================================
+--- linux-5.4.143.orig/drivers/nvmem/Makefile	2021-08-26 20:55:22.000000000 +0800
++++ linux-5.4.143/drivers/nvmem/Makefile	2021-09-08 11:01:16.386192885 +0800
+@@ -26,6 +26,8 @@
+ nvmem-mxs-ocotp-y		:= mxs-ocotp.o
+ obj-$(CONFIG_MTK_EFUSE)		+= nvmem_mtk-efuse.o
+ nvmem_mtk-efuse-y		:= mtk-efuse.o
++obj-$(CONFIG_MT635X_EFUSE)	+= nvmem-mt635x-efuse.o
++nvmem-mt635x-efuse-y		:= mt635x-efuse.o
+ obj-$(CONFIG_QCOM_QFPROM)	+= nvmem_qfprom.o
+ nvmem_qfprom-y			:= qfprom.o
+ obj-$(CONFIG_ROCKCHIP_EFUSE)	+= nvmem_rockchip_efuse.o

@@ -1,0 +1,29 @@
+--- a/drivers/rtc/Kconfig
++++ b/drivers/rtc/Kconfig
+@@ -1829,6 +1829,16 @@ config RTC_DRV_MT6397
+ 
+ 	  If you want to use MediaTek(R) RTC interface, select Y or M here.
+ 
++config RTC_DRV_MT6685
++	tristate "MediaTek PMIC based RTC"
++	depends on MFD_MT6685 || (COMPILE_TEST && IRQ_DOMAIN)
++	help
++	  This selects the MediaTek(R) RTC driver. RTC is part of MediaTek
++	  MT6330 PMIC. You should enable MT6330 PMIC MFD before select
++	  MediaTek(R) RTC driver.
++
++	  If you want to use MediaTek(R) RTC interface, select Y or M here.
++
+ config RTC_DRV_MT7622
+ 	tristate "MediaTek SoC based RTC"
+ 	depends on ARCH_MEDIATEK || COMPILE_TEST
+--- a/drivers/rtc/Makefile
++++ b/drivers/rtc/Makefile
+@@ -112,6 +112,7 @@ obj-$(CONFIG_RTC_DRV_MPC5121)	+= rtc-mpc
+ obj-$(CONFIG_RTC_DRV_MSM6242)	+= rtc-msm6242.o
+ obj-$(CONFIG_RTC_DRV_MT6330)    += rtc-mt6330.o
+ obj-$(CONFIG_RTC_DRV_MT6397)	+= rtc-mt6397.o
++obj-$(CONFIG_RTC_DRV_MT6685)	+= rtc-mt6685.o
+ obj-$(CONFIG_RTC_DRV_MT7622)	+= rtc-mt7622.o
+ obj-$(CONFIG_RTC_DRV_MV)	+= rtc-mv.o
+ obj-$(CONFIG_RTC_DRV_MXC)	+= rtc-mxc.o

@@ -1,0 +1,5 @@
+config QUECTEL_BR_TRIG
+	tristate "Quectel br link trigger Supports"
+    depends on QUECTEL_DRIVERS
+	---help---
+	  Supports quectel br link trigger drivers.

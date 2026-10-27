@@ -1,0 +1,359 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2019 MediaTek Inc.
+ */
+
+/dts-v1/;
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include "mt6880.dtsi"
+#include "tcpc_config.dtsi"
+#include "rt9467.dtsi"
+
+&reserved_memory {
+};
+
+/ {
+	model = "MediaTek mt6880v1_datacard";
+	compatible = "mediatek,mt6880v1_datacard", "mediatek,mt6880";
+
+	memory@40000000 {
+		device_type = "memory";
+		reg = <0 0x40000000 0 0x1e800000>;
+	};
+
+	chosen {
+		bootargs = "console=tty0 console=ttyS0,921600n1 \
+		init=/etc/preinit root=/dev/mtdblock31 \
+		androidboot.selinux=permissive androidboot.hardware=mt6880 \
+		initcall_debug=1";
+
+		atag,videolfb-fb_base_l = <0x7e605000>;
+		atag,videolfb-fb_base_h = <0x0>;
+		atag,videolfb-islcmfound = <1>;
+		atag,videolfb-islcm_inited = <0>;
+		atag,videolfb-fps= <6000>;
+		atag,videolfb-vramSize= <0x1be0000>;
+		atag,videolfb-lcmname=
+			"nt35595_fhd_dsi_cmd_truly_nt50358_drv";
+	};
+};
+
+/* DISPSYS GPIO standardization */
+#if 0
+&pio {
+	mtkfb_pins_lcd_bias_enp1: lcd_bias_enp1_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO28__FUNC_GPIO28>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enp0: lcd_bias_enp0_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO28__FUNC_GPIO28>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enn1: lcd_bias_enn1_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO29__FUNC_GPIO29>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enn0: lcd_bias_enn0_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO29__FUNC_GPIO29>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcm_rst_out1_gpio: lcm_rst_out1_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO42__FUNC_GPIO42>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcm_rst_out0_gpio: lcm_rst_out0_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO42__FUNC_GPIO42>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	mtkfb_pins_lcm_dsi_te: lcm_dsi_te {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO41__FUNC_DSI_TE>;
+		};
+	};
+};
+
+&mtkfb {
+	pinctrl-names = "lcd_bias_enp1_gpio", "lcd_bias_enp0_gpio",
+		"lcd_bias_enn1_gpio", "lcd_bias_enn0_gpio",
+		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
+		"mode_te_te";
+	pinctrl-0 = <&mtkfb_pins_lcd_bias_enp1>;
+	pinctrl-1 = <&mtkfb_pins_lcd_bias_enp0>;
+	pinctrl-2 = <&mtkfb_pins_lcd_bias_enn1>;
+	pinctrl-3 = <&mtkfb_pins_lcd_bias_enn0>;
+	pinctrl-4 = <&mtkfb_pins_lcm_rst_out1_gpio>;
+	pinctrl-5 = <&mtkfb_pins_lcm_rst_out0_gpio>;
+	pinctrl-6 = <&mtkfb_pins_lcm_dsi_te>;
+	status = "okay";
+};
+#endif
+
+/* GPS GPIO standardization start */
+#if 1
+&pio {
+	gps_pins_default: gps_default {
+	};
+
+	gps_l1_lna_pins_ol: gps_l1_lna@0 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO125__FUNC_GPIO125>;
+			output-low;
+		};
+	};
+	gps_l1_lna_pins_dsp_ctrl: gps_l1_lna@1 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO125__FUNC_GPS_L1_ELNA_EN>;
+		};
+	};
+	gps_l1_lna_pins_oh: gps_l1_lna@2 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO125__FUNC_GPIO125>;
+			output-high;
+		};
+	};
+
+	gps_l5_lna_pins_ol: gps_l5_lna@0 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO126__FUNC_GPIO126>;
+			output-low;
+		};
+	};
+	gps_l5_lna_pins_dsp_ctrl: gps_l5_lna@1 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO126__FUNC_GPS_L5_ELNA_EN>;
+		};
+	};
+	gps_l5_lna_pins_oh: gps_l5_lna@2 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO126__FUNC_GPIO126>;
+			output-high;
+		};
+	};
+};
+
+&gps {
+	pinctrl-names = "default",
+		"gps_l1_lna_disable",
+		"gps_l1_lna_dsp_ctrl",
+		"gps_l1_lna_enable",
+		"gps_l5_lna_disable",
+		"gps_l5_lna_dsp_ctrl",
+		"gps_l5_lna_enable";
+	pinctrl-0 = <&gps_pins_default>;
+	pinctrl-1 = <&gps_l1_lna_pins_ol>;
+	pinctrl-2 = <&gps_l1_lna_pins_dsp_ctrl>;
+	pinctrl-3 = <&gps_l1_lna_pins_oh>;
+	pinctrl-4 = <&gps_l5_lna_pins_ol>;
+	pinctrl-5 = <&gps_l5_lna_pins_dsp_ctrl>;
+	pinctrl-6 = <&gps_l5_lna_pins_oh>;
+	status = "okay";
+};
+#endif
+/* GPS GPIO standardization end */
+
+/* usb typec swtich */
+&pio {
+	c1_active: c1_high {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO95__FUNC_GPIO95>;
+			output-high;
+		};
+	};
+
+	c2_active: c2_highz {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO94__FUNC_GPIO94>;
+			input-enable;
+			bias-disable;
+		};
+	};
+
+	c1_sleep: c1_low {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO95__FUNC_GPIO95>;
+			output-low;
+		};
+	};
+
+	c2_sleep: c2_low {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO94__FUNC_GPIO94>;
+			output-low;
+		};
+	};
+
+	sel_up: sel_low {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO93__FUNC_GPIO93>;
+			output-low;
+		};
+	};
+
+	sel_down: sel_high {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO93__FUNC_GPIO93>;
+			output-high;
+		};
+	};
+
+	sw_enable: sw_enable {
+	};
+
+	sw_disable: sw_disable {
+	};
+	kpd_gpios_def_cfg: kpdgpiodefault {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO114__FUNC_KPROW0>,
+				<PINMUX_GPIO115__FUNC_KPROW1>;
+			mediatek,pull-down-adv = <MTK_PUPD_SET_R1R0_01>;
+			output-low;
+			input-schmitt-enable;
+		};
+	};
+};
+
+&keypad {
+	mediatek,key-debounce-ms = <1024>;
+	/*HW Keycode [0~71] -> Linux Keycode*/
+	mediatek,hw-map-num = <72>;
+	mediatek,hw-init-map = <0 0 114 0 0 0 0 0 0 0 0 0 0 0 0 115 0 0 0 0 0 0 0
+		0 0 0 0 0 112 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+		0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 >;
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&kpd_gpios_def_cfg>;
+};
+
+&typec_switch {
+	switch-names = "ptn36241g","fusb304";
+	pinctrl-names = "c1_active", "c1_sleep",
+		"c2_active", "c2_sleep",
+		"sel_up", "sel_down",
+		"enable", "disable";
+	/* ptn36241g */
+	pinctrl-0 = <&c1_active>;
+	pinctrl-1 = <&c1_sleep>;
+	pinctrl-2 = <&c2_active>;
+	pinctrl-3 = <&c2_sleep>;
+	/* fusb304 */
+	pinctrl-4 = <&sel_up>;
+	pinctrl-5 = <&sel_down>;
+	pinctrl-6 = <&sw_enable>;
+	pinctrl-7 = <&sw_disable>;
+};
+
+&pio {
+	nandc_pins_default: nandcdefault {
+		pins0 {
+			pinmux = <PINMUX_GPIO215__FUNC_NLD0>,
+				<PINMUX_GPIO216__FUNC_NLD1>,
+				<PINMUX_GPIO217__FUNC_NLD2>,
+				<PINMUX_GPIO218__FUNC_NLD3>,
+				<PINMUX_GPIO219__FUNC_NLD4>,
+				<PINMUX_GPIO220__FUNC_NLD5>,
+				<PINMUX_GPIO221__FUNC_NLD6>,
+				<PINMUX_GPIO222__FUNC_NLD7>,
+				<PINMUX_GPIO228__FUNC_NALE>,
+				<PINMUX_GPIO229__FUNC_NCLE>;
+			drive-strength = <MTK_DRIVE_4mA>;
+			bias-pull-down;
+		};
+		pins1 {
+			pinmux = <PINMUX_GPIO223__FUNC_NCEB1>,
+				<PINMUX_GPIO224__FUNC_NCEB0>,
+				<PINMUX_GPIO225__FUNC_NRNB>,
+				<PINMUX_GPIO226__FUNC_NREB>,
+				<PINMUX_GPIO227__FUNC_NWEB>;
+			drive-strength = <MTK_DRIVE_4mA>;
+			bias-pull-up;
+		};
+	};
+};
+
+&nandc {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&nandc_pins_default>;
+	clocks =<&topckgen_clk CLK_TOP_TCK_26M_MX9>,
+			<&topckgen_clk CLK_TOP_UNIVPLL_D5_D4>,
+			<&topckgen_clk CLK_TOP_MAINPLL_D7_D4>,
+			<&topckgen_clk CLK_TOP_MAINPLL_D6_D4>,
+			<&topckgen_clk CLK_TOP_UNIVPLL_D6_D4>,
+			<&topckgen_clk CLK_TOP_MAINPLL_D4_D4>,
+			<&topckgen_clk CLK_TOP_UNIVPLL_D4_D4>,
+			<&topckgen_clk CLK_TOP_MAINPLL_D6_D2>,
+			<&topckgen_clk CLK_TOP_NFI1X_SEL>,
+			<&infracfg_ao_clk CLK_IFRAO_RG_66M_NFI_HCLK_CK>,
+			<&infracfg_ao_clk CLK_IFRAO_RG_NFI>;
+	clock-names = "nfi_parent_26m",
+				"nfi_parent124.8m",
+				"nfi_parent78m",
+				"nfi_parent91m",
+				"nfi_parent104m",
+				"nfi_parent136.5m",
+				"nfi_parent156m",
+				"nfi_parent182m",
+				"nfi_clk_sel",
+				"dma_cg",
+				"nfi_cg";
+};
+
+/*************************
+ * PMIC LED DTSI File
+*************************/
+&pmic {
+	mt6330-led {
+		compatible = "mediatek,mt6330_leds";
+		Isink1 {
+			reg = <1>;
+			label = "led9515:green:pmic";
+			linux,default-trigger = "none";
+			default-state = "off";
+		};
+	};
+};
+
+&pcie_ep {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie_ep_pins_default>;
+};
+
+/* PCIe EP mode */
+&pio {
+	pcie_ep_pins_default: pcie_ep-default {
+		mux {
+			pinmux = <PINMUX_GPIO67__FUNC_PCIE_PERESET_N_0P>,
+			         <PINMUX_GPIO68__FUNC_PCIE_WAKE_N_0P>,
+				 <PINMUX_GPIO69__FUNC_PCIE_CLKREQ_N_0P>;
+			bias-pull-up;
+		};
+	};
+};
+
+#include <mediatek/evb6880v1_datacard/cust.dtsi>
+/*End of this file, DO NOT ADD ANYTHING HERE*/

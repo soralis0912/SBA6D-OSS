@@ -1,0 +1,17 @@
+Package: vnstat2
+Version: 2.9-230417.47736
+Depends: libc, libsqlite3-0
+Conflicts: vnstat
+Source: /home/altim/work/t830/feeds/packages/net/vnstat2
+SourceName: vnstat2
+License: GPL-2.0-only
+LicenseFiles: COPYING
+Section: net
+SourceDateEpoch: 1730886256
+Maintainer: Jan Hoffmann <jan@3e8.eu>
+Architecture: aarch64_cortex-a55_neon-vfpv4
+Installed-Size: 95566
+Description:  vnStat is a network traffic monitor for Linux that keeps a log of daily
+ network traffic for the selected interface(s). vnStat isn't a packet
+ sniffer. The traffic information is analyzed from the /proc -filesystem,
+ so vnStat can be used without root permissions.

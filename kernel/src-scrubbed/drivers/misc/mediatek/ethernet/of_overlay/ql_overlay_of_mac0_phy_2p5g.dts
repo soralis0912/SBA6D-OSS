@@ -1,0 +1,19 @@
+
+/dts-v1/;
+/plugin/;	/* allow undefined label references and record them */
+
+/ {
+	fragment@0 {
+		target-path="/netsys@15100000/ethernet@15100000/mac@0";
+		__overlay__ {
+			compatible = "mediatek,eth-mac";
+			reg = <0>;
+			phy-mode = "2500base-x";
+			fixed-link {
+				speed = <2500>;
+				full-duplex;
+				pause;
+			};
+		};
+	};
+};

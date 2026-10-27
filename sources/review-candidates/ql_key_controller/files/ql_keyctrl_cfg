@@ -1,0 +1,28 @@
+[KEY0]
+;name: key's name,must be unique 
+;long_press_time: long press duration(ms) 
+;event: device node @/dev/input/event0,event can be same
+;linux_code:key code,can be customized but must be unique
+;customized_key_hander: if 1, use customized key handler which defined in custom_key_handler.c
+;                       if 0, use quectel key handler, default 0
+name = power_key
+long_press_time =  800
+event = 0
+linux_code = 116
+customized_key_hander = 0
+
+[KEY1]
+name = restore_key
+long_press_time =  500
+event = 2
+linux_code = 6
+customized_key_hander = 0
+
+[KEY2] 
+name = wps_key
+long_press_time =  3000
+event = 2
+linux_code = 7
+;wps_ifname: wps use only, match with /etc/wireless/l1profile.dat(INDEX%d_main_ifname), default rai0
+wps_ifname = rai0
+customized_key_hander = 0

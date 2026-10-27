@@ -1,0 +1,590 @@
+2.9 / 23-Jan-2022
+
+ - Fixed
+   - RescanDatabaseOnSave configuration option wasn't being read from the
+     configuration file resulting in the feature always being enabled
+   - Hourly graph image output using large fonts didn't correctly fade out
+     the x-axis line for hours not having data available
+ - New
+   - Add --alert for producing output and/or specific exit status when
+     configured condition and transfer limit is exceeded, can also be used
+     for "quota remaining" type of queries depending on used parameters
+   - Add configuration option InterfaceMatchMethod which allows configuring
+     the possibility of specifying an interface for database queries by using
+     its alias instead of system provided interface name, enabled by default
+     to support case insensitive matching of the beginning of interface
+     aliases (vnstat and vnstati)
+   - Image output file extension allows selecting the used image file format
+     as long as the used LibGD supports it, PNG is no longer the only option
+   - Add configuration option HourlyGraphMode for changing the output mode
+     of the graph, 0 = 24 hour sliding window (default, as in previous
+     releases), 1 = graph begins from midnight
+   - Add mode parameter for -hg / --hoursgraph options for overriding the
+     HourlyGraphMode configuration option setting from the command line
+   - Add vertical line to image output hourly graph to visualize midnight
+   - Add -t / --timestamp options to daemon for enabling timestamps to prints
+     when the daemon is running in the foreground attached to a terminal
+   - Accept ; as comment character in configuration file in addition to #
+   - Comment out keywords which are using default values with ; character in
+     provided configuration file and --showconfig output
+
+
+2.8 / 4-Sep-2021
+
+ - Fixed
+   - Using a combination of --live and --json wasn't flushing stdout after
+     each line resulting in buffered output if the output was being piped
+   - Image output would fail to show the last line bar graph in list outputs
+     if EstimateStyle was 0, BarColumnShowsRate was 1 and the last line had a
+     higher traffic rate than other lines
+   - Image output didn't correctly horizontally align the "no data available"
+     message in 5 minute graph depending on the width of the image
+   - Image output related configuration warnings could get shown when image
+     output wasn't being used
+   - Warnings of mismatches between image output and data retention
+     configuration didn't provide relevant details for solving the issues
+   - BandwidthDetection was being used for tun interfaces even when the
+     Linux kernel had the information hardcoded to 10 Mbit regardless of the
+     used real interface, interface specific MaxBW will now be used instead
+     or MaxBandwidth as fallback
+   - Configured interface specific MaxBW values were getting overridden by
+     BandwidthDetection when something could be detected
+   - Image output horizontal rx/tx bars often had one pixel too much width in
+     the tx section resulting in slightly wrong ratio getting shown
+   - Top days list wasn't always sorting entries with exactly the same traffic
+     sum using ascending date
+   - 64bitInterfaceCounters with value -2 always assumed 32-bit on Linux
+     systems until a 64-bit value was seen if kernel headers weren't available
+     when binaries were built
+ - New
+   - Add the possibility of specifying an interface without using the
+     -i / --iface options (vnstat and vnstati)
+   - The daemon can discover added interfaces from the database without
+     requiring a restart, configurable with option RescanDatabaseOnSave
+   - Add configuration option UseUTC for using UTC as timezone for database
+     entries instead of following the system timezone configuration
+   - --iflist uses user configured interface specific MaxBW values in the
+     output when available instead of showing only the kernel provided
+     information when detected
+   - Add configuration option AlwaysAddNewInterfaces to expose the daemon
+     --alwaysadd command line option which gains an optional mode parameter
+   - Image output uses LibGD filled arc bug workaround only for LibGD
+     versions that are known to be broken
+   - Image output example cgi (examples/vnstat.cgi) improvements
+     - Automatically lists all monitored interfaces instead of requiring the
+       list to be filled manually, server name in page title comes from
+       hostname command by default
+     - Provides links for most available images to more detailed or longer
+       versions of each image
+     - Allows direct interface specific page access with /interfacename suffix
+       for the cgi if the used httpd supports PATH_INFO
+     - Page auto refresh can be enabled with configurable interval
+
+
+2.7 / 16-May-2021
+
+ - Fixed
+   - Possibility of segmentation fault with image list output when database
+     existed but no data was available
+   - ./configure output could show invalid install paths with some parameter
+     combinations (pull request by Severin Glöckner)
+   - Columns in text hours graph output could get misaligned if the selected
+     system locale used a UTF-8 sequence for the thousands separator instead
+     of a single character
+ - New
+   - Add -5g / --fivegraph options to image output with sizing related
+     parameters for the output of a 5 minute resolution bar graph
+   - Add configuration option SummaryGraph and optional parameter for
+     --hsummary and --vsummary for selecting which graph is shown next to
+     the summary data in the horizontal and vertical summary image outputs
+   - Add --large / --small options and configuration option LargeFonts for
+     controlling the image output font size
+   - Add --scale and configuration option ImageScale for scaling the image
+     output to a given percent
+   - Add configuration option LineSpacingAdjustment for adjusting the line
+     spacing of list format image outputs
+   - Add bar visualizations for traffic estimations in image output
+   - Allow writing image output to a filename starting with -
+   - Add --initdb to daemon for creating a new empty database without having
+     the daemon process staying running, doesn't discard data if a database
+     already exists
+   - Add configuration option BarColumnShowsRate for having the bar column in
+     image list outputs be scaled according to the average rate column values
+     when those values are visible, disabled by default
+   - Add --dbiflist for getting a list of interfaces in the database, both
+     --iflist and --dbiflist also get alternative more parseable outputs
+   - Add configuration option for large font output and make 5 minute
+     resolution graph visible in vnstat.cgi
+
+
+2.6 / 20-Jan-2020
+
+ - Fixed
+   - --json and --xml didn't support having both mode and limit parameters
+     defined at the same time as documented, broken since previous release
+   - Documentation was using a mix of "count" and "limit" for the option of
+     limiting the maximum number of shown entries in queries
+   - Summary image output would segmentation fault when the database existed
+     but didn't yet contain any daily or monthly data for the selected
+     interface
+ - New
+   - Add --limit as an alternative way for controlling the length of outputs
+
+
+2.5 / 14-Jan-2020
+
+ - Fixed
+   - Automatic interface selection wasn't done for --traffic and --live when
+     the Interface configuration setting was left empty
+   - --setalias didn't do anything when used in combination with --add
+   - -l / --live and -tr default to first interface instead of producing an
+     error if a interface merge is requested
+
+
+2.4 / 18-Aug-2019
+
+ - Fixed
+   - Daemon didn't correctly wait when acquiring database lock for data write
+     which could result in unnecessary errors and even process exit if an
+     external database read operation had exactly the same timing as the
+     daemon write operation
+   - Daemon didn't fork() even when requested to with --daemon when started
+     by PID 1 (issue seen at least in Docker containers)
+   - Move vnstatd man page from section 1 to section 8
+ - New
+   - Add --rename for renaming interfaces already existing the database
+
+
+2.3 / 10-Jul-2019
+
+ - Fixed
+   - Traffic rate wasn't being shown for the last entry of most lists during
+     the first update of the next period (first SaveInterval minutes of each
+     new hour, day, month and year)
+   - Systemd example service file could result in database file write issues
+     if the used systemd version supported ProtectSystem=strict but didn't
+     support StateDirectory (issue seen at least with systemd 232 in Debian 9)
+   - Debian and Red Hat init.d example files had wrong path for the pid file
+   - Interfaces could end up staying marked as 'disabled' in the database even
+     after becoming back active and monitored, only the shown status was wrong
+     without resulting in any data loss
+   - Some image outputs didn't allocate enough height for the image resulting
+     in the last row having less space below it than intended
+ - New
+   - Automatic interface selection when the Interface configuration setting
+     is left empty (new default)
+   - Add configuration option DatabaseWriteAheadLogging to enable SQLite
+     Write-Ahead Logging mode which may provide some disk i/o benefits,
+     see https://www.sqlite.org/wal.html for more details and note that
+     SQLite 3.22.0 or later is required to support read-only operations
+   - Add configuration option DatabaseSynchronous for changing the SQLite
+     setting of the "synchronous" flag, see
+     https://www.sqlite.org/pragma.html#pragma_synchronous for more details
+   - Show warning in log if writing cached data to database is slow
+   - Try database query for up to 5 seconds when database is busy or locked
+     instead of giving up immediately
+   - Continue daemon process execution with data caching if database writes
+     fail due to disk being full
+
+
+2.2 / 28-Apr-2019
+
+ - Fixed
+   - O_CLOEXEC undeclared error when compiling with glibc older than 2.12
+   - Image output --headertext wasn't being applied to some output types
+   - DefaultDecimals setting wasn't controlling all outputs
+   - Traffic rate for the last entry of the 5 minute resolution list wasn't
+     being correctly calculated
+ - New
+   - Detection of 32-bit / 64-bit kernel interface counters for improving
+     traffic calculations in rollover situations, cfg: 64bitInterfaceCounters
+   - Possibility in queries to merge data from multiple interfaces to one
+     output with interface1+interface2 syntax
+   - Highlight current day in top list when visible
+   - Changes in interface specific detected bandwidth limits are reported
+     in the log
+   - UpdateInterval value is automatically adjusted during daemon startup if
+     found to be too high compared to the value of MaxBandwidth
+ - Notes
+   - Added clarification to the man page that the 'jsonversion' and
+     'xmlversion' fields in the --json and --xml outputs should be seen as
+     the API version and compared to the previously used version in 3rd party
+     implementations for verifying compatibility
+   - Default value of UpdateInterval is now 20 instead of previous 30 seconds
+
+
+2.1 / 6-Dec-2018
+
+ - Fixed
+   - --oneline could segmentation fault if database had total traffic values
+     set but didn't have any daily or monthly traffic (Arch bug #60588)
+   - No proper error message was produced when querying interface which didn't
+     exist in the database
+   - Several typos and spelling mistakes in documentation
+   - Daemon:waittimesync_does_not_wait_with_new_interfaces test was failing if
+     the system used a time zone with a negative numeric value
+   - Traffic estimate and average rate for ongoing month was not being
+     calculated correctly when MonthRotate had a value greater than 1
+   - Accuracy of traffic estimate and average rate for the ongoing month could
+     be slightly skewed depending on the used time zone
+ - New
+   - Remove possible PollInterval and UpdateInterval drift over time
+   - Sync SaveInterval to full minutes
+
+
+2.0 / 21-Oct-2018
+
+ - Fixed
+   - Data rate calculations when using SI decimal prefixes
+   - Workaround for filled arcs not drawn correctly with some versions
+     of libgd (libgd/libgd#351)
+ - New
+   - C struct dump database has been replaced with sqlite database,
+     full data import included from legacy databases of versions 1.3 - 1.18
+   - User configurable data retention durations for all resolutions with
+     following changed defaults:
+                   v1.18     v2.0
+       5 minutes     n/a      576   (48 hours)
+       hours          24       96   (4 days)
+       days           30       62   (2 full months)
+       months         12       25   (2 full years)
+       years         n/a      all
+       top days       10       20
+   - Option to select units to use SI decimal prefixes using calculations
+     with powers of 1000 (IEC and JEDEC prefixes use powers of 1024)
+   - Yearly and 5 minute resolution statistics
+   - Pebibyte and exbibyte support
+   - Options the configure the length of each list output
+   - Option to limit the length of --json and --xml outputs
+   - Hourly list output replaces the hourly graph when the -h parameter is used
+   - Hourly graph is accessible with -hg / --hoursgraph parameter
+   - Options -b / --begin and -e / --end for specifying query time range
+   - Configuration comes with ISO 8601 date formats as new defaults
+ - Removed
+   - Weekly output
+   - Merge of data from multiple interfaces to one output
+   - --testkernel
+   - --exportdb, use --oneline, --json or --xml instead
+   - --importdb, -u / --update and related options using vnstat command
+   - Old style (default in versions up to 1.7) summary layout in image output
+
+
+1.18 / 4-Mar-2018
+
+ - Fix: Misspellings, compiler warnings and possible error situations
+   (pull requests by Christian Göttsche)
+ - Hardening added to examples/systemd/vnstat.service
+   (pull request by Christian Göttsche)
+ - Add RTC sanity check and sync wait to daemon startup, the possible wait
+   duration can be configured using the TimeSyncWait keyword
+ - Add optional parameter to --oneline output for forcing fields to output
+   in bytes
+ - Add --json support for -l / --live and -tr outputs
+ - Number of decimals used in outputs can be configured using DefaultDecimals
+   and HourlyDecimals
+ - Add section separators for improving readability of the vnstat -h output,
+   configurable using HourlySectionStyle
+
+
+1.17 / 16-Feb-2017
+
+ - Fix: --importdb was creating invalid databases since version 1.15
+ - Fix: console output was being buffered which resulted in lack of output
+   in at least systemd log
+ - Add cross-compilation detection and improve install-data-hook to not
+   assume that the binaries can be executed in the host system
+
+
+1.16 / 24-Dec-2016
+
+ - Fix: traffic rate calculation, SI decimal prefixes were shown but
+   calculation was done for IEC binary prefixes
+ - Add option for configure to disable image output support even if required
+   library is available, improve library detection
+   (pull request by Rodrigo Rebello)
+ - Add selection between SI decimal prefixes (kbit/s...) (default) and
+   IEC binary prefixes (Kibit/s...) for traffic rate using RateUnitMode
+   keyword in configuration file
+ - Improve database handling resilience
+ - Inherit database file ownership from database directory if UpdateFileOwner
+   configuration option is enabled (default: enabled) when adding new
+   interfaces for monitoring as root. This solves database file ownership
+   mismatches when the daemon is started as a non-root user and an interface
+   gets added for monitoring with a sudo command as root
+ - Improve user guidance in error situations related to the configured default
+   interface
+
+
+1.15 / 22-Dec-2015
+
+ - Fix: XML output had extra commas, broken since previous version
+ - Fix: unintended shared pointer modification in mosecs() sometimes resulted
+   in wrong month name to be shown for the current month
+ - Fix: possible buffer overflow in /proc/net/dev parsing, requires corrupted
+   content in /proc/net/dev or use of address sanitizer (found by Hanno Böck)
+ - Use ANSI escape codes in -l and -tr modes for cursor location manipulation
+   instead of printing backspaces, hide cursor while output is active
+ - Improve database import robustness
+ - Improve support for Asian UTF-8 date strings
+ - Replace hand written Makefiles with Autotools
+ - Add --alwaysadd parameter to daemon for allowing automatic addition of
+   interfaces even if the database directory was populated during startup
+
+
+1.14 / 26-Apr-2015
+
+ - Fix: JSON output syntax during first day of newly created databases
+   (pull request by Stefan Merettig)
+ - Fix: field padding when using UTF-8 locale
+ - Add optional mode parameter to --json and --xml for limiting the output
+   to only selected information
+
+
+1.13 / 18-Jan-2015
+
+ - Fix: getgroup() test in Debian GNU/kFreeBSD (patch by Felix Geyer)
+ - Fix: struct if_data usage after freeifaddrs() call in BSD
+ - Dynamic unit selection in hourly output instead of being fixed to KiB
+ - New options in image output (vnstati)
+     * -nl / --nolegend for hiding the rx/tx legend
+     * --altdate for using alternative date and time text location
+     * --headertext for using custom text string in image header section
+ - Add legend to hourly output image
+ - Add option for content alignment and page background color to vnstat.cgi
+ - Document keyword value ranges in configuration file man page
+ - Import Makefile improvements from OpenBSD
+   (pull requests by Jasper Lievisse Adriaanse)
+ - Automatic interface bandwidth detection, BandwidthDetection in config,
+   default fallback value MaxBandwidth changed from 100 to 1000
+ - JSON output (--json), vnstat-json.cgi and vnstat-json.php examples
+   provided in the 'examples' directory
+ - Drop support for over 10 year old database formats (versions 1.0 - 1.2)
+
+
+1.12 / 30-Aug-2014
+
+ - Fix: Memory allocation when zero interfaces are available, also lo needed
+   to be missing in order to trigger this leak
+ - Fix: Rebuild total indexing (thanks to William Epp for reporting this)
+ - Fix: Some error situations could leave database file open until the end
+   of command execution
+ - Fix: Live traffic meter occasionally showing higher minimum than average
+   in end statistics (Debian Bug #687812)
+ - Fix: Setting locale when none is specified in config (Debian Bug #606397)
+ - Fix: Cppcheck findings (may fix Debian Bug #692330)
+ - Improve traffic meter output accuracy
+ - Add tests and debug compilation target
+ - Remove use of -D parameter in Makefile install commands in order to
+   improve cross-compilation support
+ - Set CFLAGS in Makefiles only when not already defined
+ - Add support for database import from text file (--importdb)
+   (based on patch by Tilmann Bubeck)
+ - Rename --dumpdb to --exportdb
+ - Add example systemd service file
+ - Add example launchd plist file for OS X
+ - Use ISO YYYY-MM-DD date format timestamps if logfile is used
+ - Improve daemon startup prints
+ - Add parameters for changing daemon process user and group
+ - Add example upstart job configuration file (thanks to Cameron Norman)
+ - Create database, pid and log dirs during daemon startup if necessary
+ - Update ownership of database, log and pid files if needed during daemon
+   startup if started as root and configured to change process user and group
+ - Remove cron update related example files and documentation, the cron
+   update method should be considered as deprecated
+ - --create parameter for database creation
+
+
+1.11 / 1-Jun-2011
+
+ - Fix: Memory allocation was miscalculated when creating interface list from
+   /sys/class/net when /proc/net/dev wasn't available which in turn could
+   crash the daemon
+ - Fix: Daemon database cache could remain empty after a -HUP signal
+ - Fix: Don't make temp directory in vnstat.cgi writable for everyone
+ - Import GNU/kFreeBSD support from Debian
+   (#608963, patch by Mats Erik Andersson)
+ - Remove usage of GNU only '-D' option for install for BSD in Makefile
+ - The daemon now automatically creates databases for available interfaces
+   if no databases are found during startup
+
+
+1.10 / 2-Jan-2010
+
+ - Fix: Buffer overflow was possible in hourly image output when RateUnit=1
+   and HourlyRate=1
+ - Fix: Minor memory leak was possible in the handling of HUP signal in daemon
+ - Fix: Graphical elements weren't correctly aligned in summary image
+   when header wasn't visible (-nh)
+ - Fix: --delete didn't work
+ - Possibility to merge statistics from several databases and save
+   the end result to a new database (--mergesaved)
+ - Added validation of database cache in daemon in order to be more robust
+   in case of system memory corruption
+ - Support for --style to -l (live mode)
+ - Alternative print mode to -l (live mode) with optional parameter
+ - Present options and elements in man pages in alphabetical order
+ - Code cleanup
+
+
+1.9 / 12-Sep-2009
+
+ - Fix: TrafficlessDays configuration option was enabled when set to zero
+   when it should have been disabled
+ - Fix: MonthRotate setting was getting ignored for the first month if
+   the database is created when day of month < MonthRotate value
+ - Configurable summary layout in image output (1.7 <> 1.8 layouts)
+ - --oneline, a simple parseable one line output
+ - --transparent for setting image background transparency from the
+   command line
+ - --delete for deleting databases and stopping monitoring, doesn't require
+   restarting the daemon
+ - A database write can be configure to occur after interface status changes
+ - Different database write interval can be configure to be used when
+   all monitored interfaces are offline
+ - Better configurability for the content of outputs, including a narrow
+   output for space limited terminals (OutputStyle and --style)
+ - Code cleanup
+ - New configuration file settings:
+   OutputStyle, SummaryLayout, SummaryRate, SaveOnStatusChange,
+   OfflineSaveInterval
+
+
+1.8 / 1-Aug-2009
+
+ - Fix: OpenBSD print issues (was: ' used for formatting in sprintf)
+ - Fix: Monthly estimate for February during a leap year was wrong
+ - Fix: 'make install' didn't install the config file is $(DESTDIR) was used
+ - Traffic of current and previous months added to summary
+ - Increased accuracy of monthly estimate calculation
+ - Traffic rates can be made visible and the shown unit is configurable
+   as bits or bytes
+ - New summary layout in image output
+ - Image output can have the background color set as transparent
+ - Possibility to merge data from several interfaces to one output with
+   interface1+interface2 syntax
+ - -s / --sync parameter added to daemon
+ - --dbdir and --locale parameters added
+ - Outputs now use system locale by default and formatting of dates follow
+   the locale setting unless configured otherwise
+ - New configuration file settings:
+   ShowRate, RateUnit, TrafficlessDays, HourlyRate, TransparentBg
+
+
+1.7 / 12-Apr-2009
+
+ - Fix: Timezone changes shouldn't cause a flood of errors anymore
+ - Fix: Statvfs used instead of statfs for BSD compatibility
+   (Thanks to Mark Mitchell for pointing this out)
+ - Fix: Makefile didn't properly support LDFLAGS and -lm was misplaced
+ - Fix: MonthRotate value in config wasn't used
+ - Fix: Unreadable configuration file doesn't cause a segmentation fault
+ - Fix: /proc/net/dev parser didn't see the difference between eth10 and eth1
+ - Fix: Updating a database from two of more processes at the same time
+   was able to sometimes cause data loss
+ - Fix: Estimates are calculated based on last database update
+ - Fix: Each interface update had a possibility of losing 1023 bytes of
+   traffic at most due to improper rounding
+   (Thanks to Michael Berlin for suggesting a suitable correction)
+ - Daemon support as alternative for cron based updates
+ - PNG image output (hourly rate based on patch by Sergio Ammirata)
+ - XML output
+ - BSD support
+ - Diskspace check can be disabled from configuration file
+ - IEC standard prefixes (KiB/MiB/GiB/TiB)
+ - List of available interfaces if wrong of unavailable interface is selected
+
+
+1.6 / 1-Jan-2008
+
+ - Fix: Segmentation fault when environment variable "HOME" wasn't defined,
+   this broke most CGI and PHP scripts that used vnStat
+ - Support for /sys/class/net/* if /proc/net/dev is unavailable
+ - Config file parser redesigned
+ - --config parameter for selecting config file
+ - Consistent exit status for all operations (0 for success, 1 for error)
+ - Improved file locking
+ - Man page restrictions paragraph updated
+ - Minor non-visible fixes and code cleanup
+
+
+1.5 / 3-Dec-2007
+
+ - Fix: compile time warnings solved
+ - Fix: kernel test is now more verbose
+ - Fix: more informative error messages
+ - Fix: possible division by zero for traffic estimates right after midnight
+ - Fix: interface names longer than 6 chars (patch by Jan Schmidle)
+ - Realtime transfer rate mode
+ - Automatic 32bit/64bit counter detection
+ - Config file support
+ - Internal database backups and locking
+ - More visuals in outputs
+ - Adaptive units (kB, MB, GB, TB)
+ - Possibility to sync counters without counting traffic
+ - Maximum bandwidth of interfaces can be set
+
+
+1.4 / 26-Mar-2004
+
+ - Fix: major output problems when compiled with some compilers
+        (thanks to DukePyrolator for reporting this bug and
+         Juha / vlu for testing the patch)
+ - Fix: month rotation if database isn't updated every day
+ - Minor non-visible fixes and code cleanup
+
+
+1.3 / 8-Mar-2004
+
+ - Fix: support for 64bit counters
+ - Fix: 'yesterday' was showing 01.01. with new databases
+ - Fix: free space warning changed from 1% to 1MB
+ - Fix: minor security exploit
+ - A man page has been included
+ - Hourly output with textgraphical view
+ - kBs are visible when traffic is under 1000 MB
+ - Webpage moved to http://humdi.net/vnstat/
+ - Minor visual updates
+
+
+1.2 / 7-Oct-2003
+
+ - Changed file paths to conform with FHS (http://www.pathname.com/fhs/)
+      /usr/local/bin/vnstat -> /usr/bin/vnstat
+      /var/spool/vnstat -> /var/lib/vnstat
+ - Added FAQ
+ - Included sample scripts for pppd users
+ - Support for 64bit counters in /proc/net/dev
+   (Thanks to Stephan van Hienen for the test account)
+ - Actual date is shown if the previous day in the database isn't
+   yesterday
+ - Weekly and last 7 days traffic can be shown.
+   (Thanks to Derk-Jan Hartman for the suggestion)
+ - Average kB/s meter
+ - --testkernel fixed
+ - Documentation for --dumpdb included in the README
+
+
+1.1 / 13-Jul-2003
+
+ - Support for multiple interfaces
+ - Date checking (update shouldn't be before previous update)
+ - New database structure
+ - Possibility to change date output format
+ - Test tool for faulty kernels
+ - Parseable output
+ - Better support for ppp/dsl users
+ - Free diskspace check
+ - Possibility to change month rotation day (like 25. instead of 1.)
+ - Daily/monthly traffic estimation
+
+
+22-Nov-2002
+
+ - Renamed the cron script file that would be installed to /etc/cron.d
+   from vnstat.cron to vnstat because debian systems didn't execute scripts
+   containing dots (Thanks to frangen / Simo Salminen for this note)
+
+
+1.0 / 23-Sep-2002
+
+ - Initial public release

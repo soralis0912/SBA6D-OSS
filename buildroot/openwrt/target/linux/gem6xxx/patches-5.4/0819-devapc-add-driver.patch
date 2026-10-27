@@ -1,0 +1,26 @@
+Index: linux-5.4.143/drivers/soc/mediatek/Kconfig
+===================================================================
+--- linux-5.4.143.orig/drivers/soc/mediatek/Kconfig	2021-09-16 17:25:27.017824186 +0800
++++ linux-5.4.143/drivers/soc/mediatek/Kconfig	2021-09-16 17:38:29.051001529 +0800
+@@ -74,4 +74,10 @@
+ 	  or 256 bytes SRAM and 32 bit irq. The driver does read/write
+ 	  SRAM and IRQ handling.
+ 
++menu "Security"
++
++source "drivers/soc/mediatek/devapc/Kconfig"
++
++endmenu # Security
++
+ endmenu
+Index: linux-5.4.143/drivers/soc/mediatek/Makefile
+===================================================================
+--- linux-5.4.143.orig/drivers/soc/mediatek/Makefile	2021-09-16 17:25:27.017824186 +0800
++++ linux-5.4.143/drivers/soc/mediatek/Makefile	2021-09-16 17:38:41.499452895 +0800
+@@ -1,5 +1,6 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ obj-$(CONFIG_MTK_CMDQ) += mtk-cmdq-helper.o
++obj-$(CONFIG_MTK_DEVAPC) += devapc/
+ obj-$(CONFIG_MTK_DVFSRC) += mtk-dvfsrc.o mtk-dvfsrc-start.o
+ obj-$(CONFIG_MTK_INFRACFG) += mtk-infracfg.o
+ obj-$(CONFIG_MTK_IPI) += mtk_tinysys_ipi.o

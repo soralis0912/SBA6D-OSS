@@ -1,0 +1,7 @@
+#
+# CPU Buck
+#
+config MTK_MT6980_CPU_BUCK
+	tristate "Enable MTK CPU vsram_proc Buck Support"
+	help
+	  Enable MTK CPU vsram_proc Buck Support.

@@ -1,0 +1,45 @@
+--- a/drivers/interconnect/Kconfig
++++ b/drivers/interconnect/Kconfig
+@@ -12,5 +12,6 @@ menuconfig INTERCONNECT
+ if INTERCONNECT
+ 
+ source "drivers/interconnect/qcom/Kconfig"
++source "drivers/interconnect/mediatek/Kconfig"
+ 
+ endif
+--- a/drivers/interconnect/Makefile
++++ b/drivers/interconnect/Makefile
+@@ -4,3 +4,4 @@ icc-core-objs				:= core.o
+ 
+ obj-$(CONFIG_INTERCONNECT)		+= icc-core.o
+ obj-$(CONFIG_INTERCONNECT_QCOM)		+= qcom/
++obj-$(CONFIG_INTERCONNECT_MTK)		+= mediatek/
+--- a/drivers/regulator/Kconfig
++++ b/drivers/regulator/Kconfig
+@@ -665,6 +665,16 @@ config REGULATOR_MT6397
+ 	  This driver supports the control of different power rails of device
+ 	  through regulator interface.
+ 
++config REGULATOR_MTK_DVFSRC
++	tristate "MediaTek DVFSRC regulator driver"
++	depends on MTK_DVFSRC
++	help
++	  Say y here to control regulator by DVFSRC (dynamic voltage
++	  and frequency scaling resource collector).
++	  This driver supports to control regulators via the DVFSRC
++	  of Mediatek. It allows for voting on regulator state
++	  between multiple users.
++
+ config REGULATOR_PALMAS
+ 	tristate "TI Palmas PMIC Regulators"
+ 	depends on MFD_PALMAS
+--- a/drivers/regulator/Makefile
++++ b/drivers/regulator/Makefile
+@@ -85,6 +85,7 @@ obj-$(CONFIG_REGULATOR_MT6330)	+= mt6330
+ obj-$(CONFIG_REGULATOR_MT6358)	+= mt6358-regulator.o
+ obj-$(CONFIG_REGULATOR_MT6380)	+= mt6380-regulator.o
+ obj-$(CONFIG_REGULATOR_MT6397)	+= mt6397-regulator.o
++obj-$(CONFIG_REGULATOR_MTK_DVFSRC) += mtk-dvfsrc-regulator.o
+ obj-$(CONFIG_REGULATOR_QCOM_RPM) += qcom_rpm-regulator.o
+ obj-$(CONFIG_REGULATOR_QCOM_RPMH) += qcom-rpmh-regulator.o
+ obj-$(CONFIG_REGULATOR_QCOM_SMD_RPM) += qcom_smd-regulator.o

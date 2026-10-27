@@ -1,0 +1,30 @@
+--- a/kernel/panic.c
++++ b/kernel/panic.c
+@@ -176,7 +176,7 @@ void nmi_panic(struct pt_regs *regs, con
+ }
+ EXPORT_SYMBOL(nmi_panic);
+ 
+-static void panic_print_sys_info(void)
++void panic_print_sys_info(void)
+ {
+ 	if (panic_print & PANIC_PRINT_ALL_PRINTK_MSG)
+ 		console_flush_on_panic(CONSOLE_REPLAY_ALL);
+@@ -196,6 +196,7 @@ static void panic_print_sys_info(void)
+ 	if (panic_print & PANIC_PRINT_FTRACE_INFO)
+ 		ftrace_dump(DUMP_ALL);
+ }
++EXPORT_SYMBOL(panic_print_sys_info);
+ 
+ void check_panic_on_warn(const char *origin)
+ {
+--- a/include/linux/kernel.h
++++ b/include/linux/kernel.h
+@@ -321,6 +321,8 @@ extern long (*panic_blink)(int state);
+ __printf(1, 2)
+ void panic(const char *fmt, ...) __noreturn __cold;
+ void nmi_panic(struct pt_regs *regs, const char *msg);
++void panic_print_sys_info(void);
++
+ void check_panic_on_warn(const char *origin);
+ extern void oops_enter(void);
+ extern void oops_exit(void);

@@ -1,0 +1,137 @@
+Index: linux-5.4.179/drivers/clk/mediatek/Kconfig
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/Kconfig	2022-05-16 22:39:39.901445000 +0800
++++ linux-5.4.179/drivers/clk/mediatek/Kconfig	2022-05-16 22:47:00.000000000 +0800
+@@ -331,6 +331,98 @@
+ 	  If you wish to use clock resources from the mmsys_config device,
+ 	  say Y. Otherwise, say N.
+ 
++config COMMON_CLK_MT6990
++	tristate "Clock driver for MediaTek MT6990"
++	depends on ARM64 || COMPILE_TEST
++	select COMMON_CLK_MEDIATEK
++	default MACH_MT6990
++	help
++	  This driver supports MediaTek MT6990 basic clocks,
++	  which is used to control basic clock output.
++	  If you wish to use clock resources from the MT6990 SOC,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6990_AFE
++	tristate "Clock driver for MediaTek MT6990 afe"
++	depends on COMMON_CLK_MT6990
++	help
++	  This driver supports MediaTek MT6990 afe clocks,
++	  which is used to control afe clock output.
++	  If you wish to use clock resources from the afe device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6990_DBG
++	tristate "Clock driver for MediaTek MT6990 dbg"
++	depends on COMMON_CLK_MT6990
++	help
++	  This driver supports MediaTek MT6990 dbg clocks,
++	  which is used to control dbg clock output.
++	  If you wish to use clock resources from the dbg device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6990_GCE
++	tristate "Clock driver for MediaTek MT6990 gce"
++	depends on COMMON_CLK_MT6990
++	help
++	  This driver supports MediaTek MT6990 gce clocks,
++	  which is used to control gce clock output.
++	  If you wish to use clock resources from the gce device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6990_INFRACFG_AO
++	tristate "Clock driver for MediaTek MT6990 infracfg_ao"
++	depends on COMMON_CLK_MT6990
++	help
++	  This driver supports MediaTek MT6990 infracfg_ao clocks,
++	  which is used to control infracfg_ao clock output.
++	  If you wish to use clock resources from the infracfg_ao device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6990_MMSYS
++	tristate "Clock driver for MediaTek MT6990 mmsys"
++	depends on COMMON_CLK_MT6990
++	help
++	  This driver supports MediaTek MT6990 mmsys clocks,
++	  which is used to control mmsys clock output.
++	  If you wish to use clock resources from the mmsys device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6990_MFG_TOP
++	tristate "Clock driver for MediaTek MT6990 mfg_top"
++	depends on COMMON_CLK_MT6990
++	help
++	  This driver supports MediaTek MT6990 mfg_top clocks,
++	  which is used to control mfg_top clock output.
++	  If you wish to use clock resources from the mfg_top device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6990_PERI
++	tristate "Clock driver for MediaTek MT6990 peri"
++	depends on COMMON_CLK_MT6990
++	help
++	  This driver supports MediaTek MT6990 peri clocks,
++	  which is used to control peri clock output.
++	  If you wish to use clock resources from the peri device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6990_SSPM_CFG
++	tristate "Clock driver for MediaTek MT6990 sspm_cfg"
++	depends on COMMON_CLK_MT6990
++	help
++	  This driver supports MediaTek MT6990 sspm_cfg clocks,
++	  which is used to control sspm_cfg clock output.
++	  If you wish to use clock resources from the sspm_cfg device,
++	  say Y. Otherwise, say N.
++
++config COMMON_CLK_MT6990_VLPCFG
++	tristate "Clock driver for MediaTek MT6990 vlpcfg"
++	depends on COMMON_CLK_MT6990
++	help
++	  This driver supports MediaTek MT6990 vlpcfg clocks,
++	  which is used to control vlpcfg clock output.
++	  If you wish to use clock resources from the vlpcfg device,
++	  say Y. Otherwise, say N.
++
+ config COMMON_CLK_MT7622
+ 	bool "Clock driver for MediaTek MT7622"
+ 	depends on ARCH_MEDIATEK || COMPILE_TEST
+Index: linux-5.4.179/drivers/clk/mediatek/Makefile
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/Makefile	2022-05-16 22:39:40.003416000 +0800
++++ linux-5.4.179/drivers/clk/mediatek/Makefile	2022-05-16 22:47:00.000000000 +0800
+@@ -57,6 +57,16 @@
+ obj-$(CONFIG_COMMON_CLK_MT6890_IMP_IIC_WRAP_E) += clk-mt6890-impe.o
+ obj-$(CONFIG_COMMON_CLK_MT6890_MFGSYS) += clk-mt6890-mfgcfg.o
+ obj-$(CONFIG_COMMON_CLK_MT6890_MMSYS_CONFIG) += clk-mt6890-mm.o
++obj-$(CONFIG_COMMON_CLK_MT6990) += clk-mt6990.o clkchk.o clkdbg.o clk-bringup.o clk-disable-unused.o clkchk-mt6990.o clkdbg-mt6990.o
++obj-$(CONFIG_COMMON_CLK_MT6990_AFE) += clk-mt6990-afe.o
++obj-$(CONFIG_COMMON_CLK_MT6990_DBG) += clk-mt6990-dbg.o
++obj-$(CONFIG_COMMON_CLK_MT6990_GCE) += clk-mt6990-gce.o
++obj-$(CONFIG_COMMON_CLK_MT6990_INFRACFG_AO) += clk-mt6990-ifrao.o
++obj-$(CONFIG_COMMON_CLK_MT6990_MMSYS) += clk-mt6990-mmsys.o
++obj-$(CONFIG_COMMON_CLK_MT6990_MFG_TOP) += clk-mt6990-mfg_top.o
++obj-$(CONFIG_COMMON_CLK_MT6990_PERI) += clk-mt6990-peri.o
++obj-$(CONFIG_COMMON_CLK_MT6990_SSPM_CFG) += clk-mt6990-sspm_cfg.o
++obj-$(CONFIG_COMMON_CLK_MT6990_VLPCFG) += clk-mt6990-vlpcfg.o
+ obj-$(CONFIG_COMMON_CLK_MT8183) += clk-mt8183.o
+ obj-$(CONFIG_COMMON_CLK_MT8183_AUDIOSYS) += clk-mt8183-audio.o
+ obj-$(CONFIG_COMMON_CLK_MT8183_CAMSYS) += clk-mt8183-cam.o
+Index: linux-5.4.179/drivers/clk/mediatek/clk-pll.c
+===================================================================
+--- linux-5.4.179.orig/drivers/clk/mediatek/clk-pll.c	2022-05-16 22:46:39.000000000 +0800
++++ linux-5.4.179/drivers/clk/mediatek/clk-pll.c	2022-05-16 22:51:57.792432000 +0800
+@@ -328,7 +328,7 @@
+ 		pll->pcw_chg_addr = pll->base_addr + REG_CON1;
+ 	if (data->tuner_reg)
+ 		pll->tuner_addr = base + data->tuner_reg;
+-	if (data->tuner_en_reg)
++	if (data->tuner_en_reg || data->tuner_en_bit)
+ 		pll->tuner_en_addr = base + data->tuner_en_reg;
+ 	if (data->en_reg)
+ 		pll->en_addr = base + data->en_reg;

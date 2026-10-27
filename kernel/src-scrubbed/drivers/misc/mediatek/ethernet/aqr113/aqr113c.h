@@ -1,0 +1,144 @@
+#ifndef QL_AQR113C_H
+#define QL_AQR113C_H
+
+#include "../ql_eth_phy_hal.h"
+
+#ifndef MTK_MAX_DEVS
+#define MTK_MAX_DEVS 2
+#endif
+
+#define MDIO_PHYXS_VEND_IF_STATUS		0xe812
+#define MDIO_PHYXS_VEND_IF_STATUS_TYPE_MASK	GENMASK(7, 3)
+#define MDIO_PHYXS_VEND_IF_STATUS_TYPE_KR	0
+#define MDIO_PHYXS_VEND_IF_STATUS_TYPE_XFI	2
+#define MDIO_PHYXS_VEND_IF_STATUS_TYPE_USXGMII	3
+#define MDIO_PHYXS_VEND_IF_STATUS_TYPE_SGMII	6
+#define MDIO_PHYXS_VEND_IF_STATUS_TYPE_OCSGMII	10
+
+#define MDIO_AN_VEND_PROV			0xc400
+#define MDIO_AN_VEND_PROV_1000BASET_FULL	BIT(15)
+#define MDIO_AN_VEND_PROV_1000BASET_HALF	BIT(14)
+#define MDIO_AN_VEND_PROV_DOWNSHIFT_EN		BIT(4)
+#define MDIO_AN_VEND_PROV_DOWNSHIFT_MASK	GENMASK(3, 0)
+#define MDIO_AN_VEND_PROV_DOWNSHIFT_DFLT	4
+
+#define MDIO_AN_TX_VEND_STATUS1			0xc800
+#define MDIO_AN_TX_VEND_STATUS1_RATE_MASK	GENMASK(3, 1)
+#define MDIO_AN_TX_VEND_STATUS1_10BASET		0
+#define MDIO_AN_TX_VEND_STATUS1_100BASETX	1
+#define MDIO_AN_TX_VEND_STATUS1_1000BASET	2
+#define MDIO_AN_TX_VEND_STATUS1_10GBASET	3
+#define MDIO_AN_TX_VEND_STATUS1_2500BASET	4
+#define MDIO_AN_TX_VEND_STATUS1_5000BASET	5
+#define MDIO_AN_TX_VEND_STATUS1_FULL_DUPLEX	BIT(0)
+
+#define MDIO_AN_TX_VEND_INT_STATUS1		0xcc00
+#define MDIO_AN_TX_VEND_INT_STATUS1_DOWNSHIFT	BIT(1)
+
+#define MDIO_AN_TX_VEND_INT_STATUS2		0xcc01
+
+#define MDIO_AN_TX_VEND_INT_MASK2		0xd401
+#define MDIO_AN_TX_VEND_INT_MASK2_LINK		BIT(0)
+
+#define MDIO_AN_RX_LP_STAT1			0xe820
+#define MDIO_AN_RX_LP_STAT1_1000BASET_FULL	BIT(15)
+#define MDIO_AN_RX_LP_STAT1_1000BASET_HALF	BIT(14)
+#define MDIO_AN_RX_LP_STAT1_SHORT_REACH		BIT(13)
+#define MDIO_AN_RX_LP_STAT1_AQRATE_DOWNSHIFT	BIT(12)
+#define MDIO_AN_RX_LP_STAT1_AQ_PHY		BIT(2)
+
+#define MDIO_AN_RX_LP_STAT4			0xe823
+#define MDIO_AN_RX_LP_STAT4_FW_MAJOR		GENMASK(15, 8)
+#define MDIO_AN_RX_LP_STAT4_FW_MINOR		GENMASK(7, 0)
+
+#define MDIO_AN_RX_VEND_STAT3			0xe832
+#define MDIO_AN_RX_VEND_STAT3_AFR		BIT(0)
+
+/* MDIO_MMD_C22EXT */
+#define MDIO_C22EXT_STAT_SGMII_RX_GOOD_FRAMES		0xd292
+#define MDIO_C22EXT_STAT_SGMII_RX_BAD_FRAMES		0xd294
+#define MDIO_C22EXT_STAT_SGMII_RX_FALSE_CARRIER		0xd297
+#define MDIO_C22EXT_STAT_SGMII_TX_GOOD_FRAMES		0xd313
+#define MDIO_C22EXT_STAT_SGMII_TX_BAD_FRAMES		0xd315
+#define MDIO_C22EXT_STAT_SGMII_TX_FALSE_CARRIER		0xd317
+#define MDIO_C22EXT_STAT_SGMII_TX_COLLISIONS		0xd318
+#define MDIO_C22EXT_STAT_SGMII_TX_LINE_COLLISIONS	0xd319
+#define MDIO_C22EXT_STAT_SGMII_TX_FRAME_ALIGN_ERR	0xd31a
+#define MDIO_C22EXT_STAT_SGMII_TX_RUNT_FRAMES		0xd31b
+
+/* Vendor specific 1, MDIO_MMD_VEND1 */
+#define VEND1_GLOBAL_FW_ID			0x0020
+#define VEND1_GLOBAL_FW_ID_MAJOR		GENMASK(15, 8)
+#define VEND1_GLOBAL_FW_ID_MINOR		GENMASK(7, 0)
+
+#define VEND1_GLOBAL_RSVD_STAT1			0xc885
+#define VEND1_GLOBAL_RSVD_STAT1_FW_BUILD_ID	GENMASK(7, 4)
+#define VEND1_GLOBAL_RSVD_STAT1_PROV_ID		GENMASK(3, 0)
+
+#define VEND1_GLOBAL_RSVD_STAT9			0xc88d
+#define VEND1_GLOBAL_RSVD_STAT9_MODE		GENMASK(7, 0)
+#define VEND1_GLOBAL_RSVD_STAT9_1000BT2		0x23
+
+#define VEND1_GLOBAL_INT_STD_STATUS		0xfc00
+#define VEND1_GLOBAL_INT_VEND_STATUS		0xfc01
+
+#define VEND1_GLOBAL_INT_STD_MASK		0xff00
+#define VEND1_GLOBAL_INT_STD_MASK_PMA1		BIT(15)
+#define VEND1_GLOBAL_INT_STD_MASK_PMA2		BIT(14)
+#define VEND1_GLOBAL_INT_STD_MASK_PCS1		BIT(13)
+#define VEND1_GLOBAL_INT_STD_MASK_PCS2		BIT(12)
+#define VEND1_GLOBAL_INT_STD_MASK_PCS3		BIT(11)
+#define VEND1_GLOBAL_INT_STD_MASK_PHY_XS1	BIT(10)
+#define VEND1_GLOBAL_INT_STD_MASK_PHY_XS2	BIT(9)
+#define VEND1_GLOBAL_INT_STD_MASK_AN1		BIT(8)
+#define VEND1_GLOBAL_INT_STD_MASK_AN2		BIT(7)
+#define VEND1_GLOBAL_INT_STD_MASK_GBE		BIT(6)
+#define VEND1_GLOBAL_INT_STD_MASK_ALL		BIT(0)
+
+#define VEND1_GLOBAL_INT_VEND_MASK		0xff01
+#define VEND1_GLOBAL_INT_VEND_MASK_PMA		BIT(15)
+#define VEND1_GLOBAL_INT_VEND_MASK_PCS		BIT(14)
+#define VEND1_GLOBAL_INT_VEND_MASK_PHY_XS	BIT(13)
+#define VEND1_GLOBAL_INT_VEND_MASK_AN		BIT(12)
+#define VEND1_GLOBAL_INT_VEND_MASK_GBE		BIT(11)
+#define VEND1_GLOBAL_INT_VEND_MASK_GLOBAL1	BIT(2)
+#define VEND1_GLOBAL_INT_VEND_MASK_GLOBAL2	BIT(1)
+#define VEND1_GLOBAL_INT_VEND_MASK_GLOBAL3	BIT(0)
+
+//PHY XS Transmit
+#define  PHY_XS_Transmit_Page 0x4
+#define  PHY_XS_Transmit_Addr 0xC441
+
+
+struct marvell_113c_interface
+{
+	// HANDLE hDevice;
+	bool is_eth_up;
+	bool have_phy_init, have_intb_init;
+	bool is_phy_init, is_serdes_init;
+	bool is_phy_link, pre_phy_link;
+	bool is_pcs_inner_loopback;
+	__ETHTOOL_DECLARE_LINK_MODE_MASK(supported);
+    __ETHTOOL_DECLARE_LINK_MODE_MASK(advertising);
+};
+
+extern struct marvell_113c_interface aqr113c_phy_interface[MTK_MAX_DEVS];
+
+/* Enable PHY load via MDIO */
+#define MDIO_LOAD
+/* Firmware filename for MDIO loading */
+#define AQR113_FW "aqr113.cld"		//  /lib/firmware/aqr113.cld
+
+#define NET_TAG "AQR113C PHY"
+
+int aqr113c_phy_init_cb(struct mtk_eth *eth, int mac_id);
+int aqr113c_phy_post_init_cb(struct mtk_eth *eth, int mac_id);
+int aqr113c_phy_start_cb(struct mtk_eth *eth, int mac_id);
+int aqr113c_phy_stop_cb(struct mtk_eth *eth, int mac_id);
+int aqr113c_pop_phy_link(struct mtk_eth *eth, int mac_id, u32 *link);
+int aqr113c_pop_phy_speed(struct mtk_eth *eth, int mac_id, u32 *speed_bits, u32 *duplex_bit);
+int aqr113c_ack_interrupt(struct mtk_eth *eth, int mac_id);
+int aqr113c_phy_status_cb(struct mtk_eth *eth, int mac_id, int type);
+int aqr113c_load_phy_fw(struct mtk_eth *eth, int mac_id, int type);
+
+#endif

@@ -1,0 +1,30 @@
+--- a/drivers/tty/serial/serial_core.c
++++ b/drivers/tty/serial/serial_core.c
+@@ -660,7 +660,7 @@ static void uart_flush_buffer(struct tty
+ 	port = uart_port_lock(state, flags);
+ 	if (!port)
+ 		return;
+-	uart_circ_clear(&state->xmit);
++	//uart_circ_clear(&state->xmit);
+ 	if (port->ops->flush_buffer)
+ 		port->ops->flush_buffer(port);
+ 	uart_port_unlock(port, flags);
+@@ -2227,6 +2227,10 @@ int uart_resume_port(struct uart_driver
+ 
+ 	tty_dev = device_find_child(uport->dev, &match, serial_match_port);
+ 	if (!uport->suspended && device_may_wakeup(tty_dev)) {
++		if (irq_get_irq_data((uport->irq)) == NULL) {
++			pr_err("irq_get_irq_data((uport->irq)) is NULL\n");
++			return 0;
++		}
+ 		if (irqd_is_wakeup_set(irq_get_irq_data((uport->irq))))
+ 			disable_irq_wake(uport->irq);
+ 		put_device(tty_dev);
+@@ -2609,6 +2613,7 @@ struct tty_driver *uart_console_device(s
+ 	*index = co->index;
+ 	return p->tty_driver;
+ }
++EXPORT_SYMBOL_GPL(uart_console_device);
+ 
+ static ssize_t uart_get_attr_uartclk(struct device *dev,
+ 	struct device_attribute *attr, char *buf)

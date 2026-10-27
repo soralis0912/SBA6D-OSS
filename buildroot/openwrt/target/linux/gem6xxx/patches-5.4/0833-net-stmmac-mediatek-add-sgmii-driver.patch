@@ -1,0 +1,180 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/Makefile
++++ b/drivers/net/ethernet/stmicro/stmmac/Makefile
+@@ -1,11 +1,11 @@
+ # SPDX-License-Identifier: GPL-2.0
+ obj-$(CONFIG_STMMAC_ETH) += stmmac.o
+-stmmac-objs:= stmmac_main.o stmmac_ethtool.o stmmac_mdio.o ring_mode.o	\
++stmmac-objs:= stmmac_main.o mediatek_sgmii.o stmmac_ethtool.o stmmac_mdio.o	\
+ 	      chain_mode.o dwmac_lib.o dwmac1000_core.o dwmac1000_dma.o	\
+ 	      dwmac100_core.o dwmac100_dma.o enh_desc.o norm_desc.o	\
+ 	      mmc_core.o stmmac_hwtstamp.o stmmac_ptp.o dwmac4_descs.o	\
+ 	      dwmac4_dma.o dwmac4_lib.o dwmac4_core.o dwmac5.o hwif.o \
+-	      stmmac_tc.o dwxgmac2_core.o dwxgmac2_dma.o dwxgmac2_descs.o \
++	      stmmac_tc.o dwxgmac2_core.o dwxgmac2_dma.o dwxgmac2_descs.o  ring_mode.o	\
+ 	      $(stmmac-y)
+ 
+ stmmac-$(CONFIG_STMMAC_SELFTESTS) += stmmac_selftests.o
+@@ -15,7 +15,8 @@ obj-$(CONFIG_STMMAC_PLATFORM)	+= stmmac-
+ obj-$(CONFIG_DWMAC_ANARION)	+= dwmac-anarion.o
+ obj-$(CONFIG_DWMAC_IPQ806X)	+= dwmac-ipq806x.o
+ obj-$(CONFIG_DWMAC_LPC18XX)	+= dwmac-lpc18xx.o
+-obj-$(CONFIG_DWMAC_MEDIATEK)	+= dwmac-mediatek.o
++obj-$(CONFIG_DWMAC_MEDIATEK)	+= mtk_sgmii_pwr.o \
++									dwmac-mediatek.o
+ obj-$(CONFIG_DWMAC_MESON)	+= dwmac-meson.o dwmac-meson8b.o
+ obj-$(CONFIG_DWMAC_OXNAS)	+= dwmac-oxnas.o
+ obj-$(CONFIG_DWMAC_QCOM_ETHQOS)	+= dwmac-qcom-ethqos.o
+--- a/drivers/net/ethernet/stmicro/stmmac/common.h
++++ b/drivers/net/ethernet/stmicro/stmmac/common.h
+@@ -24,6 +24,7 @@
+ #include "descs.h"
+ #include "hwif.h"
+ #include "mmc.h"
++#include "mtk_sgmii.h"
+ 
+ /* Synopsys Core versions */
+ #define	DWMAC_CORE_3_40		0x34
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.c
+@@ -3,15 +3,22 @@
+  * Copyright (c) 2018 MediaTek Inc.
+  */
+ #include <linux/bitfield.h>
++#include <linux/gpio.h>
++
+ #include <linux/io.h>
++#include <linux/interrupt.h>
+ #include <linux/mfd/syscon.h>
+ #include <linux/module.h>
+ #include <linux/of.h>
+ #include <linux/of_device.h>
+ #include <linux/of_net.h>
++#include <linux/of_gpio.h>
++#include <linux/of_irq.h>
+ #include <linux/pm_runtime.h>
++#include <linux/of_mdio.h>
+ #include <linux/regmap.h>
+ #include <linux/stmmac.h>
++#include <linux/regulator/consumer.h>
+ 
+ #include "stmmac.h"
+ #include "stmmac_platform.h"
+@@ -62,13 +69,16 @@
+ #define MT2737_DLY_RXC_INV		BIT(25)
+ #define MT2737_DLY_RXC_FINE_EN		BIT(24)
+ #define MT2737_DLY_RXC_FINE_STG		GENMASK(23, 19)
+-#define MT2737_PERI_ETH_CTRL3		0x113040F4
+-#define MT2737_SGMII_SEL		BIT(24)
+-#define MT2737_PERI_ETH_CTRL4		0x4
++#define MT2737_PERI_ETH_CTRL3		0x4
+ #define MT2737_SNPS_MAC_REST		BIT(25)
+-#define MT2737_PERI_ETH_CTRL5		0x8
++#define MT2737_PERI_ETH_CTRL4		0x8
+ #define MT2737_SNPS_MAC_CLEAR		BIT(25)
+ 
++#define MTK_USE_SGMII		1
++
++/*SGMII require vcore*/
++#define SGMII_VCORE_OPS		650000
++
+ struct mac_delay_struct {
+ 	u32 tx_delay;
+ 	u32 rx_delay;
+@@ -83,9 +93,11 @@ struct mediatek_dwmac_plat_data {
+ 	struct device_node *np;
+ 	struct regmap *peri_regmap;
+ 	struct device *dev;
++	struct mtk_sgmii *sgmii;
+ 	int phy_mode;
+ 	bool rmii_rxc;
+ 	bool rmii_int_clk;
++	struct regulator	*dvfsrc_vcore_power;
+ };
+ 
+ struct mediatek_dwmac_variant {
+@@ -99,6 +111,10 @@ struct mediatek_dwmac_variant {
+ 	u32 dma_bit_mask;
+ 	u32 rx_delay_max;
+ 	u32 tx_delay_max;
++#if defined(MTK_USE_SGMII)
++	u32 ana_rgc3;
++#endif
++
+ };
+ 
+ /* list of clocks required for mac */
+@@ -108,6 +124,9 @@ static const char * const mt2712_dwmac_c
+ 
+ static const char * const mt2737_dwmac_clk_l[] = {
+ 	"mac_main", "ptp_ref", "eth_cg", "eth_rmii"
++#if defined(CONFIG_MTK_SGMII_SNPS)
++	, "sgmii_sel", "sgmii_sbus_sel"
++#endif
+ };
+ 
+ static int mt2712_set_interface(struct mediatek_dwmac_plat_data *plat)
+@@ -248,12 +267,11 @@ static const struct mediatek_dwmac_varia
+ 
+ static int mt2737_set_interface(struct mediatek_dwmac_plat_data *plat)
+ {
+-	u32 intf_val = 0, intf_val2 = 0;
++	u32 intf_val = 0;
+ 	u32 err;
+ 
+ 	const struct mediatek_dwmac_variant *variant = plat->variant;
+ 	regmap_read(plat->peri_regmap, MT2737_PERI_ETH_CTRL1, &intf_val);
+-	regmap_read(plat->peri_regmap, MT2737_PERI_ETH_CTRL3, &intf_val2);
+ 
+ 	/* select phy interface in top control domain */
+ 	switch (plat->phy_mode) {
+@@ -284,6 +302,29 @@ static int mt2737_set_interface(struct m
+ 		intf_val |= FIELD_PREP(MT2737_ETH_INTF_SEL, PHY_INTF_RGMII);
+ 		break;
+ 
++	case PHY_INTERFACE_MODE_SGMII:
++		intf_val &= ~MT2737_ETH_PHY_SEL;
++		intf_val &= ~MT2737_ETH_INTF_SEL;
++
++		plat->dvfsrc_vcore_power = regulator_get(plat->dev, "dvfsrc-vcore");
++		if(!plat->dvfsrc_vcore_power) {
++			dev_err(plat->dev, "SGMII vcore get failed\n");
++			return -ENOMEM;
++		}
++		regulator_set_voltage(plat->dvfsrc_vcore_power, SGMII_VCORE_OPS, INT_MAX);
++	
++		plat->sgmii = devm_kzalloc(plat->dev, sizeof(*plat->sgmii),
++								GFP_KERNEL);
++		if (!plat->sgmii)
++			return -ENOMEM;
++	
++		regmap_write(plat->peri_regmap, MT2737_PERI_ETH_CTRL3, MT2737_SNPS_MAC_REST);
++		mdelay(1);
++		regmap_write(plat->peri_regmap, MT2737_PERI_ETH_CTRL4, MT2737_SNPS_MAC_CLEAR);
++	
++		err = mediatek_sgmii_init(plat->sgmii, plat->np, plat->dev, variant->ana_rgc3);
++		break;
++
+ 	default:
+ 		dev_err(plat->dev, "phy interface not supported\n");
+ 		return -EINVAL;
+@@ -381,6 +422,9 @@ static const struct mediatek_dwmac_varia
+ 	.dma_bit_mask = 32,
+ 	.rx_delay_max = 2800,
+ 	.tx_delay_max = 2800,
++#if defined(MTK_USE_SGMII)
++	.ana_rgc3 = 0x128,
++#endif
+ };
+ 
+ static int mediatek_dwmac_config_dt(struct mediatek_dwmac_plat_data *plat)
+@@ -474,6 +518,10 @@ static int mediatek_dwmac_init(struct pl
+ 		return ret;
+ 	}
+ 
++	if (plat->phy_mode == PHY_INTERFACE_MODE_SGMII) {
++		ret = mediatek_sgmii_path_setup(plat->sgmii, 0);
++	}
++
+ 	pm_runtime_enable(&pdev->dev);
+ 	pm_runtime_get_sync(&pdev->dev);
+ 

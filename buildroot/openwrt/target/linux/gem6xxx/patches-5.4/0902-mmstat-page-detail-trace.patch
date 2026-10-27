@@ -1,0 +1,136 @@
+--- a/include/linux/mmzone.h
++++ b/include/linux/mmzone.h
+@@ -243,6 +243,10 @@ enum node_stat_item {
+ 	NR_DIRTIED,		/* page dirtyings since bootup */
+ 	NR_WRITTEN,		/* page writings since bootup */
+ 	NR_KERNEL_MISC_RECLAIMABLE,	/* reclaimable non-slab kernel pages */
++#if IS_ENABLED(CONFIG_MMSTAT_PAGE_DETAIL)
++	NR_FRAG_PAGES,	/* Pages allocated through page_frag_alloc (not in slab) */
++	NR_DMA_PAGES,	/* Pages allocated through dma_alloc_attrs (not in slab) */
++#endif
+ 	NR_VM_NODE_STAT_ITEMS
+ };
+ 
+--- a/kernel/dma/mapping.c
++++ b/kernel/dma/mapping.c
+@@ -14,6 +14,7 @@
+ #include <linux/of_device.h>
+ #include <linux/slab.h>
+ #include <linux/vmalloc.h>
++#include <linux/vmstat.h>
+ 
+ /*
+  * Managed DMA API
+@@ -299,6 +300,9 @@ void *dma_alloc_attrs(struct device *dev
+ {
+ 	const struct dma_map_ops *ops = get_dma_ops(dev);
+ 	void *cpu_addr;
++#if IS_ENABLED(CONFIG_MMSTAT_PAGE_DETAIL)
++	struct page *page;
++#endif
+ 
+ 	WARN_ON_ONCE(!dev->coherent_dma_mask);
+ 
+@@ -308,9 +312,13 @@ void *dma_alloc_attrs(struct device *dev
+ 	/* let the implementation decide on the zone to allocate from: */
+ 	flag &= ~(__GFP_DMA | __GFP_DMA32 | __GFP_HIGHMEM);
+ 
+-	if (dma_is_direct(ops))
++	if (dma_is_direct(ops)) {
+ 		cpu_addr = dma_direct_alloc(dev, size, dma_handle, flag, attrs);
+-	else if (ops->alloc)
++#if IS_ENABLED(CONFIG_MMSTAT_PAGE_DETAIL)
++		page = virt_to_page(cpu_addr);
++		mod_node_page_state(page_pgdat(page), NR_DMA_PAGES, 1 << get_order(size));
++#endif
++	} else if (ops->alloc)
+ 		cpu_addr = ops->alloc(dev, size, dma_handle, flag, attrs);
+ 	else
+ 		return NULL;
+@@ -324,7 +332,11 @@ void dma_free_attrs(struct device *dev,
+ 		dma_addr_t dma_handle, unsigned long attrs)
+ {
+ 	const struct dma_map_ops *ops = get_dma_ops(dev);
++#if IS_ENABLED(CONFIG_MMSTAT_PAGE_DETAIL)
++	struct page *page;
+ 
++	page = virt_to_page(cpu_addr);
++#endif
+ 	if (dma_release_from_dev_coherent(dev, get_order(size), cpu_addr))
+ 		return;
+ 	/*
+@@ -340,9 +352,12 @@ void dma_free_attrs(struct device *dev,
+ 		return;
+ 
+ 	debug_dma_free_coherent(dev, size, cpu_addr, dma_handle);
+-	if (dma_is_direct(ops))
++	if (dma_is_direct(ops)) {
++#if IS_ENABLED(CONFIG_MMSTAT_PAGE_DETAIL)
++		mod_node_page_state(page_pgdat(page), NR_DMA_PAGES, -(1 << get_order(size)));
++#endif
+ 		dma_direct_free(dev, size, cpu_addr, dma_handle, attrs);
+-	else if (ops->free)
++	} else if (ops->free)
+ 		ops->free(dev, size, cpu_addr, dma_handle, attrs);
+ }
+ EXPORT_SYMBOL(dma_free_attrs);
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -4899,12 +4899,19 @@ void *page_frag_alloc(struct page_frag_c
+ 	unsigned int size = PAGE_SIZE;
+ 	struct page *page;
+ 	int offset;
++#if IS_ENABLED(CONFIG_MMSTAT_PAGE_DETAIL)
++	int allocated = 0;
++#endif
+ 
+ 	if (unlikely(!nc->va)) {
+ refill:
+ 		page = __page_frag_cache_refill(nc, gfp_mask);
+ 		if (!page)
+ 			return NULL;
++#if IS_ENABLED(CONFIG_MMSTAT_PAGE_DETAIL)
++		else
++			allocated = 1;
++#endif
+ 
+ #if (PAGE_SIZE < PAGE_FRAG_CACHE_MAX_SIZE)
+ 		/* if size can vary use size else just use PAGE_SIZE */
+@@ -4947,6 +4954,10 @@ refill:
+ 
+ 	nc->pagecnt_bias--;
+ 	nc->offset = offset;
++#if IS_ENABLED(CONFIG_MMSTAT_PAGE_DETAIL)
++	if (allocated)
++		mod_node_page_state(page_pgdat(page), NR_FRAG_PAGES, (1 << compound_order(page)));
++#endif
+ 
+ 	return nc->va + offset;
+ }
+@@ -4959,8 +4970,12 @@ void page_frag_free(void *addr)
+ {
+ 	struct page *page = virt_to_head_page(addr);
+ 
+-	if (unlikely(put_page_testzero(page)))
++	if (unlikely(put_page_testzero(page))) {
++#if IS_ENABLED(CONFIG_MMSTAT_PAGE_DETAIL)
++		mod_node_page_state(page_pgdat(page), NR_FRAG_PAGES, -(1 << compound_order(page)));
++#endif
+ 		free_the_page(page, compound_order(page));
++	}
+ }
+ EXPORT_SYMBOL(page_frag_free);
+ 
+--- a/mm/vmstat.c
++++ b/mm/vmstat.c
+@@ -1167,6 +1167,10 @@ const char * const vmstat_text[] = {
+ 	"nr_dirtied",
+ 	"nr_written",
+ 	"nr_kernel_misc_reclaimable",
++#if IS_ENABLED(CONFIG_MMSTAT_PAGE_DETAIL)
++	"nr_frag_pages",
++	"nr_dma_pages",
++#endif
+ 
+ 	/* enum writeback_stat_item counters */
+ 	"nr_dirty_threshold",

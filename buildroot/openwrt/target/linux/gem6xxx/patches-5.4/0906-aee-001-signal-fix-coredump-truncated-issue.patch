@@ -1,0 +1,35 @@
+From b48d1b7e3fae862a5c13f81bd8d4025f67574681 Mon Sep 17 00:00:00 2001
+From: Manny Chang <manny.chang@mediatek.com>
+Date: Thu, 10 Jun 2021 14:40:16 +0800
+Subject: [PATCH] [ALPS05681537] signal: fix coredump truncated issue
+
+when NE occurs, debuggerd will get process coredump, if it
+receives exit signal, process will exit and coredump is truncated.
+ignore other signals when coredump is generating.
+
+port from https://gerrit.mediatek.inc/c/quark/kernel-4.19/+/2596592
+
+Change-Id: I55cfd96b282284c246d20c42757c4ec4d6de0d63
+Signed-off-by: Manny Chang <manny.chang@mediatek.com>
+CR-Id: ALPS05681537
+Feature: Android Exception Engine(AEE)
+---
+
+diff --git a/kernel/signal.c b/kernel/signal.c
+index 4f5e6be..feded9b 100644
+--- a/kernel/signal.c
++++ b/kernel/signal.c
+@@ -904,8 +904,11 @@
+ 	sigset_t flush;
+ 
+ 	if (signal->flags & (SIGNAL_GROUP_EXIT | SIGNAL_GROUP_COREDUMP)) {
+-		if (!(signal->flags & SIGNAL_GROUP_EXIT))
+-			return sig == SIGKILL;
++		if (signal->flags & SIGNAL_GROUP_COREDUMP) {
++			pr_debug("[%d:%s] is in the middle of doing coredump so skip sig %d\n",
++				p->pid, p->comm, sig);
++			return 0;
++		}
+ 		/*
+ 		 * The process is in the middle of dying, nothing to do.
+ 		 */

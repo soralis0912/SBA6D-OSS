@@ -1,0 +1,122 @@
+// SPDX-License-Identifier: GPL-2.0-only
+
+#ifndef __MTK_WED_MCU_H
+#define __MTK_WED_MCU_H
+
+#define EXCEPTION_LOG_SIZE		32768
+//for mt6990 WO
+#define WOCPU_MCUSYS_RESET_MASK		0x20
+
+#define WOCPU_WO0_MCU_RESET_ADDR        0x15194050
+#define WOCPU_WO1_MCU_RESET_ADDR        0x15294050
+#define WOCPU_WO2_MCU_RESET_ADDR        0x15394050
+#define WOCPU_MCU_VIEW_MIOD_BASE_ADDR   0x8000
+#define WOCPU_MCUSYS_HS_BASE_ADDR       0x15195000
+#define WOCPU_MCUSYS_OFFSET             0x100000
+#define WOCPU_WHOLE_MCUSYS_RESET_MASK   0x7
+#define WOCPU_MCUSYS_RESET_ADDR         0x1500003C
+
+#define WOX_MCU_CFG_HS_BASE             0 /*0x15195000*/
+#define WOX_MCU_CFG_HS_WOX_APSRC_ADDR   (WOX_MCU_CFG_HS_BASE + 0x0070) // 5070
+
+#define WOX_MCU_CFG_HS_WOX_APSRC_WOX_APSRC_DDREN_ADDR          WOX_MCU_CFG_HS_WOX_APSRC_ADDR
+#define WOX_MCU_CFG_HS_WOX_APSRC_WOX_APSRC_DDREN_MASK          0x00000008                // WOX_APSRC_DDREN[3]
+#define WOX_MCU_CFG_HS_WOX_APSRC_WOX_APSRC_DDREN_SHFT          3
+#define WOX_MCU_CFG_HS_WOX_APSRC_WOX_APSRC_POWOFF_ADDR         WOX_MCU_CFG_HS_WOX_APSRC_ADDR
+#define WOX_MCU_CFG_HS_WOX_APSRC_WOX_APSRC_POWOFF_MASK         0x00000004                // WOX_APSRC_POWOFF[2]
+#define WOX_MCU_CFG_HS_WOX_APSRC_WOX_APSRC_POWOFF_SHFT         2
+#define WOX_MCU_CFG_HS_WOX_APSRC_WOX_APSRC_REQ_ADDR            WOX_MCU_CFG_HS_WOX_APSRC_ADDR
+#define WOX_MCU_CFG_HS_WOX_APSRC_WOX_APSRC_REQ_MASK            0x00000002                // WOX_APSRC_REQ[1]
+#define WOX_MCU_CFG_HS_WOX_APSRC_WOX_APSRC_REQ_SHFT            1
+#define WOX_MCU_CFG_HS_WOX_APSRC_WOX_APSRC_IDLE_ADDR           WOX_MCU_CFG_HS_WOX_APSRC_ADDR
+#define WOX_MCU_CFG_HS_WOX_APSRC_WOX_APSRC_IDLE_MASK           0x00000001                // WOX_APSRC_IDLE[0]
+#define WOX_MCU_CFG_HS_WOX_APSRC_WOX_APSRC_IDLE_SHFT           0
+
+#define WARP_INVALID_LENGTH_STATUS (-2)
+#define WARP_NULL_POINTER_STATUS (-3)
+#define WARP_INVALID_PARA_STATUS (-4)
+#define WARP_NOT_HANDLE_STATUS (-5)
+#define WARP_FAIL_STATUS (-1)
+#define WARP_OK_STATUS (0)
+#define WARP_ALREADY_DONE_STATUS (1)
+
+#define MT6990_FIRMWARE_WO_1		"mediatek/bollinger_WOCPU0_RAM_CODE_release.bin"
+#define MT6990_FIRMWARE_WO_2		"mediatek/bollinger_WOCPU1_RAM_CODE_release.bin"
+#define MT6990_FIRMWARE_WO_3            "mediatek/bollinger_WOCPU2_RAM_CODE_release.bin"
+
+#define WOCPU_EMI_DEV_NODE		"mediatek,wocpu_emi"
+#define WOCPU_ILM_DEV_NODE		"mediatek,wocpu_ilm"
+#define WOCPU_DLM_DEV_NODE		"mediatek,wocpu_dlm"
+#define WOCPU_DATA_DEV_NODE		"mediatek,wocpu_data"
+#define WOCPU_BOOT_DEV_NODE		"mediatek,wocpu_boot"
+
+#define FW_DL_TIMEOUT		((3000 * HZ) / 1000)
+#define WOCPU_TIMEOUT		((1000 * HZ) / 1000)
+
+#define MAX_REGION_SIZE	3
+
+#define WOX_MCU_CFG_LS_BASE	0 /*0x15194000*/
+
+#define WOX_MCU_CFG_LS_HW_VER_ADDR		(WOX_MCU_CFG_LS_BASE + 0x000) // 4000
+#define WOX_MCU_CFG_LS_FW_VER_ADDR		(WOX_MCU_CFG_LS_BASE + 0x004) // 4004
+#define WOX_MCU_CFG_LS_CFG_DBG1_ADDR		(WOX_MCU_CFG_LS_BASE + 0x00C) // 400C
+#define WOX_MCU_CFG_LS_CFG_DBG2_ADDR 		(WOX_MCU_CFG_LS_BASE + 0x010) // 4010
+#define WOX_MCU_CFG_LS_WF_MCCR_ADDR		(WOX_MCU_CFG_LS_BASE + 0x014) // 4014
+#define WOX_MCU_CFG_LS_WF_MCCR_SET_ADDR		(WOX_MCU_CFG_LS_BASE + 0x018) // 4018
+#define WOX_MCU_CFG_LS_WF_MCCR_CLR_ADDR		(WOX_MCU_CFG_LS_BASE + 0x01C) // 401C
+#define WOX_MCU_CFG_LS_WF_MCU_CFG_WM_WA_ADDR	(WOX_MCU_CFG_LS_BASE + 0x050) // 4050
+#define WOX_MCU_CFG_LS_WM_BOOT_ADDR_ADDR 	(WOX_MCU_CFG_LS_BASE + 0x060) // 4060
+#define WOX_MCU_CFG_LS_WOX_MCU_CFG_WO0_WO1_WOX_CPU_RSTB_MASK   	0x00000020                // WOX_CPU_RSTB[5]
+
+//WO heartbeat usage
+#define WOX_MCU_CFG_LS_WOX_COM_REG0_ADDR        (WOX_MCU_CFG_LS_BASE + 0x200) // 4200
+#define WOX_MCU_CFG_LS_WOX_COM_REG1_ADDR        (WOX_MCU_CFG_LS_BASE + 0x204) // 4204
+#define WOX_MCU_CFG_LS_WOX_COM_REG2_ADDR        (WOX_MCU_CFG_LS_BASE + 0x208) // 4208
+
+enum wo_event_id {
+	WO_EVT_LOG_DUMP = 0x1,
+	WO_EVT_PROFILING = 0x2,
+	WO_EVT_RXCNT_INFO = 0x3
+};
+
+enum wo_state {
+	WO_STATE_UNDEFINED 	= 0x0,
+	WO_STATE_INIT 		= 0x1,
+	WO_STATE_ENABLE		= 0x2,
+	WO_STATE_DISABLE	= 0x3,
+	WO_STATE_HALT		= 0x4,
+	WO_STATE_GATING		= 0x5,
+	WO_STATE_SER_RESET 	= 0x6,
+	WO_STATE_WF_RESET	= 0x7,
+	WO_STATE_END
+};
+
+enum wo_done_state {
+	WOIF_UNDEFINED		= 0,
+	WOIF_DISABLE_DONE 	= 1,
+	WOIF_TRIGGER_ENABLE	= 2,
+	WOIF_ENABLE_DONE	= 3,
+	WOIF_TRIGGER_GATING	= 4,
+	WOIF_GATING_DONE	= 5,
+	WOIF_TRIGGER_HALT	= 6,
+	WOIF_HALT_DONE		= 7,
+};
+
+enum wed_dummy_cr_idx {
+	WED_DUMMY_CR_FWDL = 0,
+	WED_DUMMY_CR_WO_STATUS = 1
+};
+
+struct mtk_wed_fw_trailer {
+	u8 chip_id;
+	u8 eco_code;
+	u8 n_region;
+	u8 format_ver;
+	u8 format_flag;
+	u8 reserved[2];
+	char fw_ver[10];
+	char build_date[15];
+	u32 crc;
+};
+
+#endif

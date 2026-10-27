@@ -1,0 +1,22 @@
+Index: linux-5.4.179/init/main.c
+===================================================================
+--- linux-5.4.179.orig/init/main.c	2022-05-20 19:44:10.569976213 +0800
++++ linux-5.4.179/init/main.c	2022-05-20 19:51:23.858368128 +0800
+@@ -94,6 +94,7 @@
+ #include <linux/rodata_test.h>
+ #include <linux/jump_label.h>
+ #include <linux/mem_encrypt.h>
++#include <linux/bootprof.h>
+ 
+ #include <asm/io.h>
+ #include <asm/bugs.h>
+@@ -1152,6 +1153,9 @@
+ 
+ 	rcu_end_inkernel_boot();
+ 
++	bootprof_log_boot("Kernel_init_done");
++	printk("Kernel_init_done");
++	
+ 	if (ramdisk_execute_command) {
+ 		ret = run_init_process(ramdisk_execute_command);
+ 		if (!ret)

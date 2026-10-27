@@ -1,0 +1,409 @@
+--- a/drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.c
++++ b/drivers/net/ethernet/stmicro/stmmac/dwmac-mediatek.c
+@@ -53,10 +53,8 @@
+ /* Peri Configuration register for mt2737 */
+ #define MT2737_PERI_ETH_CTRL1		0xB0C
+ #define MT2737_SGMII_CLK_INTERNAL		BIT(29)
+-#define MT2737_RMII_CLK_SEL		GENMASK(28, 27)
+-#define MT2737_RMII_CLK_EXT_TXC		0
+-#define MT2737_RMII_CLK_EXT_RXC		1
+-#define MT2737_RMII_CLK_INT_RXC		2
++#define MT2737_RMII_CLK_SRC_INTERNAL	BIT(28)
++#define MT2737_RMII_CLK_SRC_RXC		BIT(27)
+ #define MT2737_ETH_INTF_SEL		GENMASK(26, 24)
+ #define MT2737_ETH_TXC_SHIFT		BIT(22)
+ #define MT2737_ETH_PHY_SEL		BIT(21)
+@@ -116,14 +114,15 @@ struct mac_delay_struct {
+ struct mediatek_dwmac_plat_data {
+ 	const struct mediatek_dwmac_variant *variant;
+ 	struct mac_delay_struct mac_delay;
++	struct clk *rmii_internal_clk;
+ 	struct clk_bulk_data *clks;
+ 	struct device_node *np;
+ 	struct regmap *peri_regmap;
+ 	struct device *dev;
+ 	struct mtk_sgmii *sgmii;
+ 	int phy_mode;
++	bool rmii_clk_from_mac;
+ 	bool rmii_rxc;
+-	bool rmii_int_clk;
+ 	struct regulator	*dvfsrc_vcore_power;
+ };
+ 
+@@ -151,7 +150,7 @@ static const char * const mt2712_dwmac_c
+ };
+ 
+ static const char * const mt2737_dwmac_clk_l[] = {
+-	"mac_main", "ptp_ref", "eth_rmii", "eth_axi", "eth_overclk"
++	"mac_main", "ptp_ref",  "eth_axi", "eth_overclk"
+ #if defined(CONFIG_MTK_SGMII_SNPS)
+ 	, "sgmii_sel", "sgmii_sbus_sel"
+ #endif
+@@ -711,6 +710,7 @@ static void eth_remove_attr(struct devic
+ 
+ static int mt2712_set_interface(struct mediatek_dwmac_plat_data *plat)
+ {
++	int rmii_clk_from_mac = plat->rmii_clk_from_mac ? RMII_CLK_SRC_INTERNAL : 0;
+ 	int rmii_rxc = plat->rmii_rxc ? RMII_CLK_SRC_RXC : 0;
+ 	u32 intf_val = 0;
+ 
+@@ -720,7 +720,7 @@ static int mt2712_set_interface(struct m
+ 		intf_val |= PHY_INTF_MII;
+ 		break;
+ 	case PHY_INTERFACE_MODE_RMII:
+-		intf_val |= (PHY_INTF_RMII | rmii_rxc);
++		intf_val |= (PHY_INTF_RMII | rmii_rxc | rmii_clk_from_mac);
+ 		break;
+ 	case PHY_INTERFACE_MODE_RGMII:
+ 	case PHY_INTERFACE_MODE_RGMII_TXID:
+@@ -781,35 +781,50 @@ static int mt2712_set_delay(struct media
+ 		delay_val |= FIELD_PREP(ETH_DLY_RXC_INV, mac_delay->rx_inv);
+ 		break;
+ 	case PHY_INTERFACE_MODE_RMII:
+-		/* the rmii reference clock is from external phy,
+-		 * and the property "rmii_rxc" indicates which pin(TXC/RXC)
+-		 * the reference clk is connected to. The reference clock is a
+-		 * received signal, so rx_delay/rx_inv are used to indicate
+-		 * the reference clock timing adjustment
+-		 */
+-		if (plat->rmii_rxc) {
+-			/* the rmii reference clock from outside is connected
+-			 * to RXC pin, the reference clock will be adjusted
+-			 * by RXC delay macro circuit.
+-			 */
+-			delay_val |= FIELD_PREP(ETH_DLY_RXC_ENABLE, !!mac_delay->rx_delay);
+-			delay_val |= FIELD_PREP(ETH_DLY_RXC_STAGES, mac_delay->rx_delay);
+-			delay_val |= FIELD_PREP(ETH_DLY_RXC_INV, mac_delay->rx_inv);
+-		} else {
+-			/* the rmii reference clock from outside is connected
+-			 * to TXC pin, the reference clock will be adjusted
+-			 * by TXC delay macro circuit.
++		if (plat->rmii_clk_from_mac) {
++			/* case 1: mac provides the rmii reference clock,
++			 * and the clock output to TXC pin.
++			 * The egress timing can be adjusted by GTXC delay macro circuit.
++			 * The ingress timing can be adjusted by TXC delay macro circuit.
+ 			 */
+ 			delay_val |= FIELD_PREP(ETH_DLY_TXC_ENABLE, !!mac_delay->rx_delay);
+ 			delay_val |= FIELD_PREP(ETH_DLY_TXC_STAGES, mac_delay->rx_delay);
+ 			delay_val |= FIELD_PREP(ETH_DLY_TXC_INV, mac_delay->rx_inv);
++
++			delay_val |= FIELD_PREP(ETH_DLY_GTXC_ENABLE, !!mac_delay->tx_delay);
++			delay_val |= FIELD_PREP(ETH_DLY_GTXC_STAGES, mac_delay->tx_delay);
++			delay_val |= FIELD_PREP(ETH_DLY_GTXC_INV, mac_delay->tx_inv);
++		} else {
++			/* case 2: the rmii reference clock is from external phy,
++			 * and the property "rmii_rxc" indicates which pin(TXC/RXC)
++			 * the reference clk is connected to. The reference clock is a
++			 * received signal, so rx_delay/rx_inv are used to indicate
++			 * the reference clock timing adjustment
++			 */
++			if (plat->rmii_rxc) {
++				/* the rmii reference clock from outside is connected
++				 * to RXC pin, the reference clock will be adjusted
++				 * by RXC delay macro circuit.
++				 */
++				delay_val |= FIELD_PREP(ETH_DLY_RXC_ENABLE, !!mac_delay->rx_delay);
++				delay_val |= FIELD_PREP(ETH_DLY_RXC_STAGES, mac_delay->rx_delay);
++				delay_val |= FIELD_PREP(ETH_DLY_RXC_INV, mac_delay->rx_inv);
++			} else {
++				/* the rmii reference clock from outside is connected
++				 * to TXC pin, the reference clock will be adjusted
++				 * by TXC delay macro circuit.
++				 */
++				delay_val |= FIELD_PREP(ETH_DLY_TXC_ENABLE, !!mac_delay->rx_delay);
++				delay_val |= FIELD_PREP(ETH_DLY_TXC_STAGES, mac_delay->rx_delay);
++				delay_val |= FIELD_PREP(ETH_DLY_TXC_INV, mac_delay->rx_inv);
++			}
++			/* tx_inv will inverse the tx clock inside mac relateive to
++			 * reference clock from external phy,
++			 * and this bit is located in the same register with fine-tune
++			 */
++			if (mac_delay->tx_inv)
++				fine_val = ETH_RMII_DLY_TX_INV;
+ 		}
+-		/* tx_inv will inverse the tx clock inside mac relateive to
+-		 * reference clock from external phy,
+-		 * and this bit is located in the same register with fine-tune
+-		 */
+-		if (mac_delay->tx_inv)
+-			fine_val = ETH_RMII_DLY_TX_INV;
+ 		break;
+ 	case PHY_INTERFACE_MODE_RGMII:
+ 	case PHY_INTERFACE_MODE_RGMII_TXID:
+@@ -847,44 +862,32 @@ static const struct mediatek_dwmac_varia
+ 
+ static int mt2737_set_interface(struct mediatek_dwmac_plat_data *plat)
+ {
++	int rmii_clk_from_mac = plat->rmii_clk_from_mac ? MT2737_RMII_CLK_SRC_INTERNAL : 0;
++	int rmii_rxc = plat->rmii_rxc ? MT2737_RMII_CLK_SRC_RXC : 0;
++	const struct mediatek_dwmac_variant *variant = plat->variant;
+ 	u32 intf_val = 0;
+ 	u32 err;
+ 
+-	const struct mediatek_dwmac_variant *variant = plat->variant;
+-	regmap_read(plat->peri_regmap, MT2737_PERI_ETH_CTRL1, &intf_val);
+-
+ 	/* select phy interface in top control domain */
+ 	switch (plat->phy_mode) {
+ 	case PHY_INTERFACE_MODE_MII:
+-		/*MII/RMII external clock*/
+-		intf_val &= ~MT2737_ETH_INTF_SEL;
++		/*MII external clock*/
+ 		intf_val |= FIELD_PREP(MT2737_ETH_INTF_SEL, PHY_INTF_MII);
+-		intf_val &= ~MT2737_ETH_TXC_SHIFT;
++		intf_val |= MT2737_ETH_PHY_SEL;
+ 		break;
+ 	case PHY_INTERFACE_MODE_RMII:
+-		intf_val &= ~MT2737_ETH_INTF_SEL;
++		intf_val |= (rmii_rxc | rmii_clk_from_mac);
+ 		intf_val |= FIELD_PREP(MT2737_ETH_INTF_SEL, PHY_INTF_RMII);
+-		intf_val &= ~MT2737_ETH_TXC_SHIFT;
+-		intf_val &= ~MT2737_RMII_CLK_SEL;
+-		if (plat->rmii_int_clk)
+-			intf_val |= FIELD_PREP(MT2737_RMII_CLK_SEL, MT2737_RMII_CLK_INT_RXC);
+-		else if (plat->rmii_rxc)
+-			intf_val |= FIELD_PREP(MT2737_RMII_CLK_SEL, MT2737_RMII_CLK_EXT_RXC);
+-		else
+-			intf_val |= FIELD_PREP(MT2737_RMII_CLK_SEL, MT2737_RMII_CLK_EXT_TXC);
++		intf_val |= MT2737_ETH_PHY_SEL;
+ 		break;
+-
+ 	case PHY_INTERFACE_MODE_RGMII:
+ 	case PHY_INTERFACE_MODE_RGMII_TXID:
+ 	case PHY_INTERFACE_MODE_RGMII_RXID:
+ 	case PHY_INTERFACE_MODE_RGMII_ID:
+-		intf_val &= ~MT2737_ETH_INTF_SEL;
+ 		intf_val |= FIELD_PREP(MT2737_ETH_INTF_SEL, PHY_INTF_RGMII);
++		intf_val |= MT2737_ETH_PHY_SEL;
+ 		break;
+-
+ 	case PHY_INTERFACE_MODE_SGMII:
+-		intf_val &= ~MT2737_ETH_PHY_SEL;
+-		intf_val &= ~MT2737_ETH_INTF_SEL;
+ 		intf_val |= MT2737_SGMII_CLK_INTERNAL;
+ 
+ 		plat->dvfsrc_vcore_power = regulator_get(plat->dev, "dvfsrc-vcore");
+@@ -905,7 +908,6 @@ static int mt2737_set_interface(struct m
+ 	
+ 		err = mediatek_sgmii_init(plat->sgmii, plat->np, plat->dev, variant->ana_rgc3);
+ 		break;
+-
+ 	default:
+ 		dev_err(plat->dev, "phy interface not supported\n");
+ 		return -EINVAL;
+@@ -921,8 +923,8 @@ static void mt2737_delay_ps2stage(struct
+ 	struct mac_delay_struct *mac_delay = &plat->mac_delay;
+ 
+ 	/* 290ps per stage */
+-	mac_delay->tx_delay /= 290;
+-	mac_delay->rx_delay /= 290;
++	mac_delay->tx_delay /= 134;
++	mac_delay->rx_delay /= 134;
+ }
+ 
+ static void mt2737_delay_stage2ps(struct mediatek_dwmac_plat_data *plat)
+@@ -930,26 +932,17 @@ static void mt2737_delay_stage2ps(struct
+ 	struct mac_delay_struct *mac_delay = &plat->mac_delay;
+ 
+ 	/* 290ps per stage */
+-	mac_delay->tx_delay *= 290;
+-	mac_delay->rx_delay *= 290;
++	mac_delay->tx_delay *= 134;
++	mac_delay->rx_delay *= 134;
+ }
+ 
+ static int mt2737_set_delay(struct mediatek_dwmac_plat_data *plat)
+ {
+ 	struct mac_delay_struct *mac_delay = &plat->mac_delay;
+-	u32 delay_val = 0, rmii_delay_val = 0, gtxc_delay_val = 0, origin_val = 0;
++	u32 delay_val = 0, rmii_delay_val = 0, gtxc_delay_val = 0;
+ 
+ 	mt2737_delay_ps2stage(plat);
+ 
+-	regmap_read(plat->peri_regmap, MT2737_PERI_ETH_CTRL1, &origin_val);
+-	gtxc_delay_val = origin_val;
+-
+-	regmap_read(plat->peri_regmap, MT2737_PERI_ETH_CTRL2, &origin_val);
+-	delay_val = origin_val;
+-
+-	regmap_read(plat->peri_regmap, MT2737_PERI_ETH_CTRL3, &origin_val);
+-	rmii_delay_val = origin_val;
+-
+ 	switch (plat->phy_mode) {
+ 	case PHY_INTERFACE_MODE_MII:
+ 		delay_val &= ~(MT2737_DLY_TXC_COARSE_EN | MT2737_DLY_TXC_COARSE_STG |
+@@ -965,14 +958,12 @@ static int mt2737_set_delay(struct media
+ 		delay_val |= FIELD_PREP(MT2737_DLY_RXC_INV, mac_delay->rx_inv);
+ 		break;
+ 	case PHY_INTERFACE_MODE_RMII:
+-		if (plat->rmii_int_clk) {
++		if (plat->rmii_clk_from_mac) {
+ 			/* case 1: mac provides the rmii reference clock,
+ 			 * and the clock output to TXC pin.
+ 			 * The egress timing can be adjusted by RMII_TXC delay macro circuit.
+ 			 * The ingress timing can be adjusted by RMII_RXC delay macro circuit.
+ 			 */
+-			rmii_delay_val &= ~(MT2737_DLY_RMII_TXC_INV | MT2737_DLY_RMII_TXC_COARSE_STG |
+-							MT2737_DLY_RMII_TXC_COARSE_EN);
+ 			rmii_delay_val |= FIELD_PREP(MT2737_DLY_RMII_TXC_COARSE_EN,
+ 							 !!mac_delay->tx_delay);
+ 			rmii_delay_val |= FIELD_PREP(MT2737_DLY_RMII_TXC_COARSE_STG,
+@@ -980,8 +971,6 @@ static int mt2737_set_delay(struct media
+ 			rmii_delay_val |= FIELD_PREP(MT2737_DLY_RMII_TXC_INV,
+ 							 mac_delay->tx_inv);
+ 
+-			rmii_delay_val &= ~(MT2737_DLY_RMII_RXC_INV | MT2737_DLY_RMII_RXC_COARSE_STG |
+-							MT2737_DLY_RMII_RXC_COARSE_EN);
+ 			rmii_delay_val |= FIELD_PREP(MT2737_DLY_RMII_RXC_COARSE_EN,
+ 							 !!mac_delay->rx_delay);
+ 			rmii_delay_val |= FIELD_PREP(MT2737_DLY_RMII_RXC_COARSE_STG,
+@@ -1000,26 +989,22 @@ static int mt2737_set_delay(struct media
+ 				 * to RXC pin, the reference clock will be adjusted
+ 				 * by RXC delay macro circuit.
+ 				 */
+-				delay_val &= ~(MT2737_DLY_RXC_COARSE_EN | MT2737_DLY_RXC_COARSE_STG |
+-							 MT2737_DLY_RXC_INV);
+-				delay_val |= FIELD_PREP(MT2737_DLY_RXC_COARSE_EN,
++				delay_val |= FIELD_PREP(MT2737_DLY_RMII_RXC_COARSE_EN,
+ 							!!mac_delay->rx_delay);
+-				delay_val |= FIELD_PREP(MT2737_DLY_RXC_COARSE_STG,
++				delay_val |= FIELD_PREP(MT2737_DLY_RMII_RXC_COARSE_STG,
+ 							mac_delay->rx_delay);
+-				delay_val |= FIELD_PREP(MT2737_DLY_RXC_INV,
++				delay_val |= FIELD_PREP(MT2737_DLY_RMII_RXC_INV,
+ 							mac_delay->rx_inv);
+ 			} else {
+ 				/* the rmii reference clock from outside is connected
+ 				 * to TXC pin, the reference clock will be adjusted
+ 				 * by TXC delay macro circuit.
+ 				 */
+-				delay_val &= ~(MT2737_DLY_TXC_COARSE_EN | MT2737_DLY_TXC_COARSE_STG |
+-							 MT2737_DLY_TXC_INV);
+-				delay_val |= FIELD_PREP(MT2737_DLY_TXC_COARSE_EN,
++				delay_val |= FIELD_PREP(MT2737_DLY_RMII_TXC_COARSE_EN,
+ 							!!mac_delay->rx_delay);
+-				delay_val |= FIELD_PREP(MT2737_DLY_TXC_COARSE_STG,
++				delay_val |= FIELD_PREP(MT2737_DLY_RMII_TXC_COARSE_STG,
+ 							mac_delay->rx_delay);
+-				delay_val |= FIELD_PREP(MT2737_DLY_TXC_INV,
++				delay_val |= FIELD_PREP(MT2737_DLY_RMII_TXC_INV,
+ 							mac_delay->rx_inv);
+ 			}
+ 		}
+@@ -1028,13 +1013,10 @@ static int mt2737_set_delay(struct media
+ 	case PHY_INTERFACE_MODE_RGMII_TXID:
+ 	case PHY_INTERFACE_MODE_RGMII_RXID:
+ 	case PHY_INTERFACE_MODE_RGMII_ID:
+-		gtxc_delay_val &= ~(MT2737_DLY_GTXC_COARSE_EN | MT2737_DLY_GTXC_INV | MT2737_DLY_GTXC_COARSE_STG);
+-
+ 		gtxc_delay_val |= FIELD_PREP(MT2737_DLY_GTXC_COARSE_EN, !!mac_delay->tx_delay);
+ 		gtxc_delay_val |= FIELD_PREP(MT2737_DLY_GTXC_COARSE_STG, mac_delay->tx_delay);
+ 		gtxc_delay_val |= FIELD_PREP(MT2737_DLY_GTXC_INV, mac_delay->tx_inv);
+ 
+-		delay_val &= ~(MT2737_DLY_RXC_COARSE_EN | MT2737_DLY_RXC_INV | MT2737_DLY_RXC_COARSE_STG);
+ 		delay_val |= FIELD_PREP(MT2737_DLY_RXC_COARSE_EN, !!mac_delay->rx_delay);
+ 		delay_val |= FIELD_PREP(MT2737_DLY_RXC_COARSE_STG, mac_delay->rx_delay);
+ 		delay_val |= FIELD_PREP(MT2737_DLY_RXC_INV, mac_delay->rx_inv);
+@@ -1046,7 +1028,13 @@ static int mt2737_set_delay(struct media
+ 		return -EINVAL;
+ 	}
+ 
+-	regmap_write(plat->peri_regmap, MT2737_PERI_ETH_CTRL1, gtxc_delay_val);
++	regmap_update_bits(plat->peri_regmap,
++			   MT2737_PERI_ETH_CTRL1,
++			   MT2737_ETH_TXC_SHIFT |
++			   MT2737_DLY_GTXC_INV |
++			   MT2737_DLY_GTXC_COARSE_EN |
++			   MT2737_DLY_GTXC_COARSE_STG,
++			   gtxc_delay_val);
+ 	regmap_write(plat->peri_regmap, MT2737_PERI_ETH_CTRL2, delay_val);
+ 	regmap_write(plat->peri_regmap, MT2737_PERI_ETH_CTRL3, rmii_delay_val);
+ 
+@@ -1055,35 +1043,9 @@ static int mt2737_set_delay(struct media
+ 	return 0;
+ }
+ 
+-static void mt2737_fix_mac_speed(void *priv, unsigned int speed)
+-{
+-	struct mediatek_dwmac_plat_data *priv_plat = priv;
+-
+-	if ((phy_interface_mode_is_rgmii(priv_plat->phy_mode))) {
+-		/* prefer 2ns fixed delay which is controlled by TXC_PHASE_CTRL,
+-		 * when link speed is 1Gbps with RGMII interface,
+-		 * Fall back to delay macro circuit for 10/100Mbps link speed.
+-		 */
+-		if (speed == SPEED_1000)
+-			regmap_update_bits(priv_plat->peri_regmap,
+-					   MT2737_PERI_ETH_CTRL1,
+-					   MT2737_ETH_TXC_SHIFT |
+-					   MT2737_DLY_GTXC_INV |
+-					   MT2737_DLY_GTXC_FINE_EN |
+-					   MT2737_DLY_GTXC_FINE_STG |
+-					   MT2737_DLY_GTXC_COARSE_EN |
+-					   MT2737_DLY_GTXC_COARSE_STG,
+-					   MT2737_DLY_GTXC_COARSE_EN |
+-					   MT2737_ETH_TXC_SHIFT);
+-		else
+-			mt2737_set_delay(priv_plat);
+-	}
+-}
+-
+ static const struct mediatek_dwmac_variant mt2737_gmac_variant = {
+ 	.dwmac_set_phy_interface = mt2737_set_interface,
+ 	.dwmac_set_delay = mt2737_set_delay,
+-	.dwmac_fix_mac_speed = mt2737_fix_mac_speed,
+ 	.clk_list = mt2737_dwmac_clk_l,
+ 	.num_clks = ARRAY_SIZE(mt2737_dwmac_clk_l),
+ 	.dma_bit_mask = 32,
+@@ -1132,10 +1094,7 @@ static int mediatek_dwmac_config_dt(stru
+ 	mac_delay->tx_inv = of_property_read_bool(plat->np, "mediatek,txc-inverse");
+ 	mac_delay->rx_inv = of_property_read_bool(plat->np, "mediatek,rxc-inverse");
+ 	plat->rmii_rxc = of_property_read_bool(plat->np, "mediatek,rmii-rxc");
+-	plat->rmii_int_clk =
+-		of_property_read_bool(plat->np, "mediatek,rmii-internal-clk");
+-	if (plat->rmii_int_clk)
+-		plat->rmii_rxc = 0;
++	plat->rmii_clk_from_mac = of_property_read_bool(plat->np, "mediatek,rmii-clk-from-mac");
+ 
+ 	return 0;
+ }
+@@ -1143,16 +1102,34 @@ static int mediatek_dwmac_config_dt(stru
+ static int mediatek_dwmac_clk_init(struct mediatek_dwmac_plat_data *plat)
+ {
+ 	const struct mediatek_dwmac_variant *variant = plat->variant;
+-	int i, num = variant->num_clks;
++	int i, ret = 0;
+ 
+-	plat->clks = devm_kcalloc(plat->dev, num, sizeof(*plat->clks), GFP_KERNEL);
++	plat->clks = devm_kcalloc(plat->dev, variant->num_clks, sizeof(*plat->clks), GFP_KERNEL);
+ 	if (!plat->clks)
+ 		return -ENOMEM;
+ 
+-	for (i = 0; i < num; i++)
++	for (i = 0; i < variant->num_clks; i++)
+ 		plat->clks[i].id = variant->clk_list[i];
+ 
+-	return devm_clk_bulk_get(plat->dev, num, plat->clks);
++	ret =  devm_clk_bulk_get(plat->dev, variant->num_clks, plat->clks);
++	if (ret)
++		return ret;
++
++	/* The clock labeled as "rmii_internal" is needed only in RMII(when
++	 * MAC provides the reference clock), and useless for RGMII/MII or
++	 * RMII(when PHY provides the reference clock).
++	 * So, "rmii_internal" clock is got and configured only when
++	 * reference clock of RMII is from MAC.
++	 */
++	if (plat->rmii_clk_from_mac) {
++		plat->rmii_internal_clk = devm_clk_get(plat->dev, "rmii_internal");
++		if (IS_ERR(plat->rmii_internal_clk))
++			ret = PTR_ERR(plat->rmii_internal_clk);
++	} else {
++		plat->rmii_internal_clk = NULL;
++	}
++
++	return ret;
+ }
+ 
+ static int mediatek_dwmac_init(struct platform_device *pdev, void *priv)

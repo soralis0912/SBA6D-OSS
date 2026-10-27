@@ -1,0 +1,175 @@
+--- a/arch/arm/kernel/smp.c
++++ b/arch/arm/kernel/smp.c
+@@ -243,7 +243,13 @@ int __cpu_disable(void)
+ #ifdef CONFIG_GENERIC_ARCH_TOPOLOGY
+ 	remove_cpu_topology(cpu);
+ #endif
+-
++#ifdef CONFIG_ARM_IRQ_TARGET_ALL
++	/*
++	 * we disable irq here to ensure interrupts
++	 * did not bother this cpu after status as offline.
++	 */
++	local_irq_disable();
++#endif
+ 	/*
+ 	 * Take this CPU offline.  Once we clear this, we can't return,
+ 	 * and we must not schedule until we're ready to give up the cpu.
+@@ -597,11 +603,17 @@ static void ipi_cpu_stop(unsigned int cp
+ 		raw_spin_unlock(&stop_lock);
+ 	}
+ 
++#ifdef CONFIG_ARM_IRQ_TARGET_ALL
+ 	set_cpu_online(cpu, false);
++#endif
+ 
+ 	local_fiq_disable();
+ 	local_irq_disable();
+ 
++#ifndef CONFIG_ARM_IRQ_TARGET_ALL
++	set_cpu_online(cpu, false);
++#endif
++
+ 	while (1) {
+ 		cpu_relax();
+ 		wfe();
+--- a/arch/arm64/kernel/smp.c
++++ b/arch/arm64/kernel/smp.c
+@@ -297,6 +297,14 @@ int __cpu_disable(void)
+ 	remove_cpu_topology(cpu);
+ 	numa_remove_cpu(cpu);
+ 
++#ifdef CONFIG_ARM_IRQ_TARGET_ALL
++	/*
++	 * we disable irq here to ensure interrupts
++	 * did not bother this cpu after status as offline.
++	 */
++	local_irq_disable();
++#endif
++
+ 	/*
+ 	 * Take this CPU offline.  Once we clear this, we can't return,
+ 	 * and we must not schedule until we're ready to give up the cpu.
+@@ -831,9 +839,16 @@ void arch_irq_work_raise(void)
+ 
+ static void local_cpu_stop(void)
+ {
++#ifdef CONFIG_ARM_IRQ_TARGET_ALL
++	local_daif_mask();
++#endif
++
+ 	set_cpu_online(smp_processor_id(), false);
+ 
++#ifndef CONFIG_ARM_IRQ_TARGET_ALL
+ 	local_daif_mask();
++#endif
++
+ 	sdei_mask_local_cpu();
+ 	cpu_park_loop();
+ }
+--- a/drivers/irqchip/Kconfig
++++ b/drivers/irqchip/Kconfig
+@@ -507,4 +507,14 @@ config MTK_CIRQ
+ 	  Low-power interrupt controller driver to monitor IRQS
+ 	  in the sleep mode for Mediatek mobile chips.
+ 
++config ARM_IRQ_TARGET_ALL
++	bool "Distribute interrupts across processors on SMP system"
++	depends on ARM_GIC_V3 && SMP
++	help
++	  Support for new interrupt distribution design for
++	  MediaTek solutions. With this feature enabled, the
++	  SPI interrupts would be routed to all the cores rather
++	  than cpu0 to achieve better load balance of interrupt
++	  handling.
++
+ endmenu
+--- a/drivers/irqchip/irq-gic-v3.c
++++ b/drivers/irqchip/irq-gic-v3.c
+@@ -712,7 +712,9 @@ static bool gic_has_group0(void)
+ static void __init gic_dist_init(void)
+ {
+ 	unsigned int i;
++#ifndef CONFIG_ARM_IRQ_TARGET_ALL
+ 	u64 affinity;
++#endif
+ 	void __iomem *base = gic_data.dist_base;
+ 
+ 	/* Disable the distributor */
+@@ -750,6 +752,7 @@ static void __init gic_dist_init(void)
+ 	writel_relaxed(GICD_CTLR_ARE_NS | GICD_CTLR_ENABLE_G1A | GICD_CTLR_ENABLE_G1,
+ 		       base + GICD_CTLR);
+ 
++#ifndef CONFIG_ARM_IRQ_TARGET_ALL
+ 	/*
+ 	 * Set all global interrupts to the boot CPU only. ARE must be
+ 	 * enabled.
+@@ -760,6 +763,16 @@ static void __init gic_dist_init(void)
+ 
+ 	for (i = 0; i < GIC_ESPI_NR; i++)
+ 		gic_write_irouter(affinity, base + GICD_IROUTERnE + i * 8);
++#else
++	/* default set target all for all SPI */
++	for (i = 32; i < GIC_LINE_NR; i++)
++		gic_write_irouter(GICD_IROUTER_SPI_MODE_ANY,
++				base + GICD_IROUTER + i * 8);
++
++	for (i = 0; i < GIC_ESPI_NR; i++)
++		gic_write_irouter(GICD_IROUTER_SPI_MODE_ANY,
++				base + GICD_IROUTERnE + i * 8);
++#endif
+ }
+ 
+ static int gic_iterate_rdists(int (*fn)(struct redist_region *, void __iomem *))
+@@ -1145,6 +1158,7 @@ static int gic_set_affinity(struct irq_d
+ 	if (gic_irq_in_rdist(d))
+ 		return -EINVAL;
+ 
++#ifndef CONFIG_ARM_IRQ_TARGET_ALL
+ 	/* If interrupt was enabled, disable it first */
+ 	enabled = gic_peek_irq(d, GICD_ISENABLER);
+ 	if (enabled)
+@@ -1168,6 +1182,43 @@ static int gic_set_affinity(struct irq_d
+ 	irq_data_update_effective_affinity(d, cpumask_of(cpu));
+ 
+ 	return IRQ_SET_MASK_OK_DONE;
++#else
++	/*
++	 * no need to update when:
++	 * input mask is equal to the current setting
++	 */
++	if (cpumask_equal(irq_data_get_affinity_mask(d), mask_val))
++		return IRQ_SET_MASK_OK_NOCOPY;
++
++	/* If interrupt was enabled, disable it first */
++	enabled = gic_peek_irq(d, GICD_ISENABLER);
++	if (enabled)
++		gic_mask_irq(d);
++
++	offset = convert_offset_index(d, GICD_IROUTER, &index);
++	reg = gic_dist_base(d) + offset + (index * 8);
++
++	/* GICv3 supports target is 1 or all */
++	if (cpumask_weight(mask_val) > 1)
++		val = GICD_IROUTER_SPI_MODE_ANY;
++	else
++		val = gic_mpidr_to_affinity(cpu_logical_map(cpu));
++
++	gic_write_irouter(val, reg);
++
++	/*
++	 * If the interrupt was enabled, enabled it again. Otherwise,
++	 * just wait for the distributor to have digested our changes.
++	 */
++	if (enabled)
++		gic_unmask_irq(d);
++	else
++		gic_dist_wait_for_rwp();
++
++	/* cpumask_copy(mask_val, cpu_online_mask); */
++
++	return IRQ_SET_MASK_OK;
++#endif
+ }
+ #else
+ #define gic_set_affinity	NULL

@@ -1,0 +1,18 @@
+--- a/arch/arm64/boot/dts/mediatek/Makefile
++++ b/arch/arm64/boot/dts/mediatek/Makefile
+@@ -16,3 +16,15 @@ dtb-$(CONFIG_ARCH_MEDIATEK) += evb6890v1
+ dtb-$(CONFIG_ARCH_MEDIATEK) += evb6890v1_datacard.dtb
+ dtb-$(CONFIG_ARCH_MEDIATEK) += fpga6990_64.dtb
+ dtb-$(CONFIG_ARCH_MEDIATEK) += k6880v1_mdot2_datacard.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += evb6980_datacard.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += evb6980d_refmodem.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += evb6980d_refmodem_flash.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += evb6990_cpe.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += evb6990_cpe_emmc.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += evb6990_mifi.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += fpga6980_64.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += fpga6990_64_emmc.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += evb6990_wifi_only.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += evb6990_cpe_mt7990.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += evb6990_cpe_mt7990_emmc.dtb
++dtb-$(CONFIG_ARCH_MEDIATEK) += evb6990_cpe_mt7990_md800_emmc.dtb

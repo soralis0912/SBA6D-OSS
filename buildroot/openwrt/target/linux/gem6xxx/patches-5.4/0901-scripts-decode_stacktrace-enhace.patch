@@ -1,0 +1,44 @@
+From b828b62b05acbfaa991bcfa8cf95d92c2f5a421b Mon Sep 17 00:00:00 2001
+From: Jungo Lin <jungo.lin@mediatek.com>
+Date: Thu, 26 Aug 2021 15:51:19 +0800
+Subject: [PATCH] [ALPS05706584] kernel script enhancement
+
+1. Support line processing with \r\n.
+For window log files, they may contain \r\n in the line.
+2. Add more information about addr2line usage.
+It is better to use cross compile version of addr2line
+
+Change-Id: I6725b304cedf2023ad05e5f58dfeb1fa7fdcba43
+CR-Id: ALPS05706584
+Feature: Kernel Stability
+Signed-off-by: Jungo Lin <jungo.lin@mediatek.com>
+---
+ scripts/decode_stacktrace.sh | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/scripts/decode_stacktrace.sh b/scripts/decode_stacktrace.sh
+index fe7076fdac8a..6c2fe44882d2 100755
+--- a/scripts/decode_stacktrace.sh
++++ b/scripts/decode_stacktrace.sh
+@@ -9,6 +9,8 @@ if [[ $# < 2 ]]; then
+ 	exit 1
+ fi
+ 
++echo "The path of addr2line is ${CROSS_COMPILE}addr2line"
++
+ vmlinux=$1
+ basepath=$2
+ modpath=$3
+@@ -146,6 +148,9 @@ handle_line() {
+ }
+ 
+ while read line; do
++	# Trim the \n
++	line=`echo $line | tr -d '\r'`
++
+ 	# Let's see if we have an address in the line
+ 	if [[ $line =~ \[\<([^]]+)\>\] ]] ||
+ 	   [[ $line =~ [^+\ ]+\+0x[0-9a-f]+/0x[0-9a-f]+ ]]; then
+-- 
+2.18.0
+

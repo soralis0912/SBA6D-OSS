@@ -1,0 +1,42 @@
+# defaults
+MEDIATEK_BOARD_NAME="MediaTek generic board"
+MEDIATEK_BOARD_MODEL="Generic MediaTek"
+
+do_sysinfo_mediatek() {
+	local board
+	local model
+	local compatible
+
+	[ -e "/tmp/sysinfo/" ] || mkdir -p "/tmp/sysinfo/"
+
+	model="$( cat /proc/device-tree/model )"
+	compatible="$( cat /proc/device-tree/compatible )"
+
+	case "$compatible" in
+	mediatek,evb6890v1_64_cpe*)
+		model="evb6890v1_64_cpe";
+		board="evb6890v1_64_cpe";
+		;;
+	mediatek,evb6890v1_64_mifi*)
+		model="evb6890v1_64_mifi";
+		board="evb6890v1_64_mifi";
+		;;
+	mediatek,evb6890v1_64_odu*)
+		model="evb6890v1_64_odu";
+		board="evb6890v1_64_odu";
+		;;
+	esac
+
+	if [ "$board" != "" ]; then
+		MEDIATEK_BOARD_NAME="$board"
+	fi
+
+	if [ "$model" != "" ]; then
+		MEDIATEK_BOARD_MODEL="$model"
+	fi
+
+	echo "$MEDIATEK_BOARD_NAME" > /tmp/sysinfo/board_name
+	echo "$MEDIATEK_BOARD_MODEL" > /tmp/sysinfo/model
+}
+
+boot_hook_add preinit_main do_sysinfo_mediatek

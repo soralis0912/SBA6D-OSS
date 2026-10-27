@@ -1,0 +1,30 @@
+--- a/drivers/mfd/Kconfig
++++ b/drivers/mfd/Kconfig
+@@ -868,6 +868,17 @@ config MFD_MT6330
+ 	  additional drivers must be enabled in order to use the
+ 	  functionality of the device.
+ 
++config MFD_MT6361
++	tristate "Mediatek MT6361 PMIC support"
++	depends on OF && SPMI
++	select REGMAP_SPMI
++	select REGMAP_IRQ
++	help
++	  Say yes here to add support for Mediatek MT6361 PMIC. This is
++	  a Power Management IC. This driver provides common support for
++	  accessing the device; additional drivers must be enabled in order
++	  to use the functionality of the device.
++
+ config MFD_MT6397
+ 	tristate "MediaTek MT6397 PMIC Support"
+ 	select MFD_CORE
+--- a/drivers/mfd/Makefile
++++ b/drivers/mfd/Makefile
+@@ -241,6 +241,7 @@ obj-$(CONFIG_INTEL_SOC_PMIC_CHTWC)	+= in
+ obj-$(CONFIG_INTEL_SOC_PMIC_CHTDC_TI)	+= intel_soc_pmic_chtdc_ti.o
+ obj-$(CONFIG_MFD_MT6330)	+= mt6330-core.o mt6330-irq.o
+ obj-$(CONFIG_MFD_MT6330)	+= mt63xx-debug.o
++obj-$(CONFIG_MFD_MT6361)	+= mt6361.o
+ mt6397-objs	:= mt6397-core.o mt6397-irq.o
+ obj-$(CONFIG_MFD_MT6397)	+= mt6397.o
+ obj-$(CONFIG_MFD_MT6685)	+= mt6685-core.o

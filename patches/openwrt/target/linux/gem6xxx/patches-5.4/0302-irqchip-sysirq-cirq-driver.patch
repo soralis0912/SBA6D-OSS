@@ -1,0 +1,74 @@
+--- a/drivers/irqchip/Kconfig
++++ b/drivers/irqchip/Kconfig
+@@ -495,4 +495,16 @@ config SIFIVE_PLIC
+ 
+ 	   If you don't know what to do here, say Y.
+ 
++config MTK_SYSIRQ
++	tristate "Mediatek interrupt polarity controller"
++	help
++	  Interrupt polarity controller driver to swap polarity for
++	  interrupts for Mediatek mobile chips.
++
++config MTK_CIRQ
++	bool "Mediatek low-power interrupt controller"
++	help
++	  Low-power interrupt controller driver to monitor IRQS
++	  in the sleep mode for Mediatek mobile chips.
++
+ endmenu
+--- a/drivers/irqchip/Makefile
++++ b/drivers/irqchip/Makefile
+@@ -69,7 +69,8 @@ obj-$(CONFIG_BCM7120_L2_IRQ)		+= irq-bcm
+ obj-$(CONFIG_BRCMSTB_L2_IRQ)		+= irq-brcmstb-l2.o
+ obj-$(CONFIG_KEYSTONE_IRQ)		+= irq-keystone.o
+ obj-$(CONFIG_MIPS_GIC)			+= irq-mips-gic.o
+-obj-$(CONFIG_ARCH_MEDIATEK)		+= irq-mtk-sysirq.o irq-mtk-cirq.o
++obj-$(CONFIG_MTK_SYSIRQ)		+= irq-mtk-sysirq.o
++obj-$(CONFIG_MTK_CIRQ)			+= irq-mtk-cirq.o
+ obj-$(CONFIG_ARCH_DIGICOLOR)		+= irq-digicolor.o
+ obj-$(CONFIG_RENESAS_H8300H_INTC)	+= irq-renesas-h8300h.o
+ obj-$(CONFIG_RENESAS_H8S_INTC)		+= irq-renesas-h8s.o
+--- a/drivers/irqchip/irq-mtk-sysirq.c
++++ b/drivers/irqchip/irq-mtk-sysirq.c
+@@ -13,6 +13,7 @@
+ #include <linux/io.h>
+ #include <linux/slab.h>
+ #include <linux/spinlock.h>
++#include <linux/module.h>
+ 
+ struct mtk_sysirq_chip_data {
+ 	raw_spinlock_t lock;
+@@ -231,4 +232,32 @@ out_free_chip:
+ 	kfree(chip_data);
+ 	return ret;
+ }
++
++#if !defined(MODULE)
+ IRQCHIP_DECLARE(mtk_sysirq, "mediatek,mt6577-sysirq", mtk_sysirq_of_init);
++#else
++static int __init mtk_sysirq_module_init(void)
++{
++	struct device_node *node, *gic_node;
++
++	pr_info("sysirq was loaded\n");
++
++	node = of_find_compatible_node(NULL, NULL, "mediatek,mt6577-sysirq");
++	if (!node) {
++		pr_err("sysirq could not find the device node\n");
++		return -ENODEV;
++	}
++
++	gic_node = of_irq_find_parent(node);
++	if (!gic_node) {
++		pr_err("sysirq failed to find the GIC node\n");
++		return -ENODEV;
++	}
++
++	return mtk_sysirq_of_init(node, gic_node);
++}
++
++module_init(mtk_sysirq_module_init);
++
++MODULE_LICENSE("GPL v2");
++#endif

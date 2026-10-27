@@ -1,0 +1,84 @@
+#!/bin/sh
+
+FLASH_TYPE=
+IS_UBIFS=
+PARTITION_NVDATA=nvdata
+PARTITION_BOOT_PARA=boot_para
+PARTITION_USER_DATA=user_data
+
+get_flash_type() {
+	if [ -n "$(cat /proc/partitions 2>/dev/null | grep mtd)" ]; then
+		echo "nand"
+	elif [ -n "$(cat /proc/partitions 2>/dev/null | grep mmcblk)" ]; then
+		echo "emmc"
+	fi
+}
+
+is_ubifs() {
+	if [ -n "$(cat /etc/fstab 2>/dev/null | grep ubifs)" ]; then
+		echo "1"
+	else
+		echo "0"
+	fi
+}
+
+erase_ubifs() {
+	local path="$(cat /etc/mtab | grep "/$1 " | cut -d ' ' -f 2)"
+	local dev="$(cat /etc/fstab | grep "/$1 " | cut -d ' ' -f 1)"
+	echo "unmount path=$path, erase dev=$dev"
+	if [ -n "$path" ]; then
+		umount $path
+		status=$?
+		[ $status -eq 0 ] && echo "umount $path success" || echo "umount $path failed $status"
+	fi
+	local ubidev="$(cat /etc/fstab | grep "/$1 " | cut -d ' ' -f 1 | awk -F'ubi' '{print $2 }' | cut -d '_' -f 1)"
+	local ubivol="$(cat /etc/fstab | grep "/$1 " | cut -d ' ' -f 1 | awk -F'ubi' '{print $2 }' | cut -d '_' -f 2)"
+	ubirmvol /dev/ubi$ubidev -n $ubivol
+	status=$?
+	[ $status -eq 0 ] && echo "ubirmvol /dev/ubi$ubidev -n $ubivol success" || echo "ubirmvol /dev/ubi$ubidev -n $ubivol fail $status"
+}
+
+erase_partition() {
+	echo "Erasing $1 partition"
+	if [[ $FLASH_TYPE == "nand" ]]; then
+		local partition_type="$(cat /etc/fstab | grep "/$1 " | cut -d ' ' -f 3)"
+		echo $partition_type
+		if [ "$partition_type" = "ubifs" ];  then
+			local folder_name=$1
+			if [ "$folder_name" = "user_data" ]; then
+				folder_name="data"
+			fi
+			erase_ubifs $folder_name
+		else
+			local path="$(cat /etc/mtab | grep "/$1 " | cut -d ' ' -f 2)"
+			if [ -n "$path" ]; then
+				umount $path
+				status=$?
+				[ $status -eq 0 ] && echo "umount $path success" || echo "umount $path failed $status"
+			fi
+			mtd erase $1
+			status=$?
+			[ $status -eq 0 ] && echo "mtd erase $1 success" || echo "mtd erase $1 fail $status"
+		fi
+	elif [[ $FLASH_TYPE == "emmc" ]]; then
+		local path="$(cat /etc/mtab | grep "/$1 " | cut -d ' ' -f 2)"
+		if [ -n "$path" ]; then
+			umount $path
+			status=$?
+			[ $status -eq 0 ] && echo "umount $path success" || echo "umount $path failed $status"
+		fi
+		dd if=/dev/zero of=/dev/block/$1 bs=1M > /dev/null 2>&1
+	fi
+}
+
+FLASH_TYPE=$(get_flash_type)
+IS_UBIFS=$(is_ubifs)
+echo "FLASH_TYPE=$FLASH_TYPE, IS_UBIFS=$IS_UBIFS"
+
+#Stop ccci_fsd so nvdata can be unmounted and cleared
+/etc/init.d/2ccci_fsd stop
+erase_partition $PARTITION_NVDATA
+erase_partition $PARTITION_BOOT_PARA
+# erase_partition $PARTITION_USER_DATA
+
+/sbin/jffs2reset $@

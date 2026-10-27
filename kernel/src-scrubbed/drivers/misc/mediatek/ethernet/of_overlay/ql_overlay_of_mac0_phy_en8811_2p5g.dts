@@ -1,0 +1,33 @@
+
+/dts-v1/;
+/plugin/;	/* allow undefined label references and record them */
+
+/ {
+
+	fragment@1 {
+		target-path="/netsys@15100000/ethernet@15100000/mac@0";
+		__overlay__ {
+			compatible = "mediatek,eth-mac";
+			reg = <0>;
+			phy-mode = "sgmii";
+			phy-handle = <&phy0_2p5g>;
+			// fixed-link {
+			// 	speed = <2500>;
+			// 	full-duplex;
+			// 	pause;
+			// };
+		};
+	};
+	fragment@0 {
+		target-path="/netsys@15100000/ethernet@15100000/mdio-bus";
+		__overlay__ {
+			phy0_2p5g: mac0_eth_2p5g {
+				// reg = <0>;			/* update in of_mdio.h of_mdio_parse_addr */
+				compatible = "ethernet-phy-id03a2.a411";	// config with PHY ID
+				phy-mode = "sgmii";
+				full-duplex;
+				pause;
+			};
+		};
+	};
+};

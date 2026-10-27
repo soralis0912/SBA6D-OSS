@@ -1,0 +1,29 @@
+--- a/drivers/rtc/Kconfig
++++ b/drivers/rtc/Kconfig
+@@ -1808,6 +1808,16 @@ config RTC_DRV_MOXART
+ 	   This driver can also be built as a module. If so, the module
+ 	   will be called rtc-moxart
+ 
++config RTC_DRV_MT6330
++	tristate "MediaTek PMIC based RTC"
++	depends on MFD_MT6330 || (COMPILE_TEST && IRQ_DOMAIN)
++	help
++	  This selects the MediaTek(R) RTC driver. RTC is part of MediaTek
++	  MT6330 PMIC. You should enable MT6330 PMIC MFD before select
++	  MediaTek(R) RTC driver.
++
++	  If you want to use MediaTek(R) RTC interface, select Y or M here.
++
+ config RTC_DRV_MT6397
+ 	tristate "MediaTek PMIC based RTC"
+ 	depends on MFD_MT6397 || (COMPILE_TEST && IRQ_DOMAIN)
+--- a/drivers/rtc/Makefile
++++ b/drivers/rtc/Makefile
+@@ -110,6 +110,7 @@ obj-$(CONFIG_RTC_DRV_MESON)	+= rtc-meson
+ obj-$(CONFIG_RTC_DRV_MOXART)	+= rtc-moxart.o
+ obj-$(CONFIG_RTC_DRV_MPC5121)	+= rtc-mpc5121.o
+ obj-$(CONFIG_RTC_DRV_MSM6242)	+= rtc-msm6242.o
++obj-$(CONFIG_RTC_DRV_MT6330)    += rtc-mt6330.o
+ obj-$(CONFIG_RTC_DRV_MT6397)	+= rtc-mt6397.o
+ obj-$(CONFIG_RTC_DRV_MT7622)	+= rtc-mt7622.o
+ obj-$(CONFIG_RTC_DRV_MV)	+= rtc-mv.o

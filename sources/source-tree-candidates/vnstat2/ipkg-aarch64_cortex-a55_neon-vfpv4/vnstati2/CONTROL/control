@@ -1,0 +1,18 @@
+Package: vnstati2
+Version: 2.9-230417.47736
+Depends: libc, libsqlite3-0, vnstat2, libgd
+Conflicts: vnstat
+Source: /home/altim/work/t830/feeds/packages/net/vnstat2
+SourceName: vnstati2
+License: GPL-2.0-only
+LicenseFiles: COPYING
+Section: net
+SourceDateEpoch: 1730886256
+Maintainer: Jan Hoffmann <jan@3e8.eu>
+Architecture: aarch64_cortex-a55_neon-vfpv4
+Installed-Size: 42253
+Description:  The purpose of vnstati is to provide image output support for statistics
+ collected using vnstat. However, the image file format is limited to
+ png. All basic outputs of vnStat are supported excluding live traffic
+ features. The image can be outputted either to a file or to standard
+ output.

@@ -1,0 +1,24 @@
+#!/bin/sh
+
+WRAPPER_INCLUDEDIR="${WRAPPER_INCLUDEDIR:=-I/include/}"
+WRAPPER_LIBDIR="${WRAPPER_LIBDIR:=-L/lib/}"
+
+WRAPPER_OPTIONS=""
+WRAPPER_LIBS="-lc -L/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/lib/ -lgcc_s -lssp_nonshared"
+
+WRAPPER_INCLIB="Y"
+for arg
+do
+	case "$arg" in
+	-c|-E|-S) WRAPPER_INCLIB="N" ;;
+	-static) [ "$WRAPPER_LIBS" != "-lc -L/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/lib/ -lgcc_s -lssp_nonshared -lgcc_eh" ] && WRAPPER_LIBS="-lc -L/home/altim/work/t830/mtk/prebuilt/openwrt-toolchain/arm64-a55_neon-gcc-9.3.0_musl/lib/ -lgcc_s -lssp_nonshared -lgcc_eh" ;;
+	esac
+done
+if [ "$WRAPPER_INCLIB" = "Y" ]
+then
+	WRAPPER_OPTIONS="$WRAPPER_OPTIONS -nodefaultlibs $WRAPPER_LIBDIR -luClibc++ $WRAPPER_LIBS"
+fi
+
+[ -n "$V" ] && [ $V -gt 1 ] && echo aarch64-openwrt-linux-musl-g++ -fno-builtin -nostdinc++ -DGCC_HASCLASSVISIBILITY  $WRAPPER_INCLUDEDIR "$@" $WRAPPER_OPTIONS
+exec aarch64-openwrt-linux-musl-g++ -fno-builtin -nostdinc++ -DGCC_HASCLASSVISIBILITY  $WRAPPER_INCLUDEDIR "$@" $WRAPPER_OPTIONS
+

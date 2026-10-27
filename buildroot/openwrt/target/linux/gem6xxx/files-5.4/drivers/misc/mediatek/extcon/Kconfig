@@ -1,0 +1,24 @@
+choice
+	help
+	  Choose MTK Extcon USB Type here.
+	  EXTCON_MTK_USB is for USB TypeC
+	  EXTCON_MITK_USB_MICRO_B is for USB MicroB
+	prompt "MTK Extcon USB Type Selection"
+	default EXTCON_MTK_USB
+config EXTCON_MTK_USB
+	tristate "MediaTek EXTCON USB Support"
+	select EXTCON
+	select USB_ROLE_SWITCH
+	help
+	  Say Y here to enable extcon support for USB cable detection
+	  on the Mediatek PMIC.
+
+config EXTCON_MTK_USB_MICRO_B
+	help
+	  Say Y here to enable extcon support for Micro TypeB USB cable
+	  detection on the Mediatek PMIC.
+	tristate "MediaTek EXTCON USB Micro TypeB Support"
+	select EXTCON
+	select USB_ROLE_SWITCH
+endchoice
+

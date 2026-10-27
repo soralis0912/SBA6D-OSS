@@ -1,0 +1,16 @@
+Package: vpnbypass
+Version: 1.3.2-1
+Depends: libc, ipset, iptables
+Source: /home/altim/work/t830/feeds/packages/net/vpnbypass
+SourceName: vpnbypass
+License: GPL-3.0-or-later
+Section: net
+SourceDateEpoch: 1730886256
+Maintainer: Stan Grishin <stangri@melmac.net>
+Architecture: all
+Installed-Size: 2472
+Description:  This service can be used to enable simple VPN split tunnelling.
+ Supports accessing domains, IP ranges outside of your VPN tunnel.
+ Also supports dedicating local ports/IP ranges for direct
+ internet access (outside of your VPN tunnel).
+ Please see the README for further information.

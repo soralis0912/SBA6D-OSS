@@ -1,0 +1,35 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2020 MediaTek Inc.
+ */
+
+&i2c3 {
+	rt9467_chg: rt9467@5b {
+		compatible = "richtek,rt9467";
+		reg = <0x5b>;
+		rt,intr_gpio_num = <17>;	/* direct defined GPIO num */
+		rt,intr_gpio = <&pio 17 0x0>;
+		interrupt-names = "wdtmri";
+		status = "okay";
+		/*
+		 * Charger name
+		 * Main charger: primary_chg
+		 * Slave charger: secondary_chg
+		 */
+		charger_name = "primary_chg";
+		regmap_name = "rt9467_primary";
+		/* en_wdt; */
+		/* en_jeita; */
+		/* en_irq_pulse; */
+
+		otg_vbus: usb-otg-vbus {
+			regulator-compatible = "usb-otg-vbus";
+			regulator-name = "usb-otg-vbus";
+			regulator-min-microvolt = <4425000>;
+			regulator-max-microvolt = <5825000>;
+			regulator-min-microamp = <500000>;
+			regulator-max-microamp = <2400000>;
+		};
+	};
+};
+

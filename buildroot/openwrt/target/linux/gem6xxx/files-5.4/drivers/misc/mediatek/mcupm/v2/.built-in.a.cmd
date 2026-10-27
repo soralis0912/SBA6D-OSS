@@ -1,0 +1,1 @@
+cmd_drivers/misc/mediatek/mcupm/v2/built-in.a := echo >/dev/null; rm -f drivers/misc/mediatek/mcupm/v2/built-in.a; aarch64-openwrt-linux-musl-ar cDPrST drivers/misc/mediatek/mcupm/v2/built-in.a drivers/misc/mediatek/mcupm/v2/mcupm_driver.o drivers/misc/mediatek/mcupm/v2/mcupm_plt.o drivers/misc/mediatek/mcupm/v2/mcupm_logger.o

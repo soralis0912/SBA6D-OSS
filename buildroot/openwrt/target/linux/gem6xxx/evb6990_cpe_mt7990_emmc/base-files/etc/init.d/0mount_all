@@ -1,0 +1,75 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2010 OpenWrt.org
+
+START=00
+
+start() {
+	/etc/setup_link.sh
+
+	[ ! -d  "/mnt/vendor/nvcfg" ] && mkdir -p /mnt/vendor/nvcfg
+	[ ! -d  "/mnt/vendor/nvdata" ] && mkdir -p /mnt/vendor/nvdata
+	[ ! -d  "/mnt/vendor/nvram" ] && mkdir -p /mnt/vendor/nvram
+	[ ! -d  "/mnt/vendor/protect_f" ] && mkdir -p /mnt/vendor/protect_f
+	[ ! -d  "/mnt/vendor/protect_s" ] && mkdir -p /mnt/vendor/protect_s
+	[ ! -d  "/mnt/vendor/mdota" ] && mkdir -p /mnt/vendor/mdota
+	[ ! -d  "/mnt/vendor/mdota2" ] && mkdir -p /mnt/vendor/mdota2
+	[ ! -d  "/data" ] && mkdir /data
+
+	fs_type="$(/usr/sbin/blkid -s TYPE  -o value "/dev/block/nvcfg")"
+	if [ "$fs_type" != "ext4" ];then
+		/usr/sbin/mkfs.ext4  /dev/block/nvcfg
+	fi
+
+	fs_type="$(/usr/sbin/blkid -s TYPE  -o value "/dev/block/nvdata")"
+	if [ "$fs_type" != "ext4" ];then
+		/usr/sbin/mkfs.ext4  /dev/block/nvdata
+	fi
+
+	fs_type="$(/usr/sbin/blkid -s TYPE  -o value "/dev/block/protect1")"
+	if [ "$fs_type" != "ext4" ];then
+		/usr/sbin/mkfs.ext4  /dev/block/protect1
+	fi
+
+	fs_type="$(/usr/sbin/blkid -s TYPE  -o value "/dev/block/protect2")"
+	if [ "$fs_type" != "ext4" ];then
+		/usr/sbin/mkfs.ext4  /dev/block/protect2
+	fi
+
+	fs_type="$(/usr/sbin/blkid -s TYPE  -o value "/dev/block/mcf1")"
+	if [ "$fs_type" != "ext4" ];then
+		/usr/sbin/mkfs.ext4  /dev/block/mcf1
+	fi
+
+	fs_type="$(/usr/sbin/blkid -s TYPE  -o value "/dev/block/mcf2")"
+	if [ "$fs_type" != "ext4" ];then
+		/usr/sbin/mkfs.ext4  /dev/block/mcf2
+	fi
+
+	fs_type="$(/usr/sbin/blkid -s TYPE  -o value "/dev/block/rootfs_data")"
+	if [ "$fs_type" != "ext4" ];then
+		/usr/sbin/mkfs.ext4  /dev/block/rootfs_data
+	fi
+
+	fs_type="$(/usr/sbin/blkid -s TYPE  -o value "/dev/block/user_data")"
+	if [ "$fs_type" != "ext4" ];then
+		/usr/sbin/mkfs.ext4  /dev/block/user_data
+	fi
+
+	mount -a
+
+	#copy Wi-Fi e2p profile fle
+	[ ! -f  "/mnt/vendor/nvcfg/e2p" ] && cp /etc/wireless/mediatek/e2p /mnt/vendor/nvcfg/e2p
+
+	[ ! -d  "/mnt/vendor/nvdata/md_cmn" ] && mkdir -p /mnt/vendor/nvdata/md_cmn
+
+	[ -x /sbin/restorecon ] && {
+		restorecon -r /mnt/vendor/nvcfg
+		restorecon -r /mnt/vendor/nvdata
+		restorecon -r /mnt/vendor/nvram
+		restorecon -r /mnt/vendor/protect_f
+		restorecon -r /mnt/vendor/protect_s
+		restorecon -r /mnt/vendor/mdota
+		restorecon -r /mnt/vendor/mdota2
+		restorecon -r /data
+	}
+}
