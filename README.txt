@@ -34,7 +34,8 @@ Package contents
       openwrt/target/linux/gem6xxx/patches-5.4/
                           136 kernel patches, applied in numeric order
   sources/
-      upstream-archives/  upstream source tarballs for GPL/LGPL components
+      upstream-archives/  pinned Git submodules and extracted source trees
+                          for GPL/LGPL components
       source-tree-candidates/
       package-recipes/
   package-info/

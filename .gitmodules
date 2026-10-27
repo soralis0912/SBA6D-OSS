@@ -1,0 +1,120 @@
+[submodule "sources/upstream-archives/cgi-io-2022-08-10-901b0f04"]
+	path = sources/upstream-archives/cgi-io-2022-08-10-901b0f04
+	url = https://github.com/openwrt/cgi-io.git
+	shallow = true
+[submodule "sources/upstream-archives/fstools-2021-01-04-c53b1882"]
+	path = sources/upstream-archives/fstools-2021-01-04-c53b1882
+	url = https://github.com/openwrt/fstools.git
+	shallow = true
+[submodule "sources/upstream-archives/fwtool-2019-11-12-8f7fe925"]
+	path = sources/upstream-archives/fwtool-2019-11-12-8f7fe925
+	url = https://github.com/openwrt/fwtool.git
+	shallow = true
+[submodule "sources/upstream-archives/libiwinfo-2023-02-06-c7eb8ebe"]
+	path = sources/upstream-archives/libiwinfo-2023-02-06-c7eb8ebe
+	url = https://github.com/openwrt/iwinfo.git
+	shallow = true
+[submodule "sources/upstream-archives/libsndfile-2019-04-21-25824cb9"]
+	path = sources/upstream-archives/libsndfile-2019-04-21-25824cb9
+	url = https://github.com/libsndfile/libsndfile.git
+	shallow = true
+[submodule "sources/upstream-archives/netifd-2021-10-30-8f82742c"]
+	path = sources/upstream-archives/netifd-2021-10-30-8f82742c
+	url = https://github.com/openwrt/netifd.git
+	shallow = true
+[submodule "sources/upstream-archives/odhcp6c-2021-01-09-53f07e90"]
+	path = sources/upstream-archives/odhcp6c-2021-01-09-53f07e90
+	url = https://github.com/openwrt/odhcp6c.git
+	shallow = true
+[submodule "sources/upstream-archives/odhcpd-2021-07-18-bc9d317f"]
+	path = sources/upstream-archives/odhcpd-2021-07-18-bc9d317f
+	url = https://github.com/openwrt/odhcpd.git
+	shallow = true
+[submodule "sources/upstream-archives/openwrt-keyring-2021-02-20-49283916"]
+	path = sources/upstream-archives/openwrt-keyring-2021-02-20-49283916
+	url = https://github.com/openwrt/keyring.git
+	shallow = true
+[submodule "sources/upstream-archives/opkg-2021-06-13-1bf042dd"]
+	path = sources/upstream-archives/opkg-2021-06-13-1bf042dd
+	url = https://github.com/openwrt/opkg-lede.git
+	shallow = true
+[submodule "sources/upstream-archives/procd-2021-03-08-2cfc26f8"]
+	path = sources/upstream-archives/procd-2021-03-08-2cfc26f8
+	url = https://github.com/openwrt/procd.git
+	shallow = true
+[submodule "sources/upstream-archives/ubox-2020-10-25-9ef88681"]
+	path = sources/upstream-archives/ubox-2020-10-25-9ef88681
+	url = https://github.com/openwrt/ubox.git
+	shallow = true
+[submodule "sources/upstream-archives/ubus-2021-06-30-4fc532c8"]
+	path = sources/upstream-archives/ubus-2021-06-30-4fc532c8
+	url = https://github.com/openwrt/ubus.git
+	shallow = true
+[submodule "sources/upstream-archives/uci-2021-04-14-4b3db117"]
+	path = sources/upstream-archives/uci-2021-04-14-4b3db117
+	url = https://github.com/openwrt/uci.git
+	shallow = true
+[submodule "sources/upstream-archives/urngd-2020-01-21-c7f7b6b6"]
+	path = sources/upstream-archives/urngd-2020-01-21-c7f7b6b6
+	url = https://github.com/openwrt/urngd.git
+	shallow = true
+[submodule "sources/upstream-archives/alsa-lib-1.2.4"]
+	path = sources/upstream-archives/alsa-lib-1.2.4
+	url = https://github.com/alsa-project/alsa-lib.git
+	shallow = true
+[submodule "sources/upstream-archives/alsa-utils-1.2.4"]
+	path = sources/upstream-archives/alsa-utils-1.2.4
+	url = https://github.com/alsa-project/alsa-utils.git
+	shallow = true
+[submodule "sources/upstream-archives/busybox-1.33.2"]
+	path = sources/upstream-archives/busybox-1.33.2
+	url = https://github.com/mirror/busybox.git
+	shallow = true
+[submodule "sources/upstream-archives/dtc-1.6.0"]
+	path = sources/upstream-archives/dtc-1.6.0
+	url = https://github.com/dgibson/dtc.git
+	shallow = true
+[submodule "sources/upstream-archives/e2fsprogs-1.45.6"]
+	path = sources/upstream-archives/e2fsprogs-1.45.6
+	url = https://github.com/tytso/e2fsprogs.git
+	shallow = true
+[submodule "sources/upstream-archives/iproute2-5.11.0"]
+	path = sources/upstream-archives/iproute2-5.11.0
+	url = https://github.com/iproute2/iproute2.git
+	shallow = true
+[submodule "sources/upstream-archives/libcap-ng-0.8.1"]
+	path = sources/upstream-archives/libcap-ng-0.8.1
+	url = https://github.com/stevegrubb/libcap-ng.git
+	shallow = true
+[submodule "sources/upstream-archives/liboping-1.10.0"]
+	path = sources/upstream-archives/liboping-1.10.0
+	url = https://github.com/octo/liboping.git
+	shallow = true
+[submodule "sources/upstream-archives/libpng-1.6.37"]
+	path = sources/upstream-archives/libpng-1.6.37
+	url = https://github.com/pnggroup/libpng.git
+	shallow = true
+[submodule "sources/upstream-archives/libsamplerate-0.1.9"]
+	path = sources/upstream-archives/libsamplerate-0.1.9
+	url = https://github.com/libsndfile/libsamplerate.git
+	shallow = true
+[submodule "sources/upstream-archives/mtd-utils-2.1.2"]
+	path = sources/upstream-archives/mtd-utils-2.1.2
+	url = https://github.com/sigma-star/mtd-utils.git
+	shallow = true
+[submodule "sources/upstream-archives/strace-5.10"]
+	path = sources/upstream-archives/strace-5.10
+	url = https://github.com/strace/strace.git
+	shallow = true
+[submodule "sources/upstream-archives/sysstat-12.4.2"]
+	path = sources/upstream-archives/sysstat-12.4.2
+	url = https://github.com/sysstat/sysstat.git
+	shallow = true
+[submodule "sources/upstream-archives/util-linux-2.36.1"]
+	path = sources/upstream-archives/util-linux-2.36.1
+	url = https://github.com/util-linux/util-linux.git
+	shallow = true
+[submodule "sources/upstream-archives/linux-5.4.238"]
+	path = sources/upstream-archives/linux-5.4.238
+	url = https://github.com/gregkh/linux.git
+	shallow = true

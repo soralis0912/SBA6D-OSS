@@ -62,11 +62,15 @@ CONFIG_KNOS_KERNEL.
 
 5. Package sources
 ------------------
-  sources/upstream-archives/       upstream source tarballs
+  sources/upstream-archives/       pinned Git submodules and extracted
+                                   upstream source trees
   sources/source-tree-candidates/  source trees
   sources/package-recipes/         build recipes
   package-info/gpl-lgpl-package-inventory.tsv
                                    GPL/LGPL component inventory
+
+After cloning this repository, populate the pinned upstream sources with:
+    git submodule update --init --recursive
 
 6. Notes
 --------

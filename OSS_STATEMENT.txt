@@ -21,7 +21,7 @@ Included material
 -----------------
 1. Linux kernel source
    - kernel/src-scrubbed/                    full 5.4.238 source tree
-   - sources/upstream-archives/linux-5.4.238.tar.xz
+   - sources/upstream-archives/linux-5.4.238/  pinned upstream Git submodule
    - kernel patches under patches/openwrt/target/linux/gem6xxx/patches-5.4/
    - target overlay under buildroot/openwrt/target/linux/gem6xxx/files-5.4/
 
@@ -49,7 +49,8 @@ Included material
    - dts/
 
 6. GPL/LGPL package source
-   - sources/upstream-archives/       upstream source tarballs
+   - sources/upstream-archives/       pinned upstream Git submodules and
+                                      extracted upstream source trees
    - sources/source-tree-candidates/  source trees
    - sources/package-recipes/         build recipes
    - buildroot/feeds/                 package build recipes and patches
